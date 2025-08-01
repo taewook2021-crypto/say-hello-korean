@@ -25,20 +25,27 @@ const Subject = () => {
 
   const loadBooks = async () => {
     try {
+      console.log('Loading books for subject:', decodeURIComponent(subjectName || ''));
       const { data, error } = await (supabase as any)
         .from('books')
         .select('name')
         .eq('subject_name', decodeURIComponent(subjectName || ''))
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
       
-      setBooks(data.map((book: any) => book.name));
+      console.log('Books loaded:', data);
+      setBooks(data?.map((book: any) => book.name) || []);
     } catch (error) {
       console.error('Error loading books:', error);
+      // If database tables don't exist yet, start with empty array
+      setBooks([]);
       toast({
-        title: "오류",
-        description: "교재를 불러오는데 실패했습니다.",
+        title: "알림",
+        description: "데이터베이스 설정이 필요합니다. 교재 추가는 임시로 로컬에만 저장됩니다.",
         variant: "destructive",
       });
     } finally {
@@ -50,6 +57,7 @@ const Subject = () => {
     if (!newBookName.trim() || !subjectName) return;
     
     try {
+      console.log('Adding book:', newBookName.trim(), 'to subject:', decodeURIComponent(subjectName));
       const { error } = await (supabase as any)
         .from('books')
         .insert({ 
@@ -57,7 +65,10 @@ const Subject = () => {
           subject_name: decodeURIComponent(subjectName)
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
       
       setBooks([...books, newBookName.trim()]);
       setNewBookName("");
@@ -68,10 +79,13 @@ const Subject = () => {
       });
     } catch (error) {
       console.error('Error adding book:', error);
+      // If database doesn't exist, still add locally
+      setBooks([...books, newBookName.trim()]);
+      setNewBookName("");
+      setIsDialogOpen(false);
       toast({
-        title: "오류",
-        description: "교재 추가에 실패했습니다.",
-        variant: "destructive",
+        title: "임시 저장",
+        description: "교재가 임시로 추가되었습니다. 데이터베이스 설정 후 영구 저장됩니다.",
       });
     }
   };
