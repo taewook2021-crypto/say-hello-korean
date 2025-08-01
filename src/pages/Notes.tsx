@@ -9,7 +9,6 @@ import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react"
 
 interface WrongNote {
   id: string;
-  subject: string;
   question: string;
   wrongAnswer: string;
   correctAnswer: string;
@@ -23,7 +22,6 @@ const Index = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
   const [newNote, setNewNote] = useState({
-    subject: "",
     question: "",
     wrongAnswer: "",
     correctAnswer: "",
@@ -31,7 +29,7 @@ const Index = () => {
   });
 
   const handleAddNote = () => {
-    if (!newNote.subject || !newNote.question || !newNote.correctAnswer) {
+    if (!newNote.question || !newNote.correctAnswer) {
       return;
     }
 
@@ -44,7 +42,6 @@ const Index = () => {
 
     setNotes([note, ...notes]);
     setNewNote({
-      subject: "",
       question: "",
       wrongAnswer: "",
       correctAnswer: "",
@@ -91,16 +88,6 @@ const Index = () => {
               <CardTitle>새로운 오답 추가</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="subject">과목</Label>
-                <Input
-                  id="subject"
-                  placeholder="예: 수학, 영어, 과학..."
-                  value={newNote.subject}
-                  onChange={(e) => setNewNote({...newNote, subject: e.target.value})}
-                />
-              </div>
-              
               <div>
                 <Label htmlFor="question">문제</Label>
                 <Textarea
@@ -168,12 +155,9 @@ const Index = () => {
               <Card key={note.id} className={note.isResolved ? "border-green-200 bg-green-50/50" : ""}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{note.subject}</Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {note.createdAt.toLocaleDateString('ko-KR')}
-                      </span>
-                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {note.createdAt.toLocaleDateString('ko-KR')}
+                    </span>
                     <Button
                       variant="ghost"
                       size="sm"
