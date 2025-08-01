@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FolderOpen, Plus } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Home = () => {
   const [folders, setFolders] = useState([
@@ -68,12 +69,14 @@ const Home = () => {
       
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {folders.map((folder, index) => (
-          <Card key={index} className="p-4 text-center cursor-pointer hover:bg-accent">
-            <CardContent className="p-0">
-              <FolderOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-              <p className="text-sm font-medium">{folder}</p>
-            </CardContent>
-          </Card>
+          <Link key={index} to={`/subject/${encodeURIComponent(folder)}`}>
+            <Card className="p-4 text-center cursor-pointer hover:bg-accent">
+              <CardContent className="p-0">
+                <FolderOpen className="h-12 w-12 text-primary mx-auto mb-2" />
+                <p className="text-sm font-medium">{folder}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>
