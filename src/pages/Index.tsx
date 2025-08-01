@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, CheckCircle, XCircle } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
 
 interface WrongNote {
   id: string;
@@ -21,6 +21,7 @@ interface WrongNote {
 const Index = () => {
   const [notes, setNotes] = useState<WrongNote[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
   const [newNote, setNewNote] = useState({
     subject: "",
     question: "",
@@ -56,6 +57,13 @@ const Index = () => {
     setNotes(notes.map(note => 
       note.id === id ? { ...note, isResolved: !note.isResolved } : note
     ));
+  };
+
+  const toggleShowAnswer = (id: string) => {
+    setShowAnswers(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
   };
 
   return (
@@ -188,28 +196,66 @@ const Index = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <h4 className="font-medium mb-1">문제</h4>
-                    <p className="text-sm">{note.question}</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {note.wrongAnswer && (
-                      <div>
-                        <h4 className="font-medium mb-1 text-red-600">내가 적은 답</h4>
-                        <p className="text-sm bg-red-50 p-2 rounded border">{note.wrongAnswer}</p>
-                      </div>
-                    )}
-                    
-                    <div>
-                      <h4 className="font-medium mb-1 text-green-600">정답</h4>
-                      <p className="text-sm bg-green-50 p-2 rounded border">{note.correctAnswer}</p>
+                    <h4 className="font-medium mb-3">문제</h4>
+                    <div className="bg-blue-50 p-4 rounded-lg border">
+                      <p className="text-base leading-relaxed">{note.question}</p>
                     </div>
                   </div>
 
-                  {note.explanation && (
-                    <div>
-                      <h4 className="font-medium mb-1">해설</h4>
-                      <p className="text-sm bg-muted p-2 rounded">{note.explanation}</p>
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={() => toggleShowAnswer(note.id)}
+                      variant={showAnswers[note.id] ? "secondary" : "default"}
+                      className="flex items-center gap-2"
+                    >
+                      {showAnswers[note.id] ? (
+                        <>
+                          <EyeOff className="h-4 w-4" />
+                          답안 숨기기
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="h-4 w-4" />
+                          답안 보기
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {showAnswers[note.id] && (
+                    <div className="space-y-4 border-t pt-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {note.wrongAnswer && (
+                          <div>
+                            <h4 className="font-medium mb-2 text-red-600 flex items-center gap-1">
+                              <XCircle className="h-4 w-4" />
+                              내가 적은 답
+                            </h4>
+                            <p className="text-sm bg-red-50 p-3 rounded-lg border border-red-200">
+                              {note.wrongAnswer}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div>
+                          <h4 className="font-medium mb-2 text-green-600 flex items-center gap-1">
+                            <CheckCircle className="h-4 w-4" />
+                            정답
+                          </h4>
+                          <p className="text-sm bg-green-50 p-3 rounded-lg border border-green-200 font-medium">
+                            {note.correctAnswer}
+                          </p>
+                        </div>
+                      </div>
+
+                      {note.explanation && (
+                        <div>
+                          <h4 className="font-medium mb-2">해설</h4>
+                          <div className="bg-muted p-3 rounded-lg">
+                            <p className="text-sm leading-relaxed">{note.explanation}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
