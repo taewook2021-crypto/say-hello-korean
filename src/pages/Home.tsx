@@ -22,19 +22,32 @@ const Home = () => {
 
   const loadSubjects = async () => {
     try {
+      console.log('Loading subjects from database...');
       const { data, error } = await (supabase as any)
         .from('subjects')
         .select('name')
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
       
-      setFolders(data.map((subject: any) => subject.name));
+      console.log('Subjects loaded:', data);
+      setFolders(data?.map((subject: any) => subject.name) || []);
     } catch (error) {
       console.error('Error loading subjects:', error);
+      // If database tables don't exist yet, show default subjects
+      setFolders([
+        "재무회계",
+        "세법", 
+        "재무관리",
+        "원가회계",
+        "회계감사"
+      ]);
       toast({
-        title: "오류",
-        description: "과목을 불러오는데 실패했습니다.",
+        title: "알림",
+        description: "기본 과목을 표시합니다. 데이터베이스 설정이 필요합니다.",
         variant: "destructive",
       });
     } finally {
