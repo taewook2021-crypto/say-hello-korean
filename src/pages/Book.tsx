@@ -4,20 +4,77 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, FileText, Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Book = () => {
   const { subjectName, bookName } = useParams<{ subjectName: string; bookName: string }>();
   const [chapters, setChapters] = useState<string[]>([]);
   const [newChapterName, setNewChapterName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  const handleAddChapter = () => {
-    if (newChapterName.trim()) {
+  useEffect(() => {
+    if (subjectName && bookName) {
+      loadChapters();
+    }
+  }, [subjectName, bookName]);
+
+  const loadChapters = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('chapters')
+        .select('name')
+        .eq('subject_name', decodeURIComponent(subjectName || ''))
+        .eq('book_name', decodeURIComponent(bookName || ''))
+        .order('name');
+      
+      if (error) throw error;
+      
+      setChapters(data.map((chapter: any) => chapter.name));
+    } catch (error) {
+      console.error('Error loading chapters:', error);
+      toast({
+        title: "오류",
+        description: "단원을 불러오는데 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddChapter = async () => {
+    if (!newChapterName.trim() || !subjectName || !bookName) return;
+    
+    try {
+      const { error } = await (supabase as any)
+        .from('chapters')
+        .insert({ 
+          name: newChapterName.trim(),
+          subject_name: decodeURIComponent(subjectName),
+          book_name: decodeURIComponent(bookName)
+        });
+      
+      if (error) throw error;
+      
       setChapters([...chapters, newChapterName.trim()]);
       setNewChapterName("");
       setIsDialogOpen(false);
+      toast({
+        title: "성공",
+        description: "새 단원이 추가되었습니다.",
+      });
+    } catch (error) {
+      console.error('Error adding chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원 추가에 실패했습니다.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -73,19 +130,30 @@ const Book = () => {
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {chapters.map((chapter, index) => (
-          <Link key={index} to="/notes">
-            <Card className="p-4 text-center cursor-pointer hover:bg-accent">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, index) => (
+            <Card key={index} className="p-4 text-center animate-pulse">
               <CardContent className="p-0">
-                <FileText className="h-12 w-12 text-primary mx-auto mb-2" />
-                <p className="text-sm font-medium">{chapter}</p>
+                <div className="h-12 w-12 bg-muted rounded mx-auto mb-2" />
+                <div className="h-4 bg-muted rounded" />
               </CardContent>
             </Card>
-          </Link>
-        ))}
+          ))
+        ) : (
+          chapters.map((chapter, index) => (
+            <Link key={index} to={`/notes?subject=${encodeURIComponent(subjectName || '')}&book=${encodeURIComponent(bookName || '')}&chapter=${encodeURIComponent(chapter)}`}>
+              <Card className="p-4 text-center cursor-pointer hover:bg-accent">
+                <CardContent className="p-0">
+                  <FileText className="h-12 w-12 text-primary mx-auto mb-2" />
+                  <p className="text-sm font-medium">{chapter}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))
+        )}
       </div>
       
-      {chapters.length === 0 && (
+      {!loading && chapters.length === 0 && (
         <div className="text-center text-muted-foreground mt-12">
           <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
           <p>아직 추가된 단원이 없습니다.</p>

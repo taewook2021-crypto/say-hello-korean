@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Link, useSearchParams } from "react-router-dom";
 
 interface WrongNote {
   id: string;
@@ -18,9 +21,17 @@ interface WrongNote {
 }
 
 const Index = () => {
+  const [searchParams] = useSearchParams();
   const [notes, setNotes] = useState<WrongNote[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  const subject = searchParams.get('subject');
+  const book = searchParams.get('book');
+  const chapter = searchParams.get('chapter');
+
   const [newNote, setNewNote] = useState({
     question: "",
     wrongAnswer: "",
@@ -28,32 +39,123 @@ const Index = () => {
     explanation: ""
   });
 
-  const handleAddNote = () => {
-    if (!newNote.question || !newNote.correctAnswer) {
+  useEffect(() => {
+    if (subject && book && chapter) {
+      loadNotes();
+    }
+  }, [subject, book, chapter]);
+
+  const loadNotes = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('wrong_notes')
+        .select('*')
+        .eq('subject_name', subject)
+        .eq('book_name', book)
+        .eq('chapter_name', chapter)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      setNotes(data.map((note: any) => ({
+        id: note.id,
+        question: note.question,
+        wrongAnswer: note.wrong_answer || '',
+        correctAnswer: note.correct_answer,
+        explanation: note.explanation || '',
+        createdAt: new Date(note.created_at),
+        isResolved: note.is_resolved
+      })));
+    } catch (error) {
+      console.error('Error loading notes:', error);
+      toast({
+        title: "오류",
+        description: "오답노트를 불러오는데 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.question || !newNote.correctAnswer || !subject || !book || !chapter) {
       return;
     }
 
-    const note: WrongNote = {
-      id: Date.now().toString(),
-      ...newNote,
-      createdAt: new Date(),
-      isResolved: false
-    };
+    try {
+      const { data, error } = await (supabase as any)
+        .from('wrong_notes')
+        .insert({
+          question: newNote.question,
+          wrong_answer: newNote.wrongAnswer,
+          correct_answer: newNote.correctAnswer,
+          explanation: newNote.explanation,
+          subject_name: subject,
+          book_name: book,
+          chapter_name: chapter,
+          is_resolved: false
+        })
+        .select()
+        .single();
 
-    setNotes([note, ...notes]);
-    setNewNote({
-      question: "",
-      wrongAnswer: "",
-      correctAnswer: "",
-      explanation: ""
-    });
-    setShowAddForm(false);
+      if (error) throw error;
+
+      const note: WrongNote = {
+        id: data.id,
+        question: data.question,
+        wrongAnswer: data.wrong_answer || '',
+        correctAnswer: data.correct_answer,
+        explanation: data.explanation || '',
+        createdAt: new Date(data.created_at),
+        isResolved: data.is_resolved
+      };
+
+      setNotes([note, ...notes]);
+      setNewNote({
+        question: "",
+        wrongAnswer: "",
+        correctAnswer: "",
+        explanation: ""
+      });
+      setShowAddForm(false);
+      toast({
+        title: "성공",
+        description: "오답노트가 저장되었습니다.",
+      });
+    } catch (error) {
+      console.error('Error adding note:', error);
+      toast({
+        title: "오류",
+        description: "오답노트 저장에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const toggleResolved = (id: string) => {
-    setNotes(notes.map(note => 
-      note.id === id ? { ...note, isResolved: !note.isResolved } : note
-    ));
+  const toggleResolved = async (id: string) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+
+    try {
+      const { error } = await (supabase as any)
+        .from('wrong_notes')
+        .update({ is_resolved: !note.isResolved })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setNotes(notes.map(note => 
+        note.id === id ? { ...note, isResolved: !note.isResolved } : note
+      ));
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: "오류",
+        description: "상태 변경에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   const toggleShowAnswer = (id: string) => {
@@ -68,13 +170,31 @@ const Index = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">나의 오답노트</h1>
+          <div className="flex items-center gap-4">
+            {subject && book && (
+              <Link to={`/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`}>
+                <Button variant="outline" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  뒤로가기
+                </Button>
+              </Link>
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-8 w-8 text-primary" />
+                <h1 className="text-3xl font-bold">오답노트</h1>
+              </div>
+              {subject && book && chapter && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {subject} {' > '} {book} {' > '} {chapter}
+                </p>
+              )}
+            </div>
           </div>
           <Button 
             onClick={() => setShowAddForm(!showAddForm)}
             className="flex items-center gap-2"
+            disabled={!subject || !book || !chapter}
           >
             <Plus className="h-4 w-4" />
             문제 추가
@@ -142,12 +262,30 @@ const Index = () => {
 
         {/* Notes List */}
         <div className="space-y-4">
-          {notes.length === 0 ? (
+          {loading ? (
+            Array.from({ length: 3 }).map((_, index) => (
+              <Card key={index} className="animate-pulse">
+                <CardHeader>
+                  <div className="h-4 bg-muted rounded w-1/4" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded" />
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          ) : notes.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">아직 오답노트가 없습니다</h3>
-                <p className="text-muted-foreground">첫 번째 문제를 추가해보세요!</p>
+                <h3 className="text-lg font-medium mb-2">
+                  {subject && book && chapter ? "아직 오답노트가 없습니다" : "단원을 선택해주세요"}
+                </h3>
+                <p className="text-muted-foreground">
+                  {subject && book && chapter ? "첫 번째 문제를 추가해보세요!" : "과목 → 교재 → 단원을 선택한 후 오답노트를 작성할 수 있습니다."}
+                </p>
               </CardContent>
             </Card>
           ) : (
