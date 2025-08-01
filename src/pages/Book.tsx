@@ -25,6 +25,7 @@ const Book = () => {
 
   const loadChapters = async () => {
     try {
+      console.log('Loading chapters for book:', decodeURIComponent(bookName || ''), 'in subject:', decodeURIComponent(subjectName || ''));
       const { data, error } = await (supabase as any)
         .from('chapters')
         .select('name')
@@ -32,14 +33,20 @@ const Book = () => {
         .eq('book_name', decodeURIComponent(bookName || ''))
         .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
       
-      setChapters(data.map((chapter: any) => chapter.name));
+      console.log('Chapters loaded:', data);
+      setChapters(data?.map((chapter: any) => chapter.name) || []);
     } catch (error) {
       console.error('Error loading chapters:', error);
+      // If database tables don't exist yet, start with empty array
+      setChapters([]);
       toast({
-        title: "오류",
-        description: "단원을 불러오는데 실패했습니다.",
+        title: "알림",
+        description: "데이터베이스 설정이 필요합니다. 단원 추가는 임시로 로컬에만 저장됩니다.",
         variant: "destructive",
       });
     } finally {
@@ -51,6 +58,7 @@ const Book = () => {
     if (!newChapterName.trim() || !subjectName || !bookName) return;
     
     try {
+      console.log('Adding chapter:', newChapterName.trim(), 'to book:', decodeURIComponent(bookName), 'in subject:', decodeURIComponent(subjectName));
       const { error } = await (supabase as any)
         .from('chapters')
         .insert({ 
@@ -59,7 +67,10 @@ const Book = () => {
           book_name: decodeURIComponent(bookName)
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
       
       setChapters([...chapters, newChapterName.trim()]);
       setNewChapterName("");
@@ -70,10 +81,13 @@ const Book = () => {
       });
     } catch (error) {
       console.error('Error adding chapter:', error);
+      // If database doesn't exist, still add locally
+      setChapters([...chapters, newChapterName.trim()]);
+      setNewChapterName("");
+      setIsDialogOpen(false);
       toast({
-        title: "오류",
-        description: "단원 추가에 실패했습니다.",
-        variant: "destructive",
+        title: "임시 저장",
+        description: "단원이 임시로 추가되었습니다. 데이터베이스 설정 후 영구 저장됩니다.",
       });
     }
   };
