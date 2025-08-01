@@ -14,7 +14,127 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      books: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          subject_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          subject_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          subject_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_subject_name_fkey"
+            columns: ["subject_name"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["name"]
+          },
+        ]
+      }
+      chapters: {
+        Row: {
+          book_name: string
+          created_at: string
+          id: string
+          name: string
+          subject_name: string
+        }
+        Insert: {
+          book_name: string
+          created_at?: string
+          id?: string
+          name: string
+          subject_name: string
+        }
+        Update: {
+          book_name?: string
+          created_at?: string
+          id?: string
+          name?: string
+          subject_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_book_name_subject_name_fkey"
+            columns: ["book_name", "subject_name"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["name", "subject_name"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      wrong_notes: {
+        Row: {
+          book_name: string
+          chapter_name: string
+          correct_answer: string
+          created_at: string
+          explanation: string | null
+          id: string
+          is_resolved: boolean
+          question: string
+          subject_name: string
+          updated_at: string
+          wrong_answer: string | null
+        }
+        Insert: {
+          book_name: string
+          chapter_name: string
+          correct_answer: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          is_resolved?: boolean
+          question: string
+          subject_name: string
+          updated_at?: string
+          wrong_answer?: string | null
+        }
+        Update: {
+          book_name?: string
+          chapter_name?: string
+          correct_answer?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          is_resolved?: boolean
+          question?: string
+          subject_name?: string
+          updated_at?: string
+          wrong_answer?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
