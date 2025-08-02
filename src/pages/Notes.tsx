@@ -188,16 +188,50 @@ const Index = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     
-    // 셀 너비 자동 조정
+    // 셀 너비 넉넉하게 조정
     const colWidths = [
-      { wch: 5 },  // 번호
-      { wch: 50 }, // 문제
-      { wch: 30 }, // 정답
-      { wch: 40 }, // 해설
-      { wch: 10 }, // 해결상태
-      { wch: 12 }  // 작성일
+      { wch: 8 },   // 번호
+      { wch: 80 },  // 문제 (더 넉넉하게)
+      { wch: 25 },  // 정답
+      { wch: 60 },  // 해설 (더 넉넉하게)
+      { wch: 12 },  // 해결상태
+      { wch: 12 }   // 작성일
     ];
     worksheet['!cols'] = colWidths;
+
+    // 헤더 행에 하늘색 배경 적용
+    const headerCells = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1'];
+    headerCells.forEach(cell => {
+      if (!worksheet[cell]) worksheet[cell] = {};
+      worksheet[cell].s = {
+        fill: {
+          fgColor: { rgb: "87CEEB" }, // 하늘색
+        },
+        font: {
+          bold: true,
+          color: { rgb: "000000" }
+        },
+        alignment: {
+          horizontal: "center",
+          vertical: "center"
+        }
+      };
+    });
+
+    // 모든 데이터 셀에 텍스트 줄바꿈 설정
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    for (let row = 1; row <= range.e.r; row++) {
+      for (let col = 0; col <= range.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!worksheet[cellAddress]) continue;
+        
+        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+        worksheet[cellAddress].s.alignment = {
+          wrapText: true,
+          vertical: "top"
+        };
+      }
+    }
 
     XLSX.utils.book_append_sheet(workbook, worksheet, '오답노트');
     
