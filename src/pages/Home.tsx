@@ -85,13 +85,18 @@ const Home = () => {
 
   const handleDeleteFolder = async (folderName: string) => {
     try {
+      console.log('Deleting folder:', folderName);
       const { error } = await (supabase as any)
         .from('subjects')
         .delete()
         .eq('name', folderName);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
       
+      console.log('Delete successful');
       setFolders(folders.filter(folder => folder !== folderName));
       toast({
         title: "성공",
