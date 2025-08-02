@@ -178,9 +178,9 @@ const Index = () => {
 
     const exportData = notes.map((note, index) => ({
       '번호': index + 1,
-      '문제': note.question,
+      '문제': note.question.replace(/(.{50})/g, '$1\n'), // 50자마다 줄바꿈
       '정답': note.correctAnswer,
-      '해설': note.explanation || '',
+      '해설': note.explanation ? note.explanation.replace(/(.{40})/g, '$1\n') : '', // 40자마다 줄바꿈
       '해결상태': note.isResolved ? '해결완료' : '미해결',
       '작성일': note.createdAt.toLocaleDateString('ko-KR')
     }));
