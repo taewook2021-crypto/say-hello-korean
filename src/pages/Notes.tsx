@@ -188,47 +188,61 @@ const Index = () => {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     
-    // 셀 너비 넉넉하게 조정
-    const colWidths = [
+    // 셀 너비 설정 - 문제와 해설을 매우 넓게
+    worksheet['!cols'] = [
       { wch: 8 },   // 번호
-      { wch: 80 },  // 문제 (더 넉넉하게)
-      { wch: 25 },  // 정답
-      { wch: 60 },  // 해설 (더 넉넉하게)
-      { wch: 12 },  // 해결상태
-      { wch: 12 }   // 작성일
+      { wch: 100 }, // 문제 (매우 넓게)
+      { wch: 30 },  // 정답
+      { wch: 80 },  // 해설 (매우 넓게)
+      { wch: 15 },  // 해결상태
+      { wch: 15 }   // 작성일
     ];
-    worksheet['!cols'] = colWidths;
 
-    // 헤더 행에 하늘색 배경 적용
-    const headerCells = ['A1', 'B1', 'C1', 'D1', 'E1', 'F1'];
-    headerCells.forEach(cell => {
-      if (!worksheet[cell]) worksheet[cell] = {};
-      worksheet[cell].s = {
-        fill: {
-          fgColor: { rgb: "87CEEB" }, // 하늘색
-        },
-        font: {
-          bold: true,
-          color: { rgb: "000000" }
-        },
-        alignment: {
-          horizontal: "center",
-          vertical: "center"
+    // 행 높이 설정 (헤더 제외한 모든 행을 높게)
+    if (!worksheet['!rows']) worksheet['!rows'] = [];
+    for (let i = 1; i <= exportData.length; i++) {
+      if (!worksheet['!rows'][i]) worksheet['!rows'][i] = {};
+      worksheet['!rows'][i].hpt = 60; // 행 높이를 60으로 설정
+    }
+
+    // 워크시트에 스타일 적용
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:F1');
+    
+    // 헤더 스타일링
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const headerCell = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (!worksheet[headerCell]) worksheet[headerCell] = { v: "", t: "s" };
+      worksheet[headerCell].s = {
+        fill: { fgColor: { rgb: "ADD8E6" } }, // 연한 하늘색
+        font: { bold: true, sz: 12, color: { rgb: "000000" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
         }
       };
-    });
+    }
 
-    // 모든 데이터 셀에 텍스트 줄바꿈 설정
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    // 데이터 셀 스타일링
     for (let row = 1; row <= range.e.r; row++) {
-      for (let col = 0; col <= range.e.c; col++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
         const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
         if (!worksheet[cellAddress]) continue;
         
-        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
-        worksheet[cellAddress].s.alignment = {
-          wrapText: true,
-          vertical: "top"
+        worksheet[cellAddress].s = {
+          alignment: { 
+            wrapText: true, 
+            vertical: "top",
+            horizontal: col === 1 || col === 3 ? "left" : "center" // 문제와 해설은 왼쪽 정렬
+          },
+          border: {
+            top: { style: "thin", color: { rgb: "CCCCCC" } },
+            bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+            left: { style: "thin", color: { rgb: "CCCCCC" } },
+            right: { style: "thin", color: { rgb: "CCCCCC" } }
+          }
         };
       }
     }
