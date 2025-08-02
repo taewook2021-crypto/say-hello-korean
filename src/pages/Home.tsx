@@ -179,8 +179,7 @@ const Home = () => {
                   <Button
                     size="icon"
                     variant="destructive"
-                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.preventDefault()}
+                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -194,7 +193,12 @@ const Home = () => {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>취소</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteFolder(folder)}>
+                    <AlertDialogAction 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFolder(folder);
+                      }}
+                    >
                       삭제
                     </AlertDialogAction>
                   </AlertDialogFooter>
