@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download } from "lucide-react";
+import * as XLSX from 'xlsx';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useSearchParams } from "react-router-dom";
@@ -165,6 +166,50 @@ const Index = () => {
     }));
   };
 
+  const exportToExcel = () => {
+    if (notes.length === 0) {
+      toast({
+        title: "알림",
+        description: "내보낼 오답노트가 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const exportData = notes.map((note, index) => ({
+      '번호': index + 1,
+      '문제': note.question,
+      '정답': note.correctAnswer,
+      '해설': note.explanation || '',
+      '해결상태': note.isResolved ? '해결완료' : '미해결',
+      '작성일': note.createdAt.toLocaleDateString('ko-KR')
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    
+    // 셀 너비 자동 조정
+    const colWidths = [
+      { wch: 5 },  // 번호
+      { wch: 50 }, // 문제
+      { wch: 30 }, // 정답
+      { wch: 40 }, // 해설
+      { wch: 10 }, // 해결상태
+      { wch: 12 }  // 작성일
+    ];
+    worksheet['!cols'] = colWidths;
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, '오답노트');
+    
+    const fileName = `오답노트_${subject}_${book}_${chapter}_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+
+    toast({
+      title: "성공",
+      description: "엑셀 파일이 다운로드되었습니다.",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
@@ -191,14 +236,25 @@ const Index = () => {
               )}
             </div>
           </div>
-          <Button 
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-2"
-            disabled={!subject || !book || !chapter}
-          >
-            <Plus className="h-4 w-4" />
-            문제 추가
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={exportToExcel}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={notes.length === 0}
+            >
+              <Download className="h-4 w-4" />
+              엑셀 다운로드
+            </Button>
+            <Button 
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="flex items-center gap-2"
+              disabled={!subject || !book || !chapter}
+            >
+              <Plus className="h-4 w-4" />
+              문제 추가
+            </Button>
+          </div>
         </div>
 
         {/* Add New Note Form */}
