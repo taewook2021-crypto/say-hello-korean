@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FolderOpen, Plus } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -82,6 +83,30 @@ const Home = () => {
     }
   };
 
+  const handleDeleteFolder = async (folderName: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('subjects')
+        .delete()
+        .eq('name', folderName);
+      
+      if (error) throw error;
+      
+      setFolders(folders.filter(folder => folder !== folderName));
+      toast({
+        title: "성공",
+        description: "과목이 삭제되었습니다.",
+      });
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      toast({
+        title: "오류",
+        description: "과목 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="flex justify-end mb-6">
@@ -135,14 +160,42 @@ const Home = () => {
           ))
         ) : (
           folders.map((folder, index) => (
-            <Link key={index} to={`/subject/${encodeURIComponent(folder)}`}>
-              <Card className="p-4 text-center cursor-pointer hover:bg-accent">
-                <CardContent className="p-0">
-                  <FolderOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <p className="text-sm font-medium">{folder}</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <div key={index} className="relative group">
+              <Link to={`/subject/${encodeURIComponent(folder)}`}>
+                <Card className="p-4 text-center cursor-pointer hover:bg-accent">
+                  <CardContent className="p-0">
+                    <FolderOpen className="h-12 w-12 text-primary mx-auto mb-2" />
+                    <p className="text-sm font-medium">{folder}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>폴더 삭제</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      '{folder}' 폴더를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>취소</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDeleteFolder(folder)}>
+                      삭제
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           ))
         )}
       </div>
