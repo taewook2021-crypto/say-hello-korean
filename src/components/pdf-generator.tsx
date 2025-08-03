@@ -13,97 +13,92 @@ interface WrongNote {
 
 // HTML 기반으로 정확한 답안지 양식 생성
 const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string): string => {
-  const notesPerPage = 25;
-  const totalPages = Math.ceil(notes.length / notesPerPage) || 1;
+  const linesPerPage = 25;
+  let allLines: string[] = [];
   
+  // 모든 노트를 줄 단위로 변환
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    
+    // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 60자 기준)
+    const maxCharsPerLine = 60;
+    const questionParts = [];
+    let remainingQuestion = note.question;
+    
+    while (remainingQuestion.length > 0) {
+      if (remainingQuestion.length <= maxCharsPerLine) {
+        questionParts.push(remainingQuestion);
+        break;
+      }
+      
+      // 적절한 분할점 찾기 (공백 기준)
+      let splitIndex = maxCharsPerLine;
+      while (splitIndex > 0 && remainingQuestion[splitIndex] !== ' ') {
+        splitIndex--;
+      }
+      if (splitIndex === 0) splitIndex = maxCharsPerLine;
+      
+      questionParts.push(remainingQuestion.substring(0, splitIndex));
+      remainingQuestion = remainingQuestion.substring(splitIndex).trim();
+    }
+    
+    // 첫 번째 줄: <Q>와 문제 첫 부분
+    allLines.push(`
+      <div class="answer-line">
+        <div class="content-area">
+          <span class="q-marker">&lt;Q&gt;</span>
+          <span class="question">${questionParts[0] || ''}</span>
+        </div>
+      </div>
+    `);
+    
+    // 문제의 나머지 부분들
+    for (let j = 1; j < questionParts.length; j++) {
+      allLines.push(`
+        <div class="answer-line">
+          <div class="content-area">
+            <span class="question" style="margin-left: 12mm;">${questionParts[j]}</span>
+          </div>
+        </div>
+      `);
+    }
+    
+    // 오답 줄
+    allLines.push(`
+      <div class="answer-line">
+        <div class="content-area">
+          <span class="x-marker">&lt;X&gt;</span>
+          <span class="wrong-answer">${note.wrongAnswer}</span>
+        </div>
+      </div>
+    `);
+    
+    // 정답 줄
+    allLines.push(`
+      <div class="answer-line">
+        <div class="content-area">
+          <span class="o-marker">&lt;O&gt;</span>
+          <span class="correct-answer">${note.correctAnswer}</span>
+        </div>
+      </div>
+    `);
+  }
+  
+  const totalPages = Math.ceil(allLines.length / linesPerPage) || 1;
   let pagesHTML = '';
   
   for (let pageNum = 0; pageNum < totalPages; pageNum++) {
-    const startIndex = pageNum * notesPerPage;
-    const endIndex = Math.min(startIndex + notesPerPage, notes.length);
-    const pageNotes = notes.slice(startIndex, endIndex);
+    const startIndex = pageNum * linesPerPage;
+    const endIndex = Math.min(startIndex + linesPerPage, allLines.length);
+    const pageLines = allLines.slice(startIndex, endIndex);
     
-    // 각 노트당 3줄씩 사용 (문제, 오답, 정답)
-    const linesHTML = [];
-    let currentLineNumber = startIndex + 1;
-    
-    for (let i = 0; i < notesPerPage; i++) {
-      const note = pageNotes[i];
-      
-      if (note) {
-        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 60자 기준)
-        const maxCharsPerLine = 60;
-        const questionParts = [];
-        let remainingQuestion = note.question;
-        
-        while (remainingQuestion.length > 0) {
-          if (remainingQuestion.length <= maxCharsPerLine) {
-            questionParts.push(remainingQuestion);
-            break;
-          }
-          
-          // 적절한 분할점 찾기 (공백 기준)
-          let splitIndex = maxCharsPerLine;
-          while (splitIndex > 0 && remainingQuestion[splitIndex] !== ' ') {
-            splitIndex--;
-          }
-          if (splitIndex === 0) splitIndex = maxCharsPerLine;
-          
-          questionParts.push(remainingQuestion.substring(0, splitIndex));
-          remainingQuestion = remainingQuestion.substring(splitIndex).trim();
-        }
-        
-        // 첫 번째 줄: <Q>와 문제 첫 부분
-        linesHTML.push(`
-          <div class="answer-line">
-            <div class="content-area">
-              <span class="q-marker">&lt;Q&gt;</span>
-              <span class="question">${questionParts[0] || ''}</span>
-            </div>
-          </div>
-        `);
-        
-        // 문제의 나머지 부분들
-        for (let j = 1; j < questionParts.length; j++) {
-          linesHTML.push(`
-            <div class="answer-line">
-              <div class="content-area">
-                <span class="question" style="margin-left: 12mm;">${questionParts[j]}</span>
-              </div>
-            </div>
-          `);
-        }
-        
-        // 오답 줄
-        linesHTML.push(`
-          <div class="answer-line">
-            <div class="content-area">
-              <span class="x-marker">&lt;X&gt;</span>
-              <span class="wrong-answer">${note.wrongAnswer}</span>
-            </div>
-          </div>
-        `);
-        
-        // 정답 줄
-        linesHTML.push(`
-          <div class="answer-line">
-            <div class="content-area">
-              <span class="o-marker">&lt;O&gt;</span>
-              <span class="correct-answer">${note.correctAnswer}</span>
-            </div>
-          </div>
-        `);
-        
-        currentLineNumber++;
-      } else if (currentLineNumber <= startIndex + notesPerPage) {
-        // 빈 줄
-        linesHTML.push(`
-          <div class="answer-line">
-            <div class="content-area"></div>
-          </div>
-        `);
-        currentLineNumber++;
-      }
+    // 페이지를 정확히 25줄로 채우기 (빈 줄 추가)
+    while (pageLines.length < linesPerPage) {
+      pageLines.push(`
+        <div class="answer-line">
+          <div class="content-area"></div>
+        </div>
+      `);
     }
     
     pagesHTML += `
@@ -114,7 +109,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         </div>
         
         <div class="answer-sheet">
-          ${linesHTML.join('')}
+          ${pageLines.join('')}
         </div>
         
         <div class="footer">
