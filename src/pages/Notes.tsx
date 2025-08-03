@@ -371,7 +371,7 @@ const Index = () => {
     );
   };
 
-  const renderAnswerField = (note: WrongNote, field: keyof WrongNote, label: string, bgColor: string, textColor: string) => {
+  const renderAnswerField = (note: WrongNote, field: keyof WrongNote, label: string, bgColor: string, textColor: string, showEditButton = true) => {
     const noteId = note.id;
     const editData = editingFields[noteId];
     const isEditing = editData?.field === field;
@@ -420,18 +420,20 @@ const Index = () => {
             {field === 'wrongAnswer' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
             {label}
           </h4>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => startEdit(noteId, field, value)}
-            className="h-6 w-6 p-0"
-          >
-            <Edit2 className="h-3 w-3" />
-          </Button>
+          {showEditButton && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => startEdit(noteId, field, value)}
+              className="h-6 w-6 p-0"
+            >
+              <Edit2 className="h-3 w-3" />
+            </Button>
+          )}
         </div>
         <div 
-          className={`text-sm ${bgColor} p-3 rounded-lg border cursor-pointer ${field === 'correctAnswer' ? 'font-medium' : ''}`}
-          onClick={() => startEdit(noteId, field, value)}
+          className={`text-sm ${bgColor} p-3 rounded-lg border ${showEditButton ? 'cursor-pointer' : ''} ${field === 'correctAnswer' ? 'font-medium' : ''}`}
+          onClick={showEditButton ? () => startEdit(noteId, field, value) : undefined}
         >
           {value || "클릭하여 입력"}
         </div>
