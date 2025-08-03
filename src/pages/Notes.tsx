@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download } from "lucide-react";
-import * as XLSX from 'xlsx';
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -166,7 +166,7 @@ const Index = () => {
     }));
   };
 
-  const exportToExcel = () => {
+  const handleDownloadPDF = async () => {
     if (notes.length === 0) {
       toast({
         title: "알림",
@@ -176,86 +176,57 @@ const Index = () => {
       return;
     }
 
-    const exportData = notes.map((note, index) => ({
-      '번호': index + 1,
-      '문제': note.question.replace(/(.{50})/g, '$1\n'), // 50자마다 줄바꿈
-      '정답': note.correctAnswer,
-      '해설': note.explanation ? note.explanation.replace(/(.{40})/g, '$1\n') : '', // 40자마다 줄바꿈
-      '해결상태': note.isResolved ? '해결완료' : '미해결',
-      '작성일': note.createdAt.toLocaleDateString('ko-KR')
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    
-    // 셀 너비 설정 - 문제와 해설을 매우 넓게
-    worksheet['!cols'] = [
-      { wch: 8 },   // 번호
-      { wch: 100 }, // 문제 (매우 넓게)
-      { wch: 30 },  // 정답
-      { wch: 80 },  // 해설 (매우 넓게)
-      { wch: 15 },  // 해결상태
-      { wch: 15 }   // 작성일
-    ];
-
-    // 행 높이 설정 (헤더 제외한 모든 행을 높게)
-    if (!worksheet['!rows']) worksheet['!rows'] = [];
-    for (let i = 1; i <= exportData.length; i++) {
-      if (!worksheet['!rows'][i]) worksheet['!rows'][i] = {};
-      worksheet['!rows'][i].hpt = 60; // 행 높이를 60으로 설정
+    if (!subject || !book || !chapter) {
+      toast({
+        title: "오류",
+        description: "과목, 교재, 단원 정보가 필요합니다.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // 워크시트에 스타일 적용
-    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:F1');
-    
-    // 헤더 스타일링
-    for (let col = range.s.c; col <= range.e.c; col++) {
-      const headerCell = XLSX.utils.encode_cell({ r: 0, c: col });
-      if (!worksheet[headerCell]) worksheet[headerCell] = { v: "", t: "s" };
-      worksheet[headerCell].s = {
-        fill: { fgColor: { rgb: "ADD8E6" } }, // 연한 하늘색
-        font: { bold: true, sz: 12, color: { rgb: "000000" } },
-        alignment: { horizontal: "center", vertical: "center" },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } }
-        }
-      };
+    const success = await downloadPDF(notes, subject, book, chapter);
+    if (success) {
+      toast({
+        title: "성공",
+        description: "PDF 파일이 다운로드되었습니다.",
+      });
+    } else {
+      toast({
+        title: "오류",
+        description: "PDF 생성에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePrintPDF = async () => {
+    if (notes.length === 0) {
+      toast({
+        title: "알림",
+        description: "인쇄할 오답노트가 없습니다.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    // 데이터 셀 스타일링
-    for (let row = 1; row <= range.e.r; row++) {
-      for (let col = range.s.c; col <= range.e.c; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!worksheet[cellAddress]) continue;
-        
-        worksheet[cellAddress].s = {
-          alignment: { 
-            wrapText: true, 
-            vertical: "top",
-            horizontal: col === 1 || col === 3 ? "left" : "center" // 문제와 해설은 왼쪽 정렬
-          },
-          border: {
-            top: { style: "thin", color: { rgb: "CCCCCC" } },
-            bottom: { style: "thin", color: { rgb: "CCCCCC" } },
-            left: { style: "thin", color: { rgb: "CCCCCC" } },
-            right: { style: "thin", color: { rgb: "CCCCCC" } }
-          }
-        };
-      }
+    if (!subject || !book || !chapter) {
+      toast({
+        title: "오류",
+        description: "과목, 교재, 단원 정보가 필요합니다.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, '오답노트');
-    
-    const fileName = `오답노트_${subject}_${book}_${chapter}_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-
-    toast({
-      title: "성공",
-      description: "엑셀 파일이 다운로드되었습니다.",
-    });
+    const success = await printPDF(notes, subject, book, chapter);
+    if (!success) {
+      toast({
+        title: "오류",
+        description: "PDF 인쇄에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -286,13 +257,22 @@ const Index = () => {
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={exportToExcel}
+              onClick={handleDownloadPDF}
               variant="outline"
               className="flex items-center gap-2"
               disabled={notes.length === 0}
             >
               <Download className="h-4 w-4" />
-              엑셀 다운로드
+              PDF 다운로드
+            </Button>
+            <Button 
+              onClick={handlePrintPDF}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={notes.length === 0}
+            >
+              <Printer className="h-4 w-4" />
+              인쇄하기
             </Button>
             <Button 
               onClick={() => setShowAddForm(!showAddForm)}
