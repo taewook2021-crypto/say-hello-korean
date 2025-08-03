@@ -134,11 +134,11 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         
         .answer-line {
           display: flex;
-          align-items: flex-start;
-          min-height: calc((100% - 0px) / 25);
+          align-items: center;
+          height: calc((100% - 0px) / 25);
           border-bottom: 1px solid #000;
           position: relative;
-          padding: 2px 0;
+          padding: 0 0 2px 0;
         }
         
         .answer-line:last-child {
