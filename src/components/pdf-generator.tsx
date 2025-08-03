@@ -144,7 +144,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           background: white;
           color: #000;
-          font-size: 11px;
+          font-size: 14px;
           line-height: 1.4;
         }
         
@@ -203,7 +203,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           display: flex;
           align-items: center;
           gap: 3mm;
-          font-size: 10px;
+          font-size: 13px;
           padding: 1mm 0;
         }
         
