@@ -171,10 +171,8 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         .question {
           flex: 1;
           color: #000;
-          max-width: 60mm;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
         
         .x-marker {
@@ -185,11 +183,9 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         
         .wrong-answer {
           color: #dc2626;
-          width: 20mm;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          flex-shrink: 0;
+          flex: 1;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
         
         .o-marker {
@@ -201,11 +197,9 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         .correct-answer {
           color: #16a34a;
           font-weight: 500;
-          width: 20mm;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          flex-shrink: 0;
+          flex: 1;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
         
         .footer {
