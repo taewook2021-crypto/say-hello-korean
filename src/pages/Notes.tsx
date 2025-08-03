@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ const Index = () => {
   const [notes, setNotes] = useState<WrongNote[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
+  const [editingNote, setEditingNote] = useState<WrongNote | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
@@ -159,6 +160,81 @@ const Index = () => {
     }
   };
 
+  const handleEditNote = (note: WrongNote) => {
+    setEditingNote(note);
+    setNewNote({
+      question: note.question,
+      wrongAnswer: note.wrongAnswer,
+      correctAnswer: note.correctAnswer,
+      explanation: note.explanation
+    });
+  };
+
+  const handleUpdateNote = async () => {
+    if (!editingNote || !newNote.question || !newNote.correctAnswer) {
+      return;
+    }
+
+    try {
+      const { error } = await (supabase as any)
+        .from('wrong_notes')
+        .update({
+          question: newNote.question,
+          wrong_answer: newNote.wrongAnswer,
+          correct_answer: newNote.correctAnswer,
+          explanation: newNote.explanation,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingNote.id);
+
+      if (error) throw error;
+
+      setNotes(notes.map(note => 
+        note.id === editingNote.id 
+          ? {
+              ...note,
+              question: newNote.question,
+              wrongAnswer: newNote.wrongAnswer,
+              correctAnswer: newNote.correctAnswer,
+              explanation: newNote.explanation
+            }
+          : note
+      ));
+
+      setEditingNote(null);
+      setNewNote({
+        question: "",
+        wrongAnswer: "",
+        correctAnswer: "",
+        explanation: ""
+      });
+      setShowAddForm(false);
+
+      toast({
+        title: "성공",
+        description: "오답노트가 수정되었습니다.",
+      });
+    } catch (error) {
+      console.error('Error updating note:', error);
+      toast({
+        title: "오류",
+        description: "오답노트 수정에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingNote(null);
+    setNewNote({
+      question: "",
+      wrongAnswer: "",
+      correctAnswer: "",
+      explanation: ""
+    });
+    setShowAddForm(false);
+  };
+
   const toggleShowAnswer = (id: string) => {
     setShowAnswers(prev => ({
       ...prev,
@@ -286,10 +362,10 @@ const Index = () => {
         </div>
 
         {/* Add New Note Form */}
-        {showAddForm && (
+        {(showAddForm || editingNote) && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>새로운 오답 추가</CardTitle>
+              <CardTitle>{editingNote ? "오답노트 수정" : "새로운 오답 추가"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -335,8 +411,10 @@ const Index = () => {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={handleAddNote}>저장</Button>
-                <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                <Button onClick={editingNote ? handleUpdateNote : handleAddNote}>
+                  {editingNote ? "수정" : "저장"}
+                </Button>
+                <Button variant="outline" onClick={editingNote ? cancelEdit : () => setShowAddForm(false)}>
                   취소
                 </Button>
               </div>
@@ -380,24 +458,35 @@ const Index = () => {
                     <span className="text-sm text-muted-foreground">
                       {note.createdAt.toLocaleDateString('ko-KR')}
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleResolved(note.id)}
-                      className="flex items-center gap-1"
-                    >
-                      {note.isResolved ? (
-                        <>
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          해결완료
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-4 w-4 text-red-600" />
-                          미해결
-                        </>
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditNote(note)}
+                        className="flex items-center gap-1"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        수정
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleResolved(note.id)}
+                        className="flex items-center gap-1"
+                      >
+                        {note.isResolved ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            해결완료
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            미해결
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">

@@ -104,7 +104,6 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
     pagesHTML += `
       <div class="page" ${pageNum > 0 ? 'style="page-break-before: always;"' : ''}>
         <div class="header">
-          <div class="header-left">답안지 훗면에는 기재하지 말것</div>
           <div class="header-right">(${pageNum + 1}쪽)</div>
         </div>
         
