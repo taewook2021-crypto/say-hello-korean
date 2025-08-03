@@ -229,71 +229,114 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
 };
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
-  // HTML 템플릿 생성
-  const htmlContent = createAnswerSheetHTML(notes, subject, book, chapter);
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 15;
+  const contentWidth = pageWidth - (margin * 2);
   
-  // 임시 DOM 요소 생성
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlContent;
-  tempDiv.style.position = 'absolute';
-  tempDiv.style.left = '-9999px';
-  tempDiv.style.top = '-9999px';
-  tempDiv.style.width = '210mm';
-  tempDiv.style.background = 'white';
+  // 한글 폰트 설정
+  pdf.setFont('helvetica', 'normal');
   
-  document.body.appendChild(tempDiv);
-
-  try {
-    // HTML을 Canvas로 변환
-    const canvas = await html2canvas(tempDiv.querySelector('body') || tempDiv, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      width: 794, // A4 width in pixels at 96 DPI
-      height: undefined // 자동 높이
-    });
-
-    // PDF 생성
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 210; // A4 width in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    let position = 0;
-    const pageHeight = 297; // A4 height in mm
-
-    // 페이지별로 이미지 분할
-    while (position < imgHeight) {
-      const sourceY = (position * canvas.width) / imgWidth;
-      const sourceHeight = Math.min((pageHeight * canvas.width) / imgWidth, canvas.height - sourceY);
-      
-      // 새 캔버스 생성해서 페이지 영역만 복사
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = sourceHeight;
-      
-      const pageCtx = pageCanvas.getContext('2d');
-      if (pageCtx) {
-        pageCtx.fillStyle = '#ffffff';
-        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        pageCtx.drawImage(canvas, 0, -sourceY);
-      }
-      
-      const pageImgData = pageCanvas.toDataURL('image/png');
-      
-      if (position > 0) {
-        pdf.addPage();
-      }
-      
-      pdf.addImage(pageImgData, 'PNG', 0, 0, imgWidth, Math.min(pageHeight, imgHeight - position));
-      position += pageHeight;
+  // 각 페이지당 25줄로 구성
+  const notesPerPage = 25;
+  const totalPages = Math.ceil(notes.length / notesPerPage);
+  
+  for (let pageNum = 0; pageNum < totalPages; pageNum++) {
+    if (pageNum > 0) {
+      pdf.addPage();
     }
-
-    return pdf;
-  } finally {
-    // 임시 DOM 요소 제거
-    document.body.removeChild(tempDiv);
+    
+    let yPosition = margin;
+    
+    // 헤더
+    pdf.setFontSize(10);
+    pdf.text('답안지 훗면에는 기재하지 말것', margin, yPosition);
+    pdf.text(`(${pageNum + 1}쪽)`, pageWidth - margin - 20, yPosition);
+    yPosition += 15;
+    
+    // 답안지 테두리
+    pdf.setLineWidth(1);
+    pdf.rect(margin, yPosition, contentWidth, pageHeight - yPosition - 30);
+    
+    yPosition += 10;
+    const startIndex = pageNum * notesPerPage;
+    const endIndex = Math.min(startIndex + notesPerPage, notes.length);
+    const pageNotes = notes.slice(startIndex, endIndex);
+    
+    // 각 줄 그리기
+    for (let i = 0; i < notesPerPage; i++) {
+      const lineNumber = startIndex + i + 1;
+      const note = pageNotes[i];
+      
+      // 줄 구분선
+      if (i > 0) {
+        pdf.setLineWidth(0.2);
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(margin + 5, yPosition, pageWidth - margin - 5, yPosition);
+      }
+      
+      yPosition += 2;
+      
+      // 줄 번호
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(lineNumber.toString(), margin + 2, yPosition + 4);
+      
+      // 내용이 있는 경우
+      if (note) {
+        let xPosition = margin + 15;
+        
+        // Q 마커와 문제
+        pdf.setFontSize(9);
+        pdf.setTextColor(37, 99, 235); // 파란색
+        pdf.text('<Q>', xPosition, yPosition + 4);
+        xPosition += 10;
+        
+        pdf.setTextColor(0, 0, 0);
+        const questionText = pdf.splitTextToSize(note.question, 80);
+        pdf.text(questionText[0] || '', xPosition, yPosition + 4);
+        xPosition += 85;
+        
+        // X 마커와 오답
+        pdf.setTextColor(220, 38, 38); // 빨간색
+        pdf.text('<X>', xPosition, yPosition + 4);
+        xPosition += 10;
+        
+        pdf.text(note.wrongAnswer, xPosition, yPosition + 4);
+        xPosition += 25;
+        
+        // O 마커와 정답
+        pdf.setTextColor(22, 163, 74); // 초록색
+        pdf.text('<O>', xPosition, yPosition + 4);
+        xPosition += 10;
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(note.correctAnswer, xPosition, yPosition + 4);
+        pdf.setFont('helvetica', 'normal');
+      }
+      
+      yPosition += 8;
+    }
+    
+    // 푸터
+    const footerY = pageHeight - 20;
+    pdf.setFillColor(245, 245, 245);
+    pdf.rect(margin, footerY, contentWidth, 15, 'F');
+    pdf.rect(margin, footerY, contentWidth, 15, 'S');
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('오답노트', margin + 5, footerY + 10);
+    pdf.text(`${subject} - ${book}`, pageWidth / 2 - 20, footerY + 10);
+    pdf.text('학습자료', pageWidth - margin - 25, footerY + 10);
+    
+    // 색상 리셋
+    pdf.setTextColor(0, 0, 0);
+    pdf.setDrawColor(0, 0, 0);
   }
+  
+  return pdf;
 };
 
 export const downloadPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
