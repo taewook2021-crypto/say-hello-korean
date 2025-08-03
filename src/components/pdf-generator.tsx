@@ -19,8 +19,8 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i];
     
-        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 50자 기준)
-        const maxCharsPerLine = 50;
+        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 40자 기준)
+        const maxCharsPerLine = 40;
     const questionParts = [];
     let remainingQuestion = note.question;
     
@@ -41,11 +41,11 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
       remainingQuestion = remainingQuestion.substring(splitIndex).trim();
     }
     
-    // 첫 번째 줄: <Q>와 문제 첫 부분
+    // 첫 번째 줄: <Q>와 문제 번호, 문제 첫 부분
     allLines.push(`
       <div class="answer-line">
         <div class="content-area">
-          <span class="q-marker">&lt;Q&gt;</span>
+          <span class="q-marker">&lt;Q${i + 1}&gt;</span>
           <span class="question">${questionParts[0] || ''}</span>
         </div>
       </div>
