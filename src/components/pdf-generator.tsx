@@ -111,7 +111,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
     allLines.push(`
       <div class="answer-line">
         <div class="content-area">
-          <span class="o-marker">&lt;O&gt;</span>
+          <span class="o-marker">&lt;정답&gt;</span>
           <span class="correct-answer">${correctAnswerParts[0] || ''}</span>
         </div>
       </div>
@@ -281,7 +281,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         }
         
         .correct-answer {
-          color: #16a34a;
+          color: #2563eb;
           font-weight: 500;
           flex: 1;
           word-wrap: break-word;
@@ -368,7 +368,7 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
           .x-marker { color: #dc2626 !important; }
           .o-marker { color: #2563eb !important; }
           .wrong-answer { color: #dc2626 !important; }
-          .correct-answer { color: #16a34a !important; }
+          .correct-answer { color: #2563eb !important; }
         `;
         clonedDoc.head.appendChild(style);
       }
