@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +29,9 @@ const Index = () => {
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } | null }>({});
   const [loading, setLoading] = useState(true);
+  const [pdfOptions, setPdfOptions] = useState({
+    includeWrongAnswers: true
+  });
   const { toast } = useToast();
   
   const subject = searchParams.get('subject');
@@ -240,7 +245,7 @@ const Index = () => {
     }));
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = async (options = pdfOptions) => {
     if (notes.length === 0) {
       toast({
         title: "알림",
@@ -259,7 +264,7 @@ const Index = () => {
       return;
     }
 
-    const success = await downloadPDF(notes, subject, book, chapter);
+    const success = await downloadPDF(notes, subject, book, chapter, options);
     if (success) {
       toast({
         title: "성공",
@@ -274,7 +279,7 @@ const Index = () => {
     }
   };
 
-  const handlePrintPDF = async () => {
+  const handlePrintPDF = async (options = pdfOptions) => {
     if (notes.length === 0) {
       toast({
         title: "알림",
@@ -293,7 +298,7 @@ const Index = () => {
       return;
     }
 
-    const success = await printPDF(notes, subject, book, chapter);
+    const success = await printPDF(notes, subject, book, chapter, options);
     if (!success) {
       toast({
         title: "오류",
@@ -470,24 +475,55 @@ const Index = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button 
-              onClick={handleDownloadPDF}
-              variant="outline"
-              className="flex items-center gap-2"
-              disabled={notes.length === 0}
-            >
-              <Download className="h-4 w-4" />
-              PDF 다운로드
-            </Button>
-            <Button 
-              onClick={handlePrintPDF}
-              variant="outline"
-              className="flex items-center gap-2"
-              disabled={notes.length === 0}
-            >
-              <Printer className="h-4 w-4" />
-              인쇄하기
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  disabled={notes.length === 0}
+                >
+                  <Settings className="h-4 w-4" />
+                  PDF 옵션
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>PDF 생성 옵션</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="includeWrongAnswers"
+                      checked={pdfOptions.includeWrongAnswers}
+                      onCheckedChange={(checked) => 
+                        setPdfOptions(prev => ({ 
+                          ...prev, 
+                          includeWrongAnswers: checked as boolean 
+                        }))
+                      }
+                    />
+                    <Label htmlFor="includeWrongAnswers">내가 작성한 답 포함</Label>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button 
+                    onClick={() => handleDownloadPDF(pdfOptions)}
+                    className="flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    PDF 다운로드
+                  </Button>
+                  <Button 
+                    onClick={() => handlePrintPDF(pdfOptions)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Printer className="h-4 w-4" />
+                    인쇄하기
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Button 
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-2"

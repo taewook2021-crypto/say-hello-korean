@@ -11,7 +11,7 @@ interface WrongNote {
 }
 
 // HTML 기반으로 정확한 답안지 양식 생성
-const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string): string => {
+const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }): string => {
   const linesPerPage = 25;
   let allLines: string[] = [];
   
@@ -56,39 +56,41 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
       `);
     }
     
-    // 오답을 60자씩 분할
-    const wrongAnswerParts = [];
-    let remainingWrongAnswer = note.wrongAnswer;
-    
-    while (remainingWrongAnswer.length > 0) {
-      if (remainingWrongAnswer.length <= maxCharsPerLine) {
-        wrongAnswerParts.push(remainingWrongAnswer);
-        break;
+    // 오답을 60자씩 분할 (옵션에 따라 포함/제외)
+    if (options.includeWrongAnswers) {
+      const wrongAnswerParts = [];
+      let remainingWrongAnswer = note.wrongAnswer;
+      
+      while (remainingWrongAnswer.length > 0) {
+        if (remainingWrongAnswer.length <= maxCharsPerLine) {
+          wrongAnswerParts.push(remainingWrongAnswer);
+          break;
+        }
+        
+        wrongAnswerParts.push(remainingWrongAnswer.substring(0, maxCharsPerLine));
+        remainingWrongAnswer = remainingWrongAnswer.substring(maxCharsPerLine);
       }
       
-      wrongAnswerParts.push(remainingWrongAnswer.substring(0, maxCharsPerLine));
-      remainingWrongAnswer = remainingWrongAnswer.substring(maxCharsPerLine);
-    }
-    
-    // 첫 번째 오답 줄
-    allLines.push(`
-      <div class="answer-line">
-        <div class="content-area">
-          <span class="x-marker">&lt;X&gt;</span>
-          <span class="wrong-answer">${wrongAnswerParts[0] || ''}</span>
-        </div>
-      </div>
-    `);
-    
-    // 오답의 나머지 부분들
-    for (let j = 1; j < wrongAnswerParts.length; j++) {
+      // 첫 번째 오답 줄
       allLines.push(`
         <div class="answer-line">
           <div class="content-area">
-            <span class="wrong-answer" style="margin-left: 12mm;">${wrongAnswerParts[j]}</span>
+            <span class="x-marker">&lt;X&gt;</span>
+            <span class="wrong-answer">${wrongAnswerParts[0] || ''}</span>
           </div>
         </div>
       `);
+      
+      // 오답의 나머지 부분들
+      for (let j = 1; j < wrongAnswerParts.length; j++) {
+        allLines.push(`
+          <div class="answer-line">
+            <div class="content-area">
+              <span class="wrong-answer" style="margin-left: 12mm;">${wrongAnswerParts[j]}</span>
+            </div>
+          </div>
+        `);
+      }
     }
     
     // 정답을 60자씩 분할
@@ -318,11 +320,11 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
   `;
 };
 
-export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
-  console.log('PDF 생성 시작:', { notes: notes.length, subject, book, chapter });
+export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }) => {
+  console.log('PDF 생성 시작:', { notes: notes.length, subject, book, chapter, options });
   
   // HTML 템플릿 생성
-  const htmlContent = createAnswerSheetHTML(notes, subject, book, chapter);
+  const htmlContent = createAnswerSheetHTML(notes, subject, book, chapter, options);
   
   // 임시 iframe 생성 (더 안정적)
   const iframe = document.createElement('iframe');
@@ -423,9 +425,9 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
   }
 };
 
-export const downloadPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
+export const downloadPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }) => {
   try {
-    const pdf = await generatePDF(notes, subject, book, chapter);
+    const pdf = await generatePDF(notes, subject, book, chapter, options);
     const fileName = `오답노트_${subject}_${book}_${chapter}_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.pdf`;
     pdf.save(fileName);
     console.log('PDF 다운로드 완료:', fileName);
@@ -436,9 +438,9 @@ export const downloadPDF = async (notes: WrongNote[], subject: string, book: str
   }
 };
 
-export const printPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
+export const printPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }) => {
   try {
-    const pdf = await generatePDF(notes, subject, book, chapter);
+    const pdf = await generatePDF(notes, subject, book, chapter, options);
     const blob = pdf.output('blob');
     const url = URL.createObjectURL(blob);
     
