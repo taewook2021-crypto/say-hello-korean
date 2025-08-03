@@ -149,6 +149,9 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
     pagesHTML += `
       <div class="page" ${pageNum > 0 ? 'style="page-break-before: always;"' : ''}>
         <div class="header">
+          <div class="header-left">
+            <img src="/lovable-uploads/9ede373f-ab16-4fd6-9ec9-4be63fc924da.png" alt="로고" class="logo" />
+          </div>
           <div class="header-right">(${pageNum + 1}쪽)</div>
         </div>
         
@@ -205,6 +208,17 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           margin-bottom: 15mm;
           font-size: 11px;
           font-weight: 400;
+        }
+        
+        .header-left {
+          display: flex;
+          align-items: center;
+        }
+        
+        .logo {
+          height: 8mm;
+          width: auto;
+          object-fit: contain;
         }
         
         .answer-sheet {
