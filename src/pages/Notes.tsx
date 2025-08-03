@@ -640,7 +640,7 @@ const Index = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {renderEditableField(note, 'question', '문제', true, false)}
+                  {renderEditableField(note, 'question', '문제', true, showAnswers[note.id])}
 
                   <div className="flex justify-center">
                     <Button
