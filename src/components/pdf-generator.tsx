@@ -150,7 +150,17 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
       <div class="page" ${pageNum > 0 ? 'style="page-break-before: always;"' : ''}>
         <div class="header">
           <div class="header-left">
-            <img src="/lovable-uploads/9ede373f-ab16-4fd6-9ec9-4be63fc924da.png" alt="로고" class="logo" />
+            <img src="data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50">
+              <rect width="100" height="50" fill="white"/>
+              <circle cx="25" cy="25" r="10" fill="none" stroke="black" stroke-width="2"/>
+              <circle cx="22" cy="22" r="1" fill="black"/>
+              <circle cx="28" cy="22" r="1" fill="black"/>
+              <path d="M20 28 Q25 32 30 28" fill="none" stroke="black" stroke-width="1.5"/>
+              <polygon points="65,15 70,20 75,15 78,20 78,35 72,35 72,30 68,30 68,35 62,35 62,20" fill="none" stroke="black" stroke-width="2"/>
+              <circle cx="66" cy="18" r="1" fill="black"/>
+              <circle cx="74" cy="18" r="1" fill="black"/>
+              <path d="M68 22 Q70 24 72 22" fill="none" stroke="black" stroke-width="1"/>
+            </svg>`)}" alt="로고" class="logo" />
           </div>
           <div class="header-right">(${pageNum + 1}쪽)</div>
         </div>
