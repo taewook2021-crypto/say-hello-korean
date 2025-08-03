@@ -31,8 +31,8 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
       const note = pageNotes[i];
       
       if (note) {
-        // 문제 텍스트를 적절한 길이로 분할 (대략 80자 기준)
-        const maxCharsPerLine = 80;
+        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 60자 기준)
+        const maxCharsPerLine = 60;
         const questionParts = [];
         let remainingQuestion = note.question;
         
