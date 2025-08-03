@@ -16,7 +16,6 @@ interface WrongNote {
   question: string;
   wrongAnswer: string;
   correctAnswer: string;
-  explanation: string;
   createdAt: Date;
   isResolved: boolean;
 }
@@ -37,8 +36,7 @@ const Index = () => {
   const [newNote, setNewNote] = useState({
     question: "",
     wrongAnswer: "",
-    correctAnswer: "",
-    explanation: ""
+    correctAnswer: ""
   });
 
   useEffect(() => {
@@ -64,7 +62,6 @@ const Index = () => {
         question: note.question,
         wrongAnswer: note.wrong_answer || '',
         correctAnswer: note.correct_answer,
-        explanation: note.explanation || '',
         createdAt: new Date(note.created_at),
         isResolved: note.is_resolved
       })));
@@ -92,7 +89,6 @@ const Index = () => {
           question: newNote.question,
           wrong_answer: newNote.wrongAnswer,
           correct_answer: newNote.correctAnswer,
-          explanation: newNote.explanation,
           subject_name: subject,
           book_name: book,
           chapter_name: chapter,
@@ -108,7 +104,6 @@ const Index = () => {
         question: data.question,
         wrongAnswer: data.wrong_answer || '',
         correctAnswer: data.correct_answer,
-        explanation: data.explanation || '',
         createdAt: new Date(data.created_at),
         isResolved: data.is_resolved
       };
@@ -117,8 +112,7 @@ const Index = () => {
       setNewNote({
         question: "",
         wrongAnswer: "",
-        correctAnswer: "",
-        explanation: ""
+        correctAnswer: ""
       });
       setShowAddForm(false);
       toast({
@@ -165,8 +159,7 @@ const Index = () => {
     setNewNote({
       question: note.question,
       wrongAnswer: note.wrongAnswer,
-      correctAnswer: note.correctAnswer,
-      explanation: note.explanation
+      correctAnswer: note.correctAnswer
     });
   };
 
@@ -182,7 +175,6 @@ const Index = () => {
           question: newNote.question,
           wrong_answer: newNote.wrongAnswer,
           correct_answer: newNote.correctAnswer,
-          explanation: newNote.explanation,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingNote.id);
@@ -195,8 +187,7 @@ const Index = () => {
               ...note,
               question: newNote.question,
               wrongAnswer: newNote.wrongAnswer,
-              correctAnswer: newNote.correctAnswer,
-              explanation: newNote.explanation
+              correctAnswer: newNote.correctAnswer
             }
           : note
       ));
@@ -205,8 +196,7 @@ const Index = () => {
       setNewNote({
         question: "",
         wrongAnswer: "",
-        correctAnswer: "",
-        explanation: ""
+        correctAnswer: ""
       });
       setShowAddForm(false);
 
@@ -229,8 +219,7 @@ const Index = () => {
     setNewNote({
       question: "",
       wrongAnswer: "",
-      correctAnswer: "",
-      explanation: ""
+      correctAnswer: ""
     });
     setShowAddForm(false);
   };
@@ -399,17 +388,6 @@ const Index = () => {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="explanation">해설</Label>
-                <Textarea
-                  id="explanation"
-                  placeholder="왜 틀렸는지, 어떻게 풀어야 하는지 적어주세요"
-                  value={newNote.explanation}
-                  onChange={(e) => setNewNote({...newNote, explanation: e.target.value})}
-                  rows={3}
-                />
-              </div>
-
               <div className="flex gap-2">
                 <Button onClick={editingNote ? handleUpdateNote : handleAddNote}>
                   {editingNote ? "수정" : "저장"}
@@ -542,15 +520,6 @@ const Index = () => {
                           </p>
                         </div>
                       </div>
-
-                      {note.explanation && (
-                        <div>
-                          <h4 className="font-medium mb-2">해설</h4>
-                          <div className="bg-muted p-3 rounded-lg">
-                            <p className="text-sm leading-relaxed">{note.explanation}</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </CardContent>

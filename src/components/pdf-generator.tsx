@@ -6,7 +6,6 @@ interface WrongNote {
   question: string;
   wrongAnswer: string;
   correctAnswer: string;
-  explanation: string;
   createdAt: Date;
   isResolved: boolean;
 }
