@@ -216,7 +216,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         }
         
         .logo {
-          height: 8mm;
+          height: 15mm;
           width: auto;
           object-fit: contain;
         }
