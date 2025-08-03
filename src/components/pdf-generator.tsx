@@ -219,7 +219,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           height: 15mm;
           width: auto;
           object-fit: contain;
-          filter: invert(1);
+          filter: brightness(0) invert(1) contrast(100) brightness(2);
         }
         
         .answer-sheet {
