@@ -220,9 +220,6 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           flex: 1;
           word-wrap: break-word;
           overflow-wrap: break-word;
-          word-break: break-all;
-          max-height: 100%;
-          overflow: hidden;
         }
         
         .o-marker {
@@ -237,9 +234,6 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           flex: 1;
           word-wrap: break-word;
           overflow-wrap: break-word;
-          word-break: break-all;
-          max-height: 100%;
-          overflow: hidden;
         }
         
         .footer {
