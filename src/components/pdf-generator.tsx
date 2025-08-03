@@ -19,8 +19,8 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i];
     
-    // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 60자 기준)
-    const maxCharsPerLine = 60;
+        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 50자 기준)
+        const maxCharsPerLine = 50;
     const questionParts = [];
     let remainingQuestion = note.question;
     
@@ -201,7 +201,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         }
         
         .q-marker {
-          color: #2563eb;
+          color: #000;
           font-weight: bold;
           flex-shrink: 0;
         }
@@ -227,7 +227,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         }
         
         .o-marker {
-          color: #16a34a;
+          color: #2563eb;
           font-weight: bold;
           flex-shrink: 0;
         }
@@ -316,9 +316,9 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
         const style = clonedDoc.createElement('style');
         style.textContent = `
           * { font-family: 'Noto Sans KR', sans-serif !important; }
-          .q-marker { color: #2563eb !important; }
+          .q-marker { color: #000 !important; }
           .x-marker { color: #dc2626 !important; }
-          .o-marker { color: #16a34a !important; }
+          .o-marker { color: #2563eb !important; }
           .wrong-answer { color: #dc2626 !important; }
           .correct-answer { color: #16a34a !important; }
         `;
