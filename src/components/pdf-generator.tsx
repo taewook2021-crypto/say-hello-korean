@@ -11,34 +11,70 @@ interface WrongNote {
   isResolved: boolean;
 }
 
-// HTML 템플릿 생성 함수
-const createPrintableHTML = (notes: WrongNote[], subject: string, book: string, chapter: string): string => {
-  const notesHTML = notes.map((note, index) => `
-    <div class="note-item" style="margin-bottom: 30px; page-break-inside: avoid;">
-      <div style="background: #f0f8ff; padding: 15px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd;">
-        <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px; font-weight: bold;">문제 ${index + 1}</h3>
-        <p style="margin: 0; line-height: 1.6; color: #444;">${note.question}</p>
-      </div>
-      
-      <div style="background: #f0fff0; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd;">
-        <strong style="color: #2d5a27;">정답:</strong> <span style="color: #2d5a27;">${note.correctAnswer}</span>
-      </div>
-      
-      ${note.explanation ? `
-        <div style="background: #f8f8f8; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd;">
-          <strong style="color: #555;">해설:</strong> 
-          <p style="margin: 8px 0 0 0; line-height: 1.6; color: #666;">${note.explanation}</p>
+// HTML 템플릿 생성 함수 (답안지 양식 스타일)
+const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string): string => {
+  // 각 노트를 줄별로 배치하는 로직
+  const notesPerPage = 25; // 한 페이지당 25줄
+  const totalPages = Math.ceil(notes.length / notesPerPage);
+  
+  let pagesHTML = '';
+  
+  for (let pageNum = 0; pageNum < totalPages; pageNum++) {
+    const startIndex = pageNum * notesPerPage;
+    const endIndex = Math.min(startIndex + notesPerPage, notes.length);
+    const pageNotes = notes.slice(startIndex, endIndex);
+    
+    // 빈 줄로 채우기 (25줄 맞추기)
+    const emptyLines = notesPerPage - pageNotes.length;
+    
+    const linesHTML = pageNotes.map((note, index) => {
+      const lineNumber = startIndex + index + 1;
+      return `
+        <div class="answer-line">
+          <span class="line-number">${lineNumber}</span>
+          <div class="answer-content">
+            <span class="question-marker">&lt;Q&gt;</span>
+            <span class="question-text">${note.question}</span>
+            <span class="wrong-marker">&lt;X&gt;</span>
+            <span class="wrong-answer">${note.wrongAnswer}</span>
+            <span class="correct-marker">&lt;O&gt;</span>
+            <span class="correct-answer">${note.correctAnswer}</span>
+          </div>
         </div>
-      ` : ''}
-      
-      <div style="display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-top: 10px;">
-        <span>작성일: ${note.createdAt.toLocaleDateString('ko-KR')}</span>
-        <span>상태: ${note.isResolved ? '해결완료' : '미해결'}</span>
+      `;
+    }).join('');
+    
+    // 빈 줄 추가
+    const emptyLinesHTML = Array(emptyLines).fill(0).map((_, index) => {
+      const lineNumber = endIndex + index + 1;
+      return `
+        <div class="answer-line">
+          <span class="line-number">${lineNumber}</span>
+          <div class="answer-content empty-line"></div>
+        </div>
+      `;
+    }).join('');
+    
+    pagesHTML += `
+      <div class="page" ${pageNum > 0 ? 'style="page-break-before: always;"' : ''}>
+        <div class="header">
+          <div class="header-left">답안지 훗면에는 기재하지 말것</div>
+          <div class="header-right">(${pageNum + 1}쪽)</div>
+        </div>
+        
+        <div class="answer-sheet">
+          ${linesHTML}
+          ${emptyLinesHTML}
+        </div>
+        
+        <div class="footer">
+          <div class="footer-left">오답노트</div>
+          <div class="footer-center">${subject} - ${book}</div>
+          <div class="footer-right">학습자료</div>
+        </div>
       </div>
-      
-      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-    </div>
-  `).join('');
+    `;
+  }
 
   return `
     <!DOCTYPE html>
@@ -46,76 +82,147 @@ const createPrintableHTML = (notes: WrongNote[], subject: string, book: string, 
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>오답노트</title>
+      <title>오답노트 답안지</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
         
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
         body {
           font-family: 'Noto Sans KR', sans-serif;
-          max-width: 210mm;
-          margin: 0 auto;
-          padding: 20mm;
           background: white;
-          color: #333;
-          line-height: 1.6;
+          color: #000;
+          font-size: 12px;
+        }
+        
+        .page {
+          width: 210mm;
+          height: 297mm;
+          margin: 0 auto;
+          padding: 15mm;
+          position: relative;
+          background: white;
         }
         
         .header {
-          text-align: center;
-          margin-bottom: 40px;
-          padding-bottom: 30px;
-          border-bottom: 2px solid #333;
-        }
-        
-        .header h1 {
-          margin: 0 0 20px 0;
-          font-size: 32px;
-          font-weight: 700;
-          color: #333;
-        }
-        
-        .header-info {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-          margin-top: 20px;
-          text-align: left;
-          max-width: 400px;
-          margin-left: auto;
-          margin-right: auto;
-        }
-        
-        .header-info div {
-          padding: 8px 0;
-          font-size: 16px;
-        }
-        
-        .header-info strong {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10mm;
+          font-size: 11px;
           font-weight: 500;
-          color: #555;
+        }
+        
+        .answer-sheet {
+          border: 2px solid #000;
+          min-height: 240mm;
+          padding: 5mm;
+        }
+        
+        .answer-line {
+          display: flex;
+          align-items: flex-start;
+          min-height: 8mm;
+          border-bottom: 1px solid #ccc;
+          padding: 1mm 0;
+          position: relative;
+        }
+        
+        .answer-line:last-child {
+          border-bottom: none;
+        }
+        
+        .line-number {
+          width: 8mm;
+          text-align: center;
+          font-weight: 500;
+          font-size: 10px;
+          color: #666;
+          margin-right: 2mm;
+        }
+        
+        .answer-content {
+          flex: 1;
+          display: flex;
+          align-items: flex-start;
+          gap: 3mm;
+          flex-wrap: wrap;
+          font-size: 10px;
+          line-height: 1.4;
+        }
+        
+        .empty-line {
+          height: 6mm;
+        }
+        
+        .question-marker, .wrong-marker, .correct-marker {
+          font-weight: bold;
+          color: #000;
+        }
+        
+        .question-marker {
+          color: #2563eb;
+        }
+        
+        .wrong-marker {
+          color: #dc2626;
+        }
+        
+        .correct-marker {
+          color: #16a34a;
+        }
+        
+        .question-text {
+          flex: 1;
+          min-width: 40mm;
+          word-break: break-all;
+        }
+        
+        .wrong-answer {
+          color: #dc2626;
+          min-width: 20mm;
+        }
+        
+        .correct-answer {
+          color: #16a34a;
+          font-weight: 500;
+          min-width: 20mm;
+        }
+        
+        .footer {
+          position: absolute;
+          bottom: 5mm;
+          left: 15mm;
+          right: 15mm;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 3mm;
+          background: #f5f5f5;
+          border: 1px solid #000;
+          font-size: 11px;
+          font-weight: 500;
         }
         
         @media print {
-          body { margin: 0; padding: 15mm; }
-          .note-item { page-break-inside: avoid; }
+          body { margin: 0; }
+          .page { 
+            margin: 0; 
+            padding: 15mm;
+            page-break-after: always;
+          }
+          .page:last-child {
+            page-break-after: avoid;
+          }
         }
       </style>
     </head>
     <body>
-      <div class="header">
-        <h1>오답노트</h1>
-        <div class="header-info">
-          <div><strong>과목:</strong> ${subject}</div>
-          <div><strong>교재:</strong> ${book}</div>
-          <div><strong>단원:</strong> ${chapter}</div>
-          <div><strong>작성일:</strong> ${new Date().toLocaleDateString('ko-KR')}</div>
-          <div><strong>총 문제 수:</strong> ${notes.length}개</div>
-        </div>
-      </div>
-      
-      <div class="content">
-        ${notesHTML}
-      </div>
+      ${pagesHTML}
     </body>
     </html>
   `;
@@ -123,7 +230,7 @@ const createPrintableHTML = (notes: WrongNote[], subject: string, book: string, 
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
   // HTML 템플릿 생성
-  const htmlContent = createPrintableHTML(notes, subject, book, chapter);
+  const htmlContent = createAnswerSheetHTML(notes, subject, book, chapter);
   
   // 임시 DOM 요소 생성
   const tempDiv = document.createElement('div');
