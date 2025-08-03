@@ -303,7 +303,7 @@ const Index = () => {
     }
   };
 
-  const renderEditableField = (note: WrongNote, field: keyof WrongNote, label: string, isTextarea = false) => {
+  const renderEditableField = (note: WrongNote, field: keyof WrongNote, label: string, isTextarea = false, showEditButton = true) => {
     const noteId = note.id;
     const editData = editingFields[noteId];
     const isEditing = editData?.field === field;
@@ -355,16 +355,18 @@ const Index = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <h4 className="font-medium">{label}</h4>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => startEdit(noteId, field, value)}
-            className="h-8 w-8 p-0"
-          >
-            <Edit2 className="h-4 w-4" />
-          </Button>
+          {showEditButton && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => startEdit(noteId, field, value)}
+              className="h-8 w-8 p-0"
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        <div className="bg-blue-50 p-4 rounded-lg border cursor-pointer" onClick={() => startEdit(noteId, field, value)}>
+        <div className={`bg-blue-50 p-4 rounded-lg border ${showEditButton ? 'cursor-pointer' : ''}`} onClick={showEditButton ? () => startEdit(noteId, field, value) : undefined}>
           <p className="text-base leading-relaxed">{value || "클릭하여 입력"}</p>
         </div>
       </div>
@@ -602,7 +604,7 @@ const Index = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {renderEditableField(note, 'question', '문제', true)}
+                  {renderEditableField(note, 'question', '문제', true, showAnswers[note.id])}
 
                   <div className="flex justify-center">
                     <Button
