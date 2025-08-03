@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface WrongNote {
   id: string;
@@ -11,236 +10,19 @@ interface WrongNote {
   isResolved: boolean;
 }
 
-// HTML 템플릿 생성 함수 (답안지 양식 스타일)
-const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string): string => {
-  // 각 노트를 줄별로 배치하는 로직
-  const notesPerPage = 25; // 한 페이지당 25줄
-  const totalPages = Math.ceil(notes.length / notesPerPage);
-  
-  let pagesHTML = '';
-  
-  for (let pageNum = 0; pageNum < totalPages; pageNum++) {
-    const startIndex = pageNum * notesPerPage;
-    const endIndex = Math.min(startIndex + notesPerPage, notes.length);
-    const pageNotes = notes.slice(startIndex, endIndex);
-    
-    // 빈 줄로 채우기 (25줄 맞추기)
-    const emptyLines = notesPerPage - pageNotes.length;
-    
-    const linesHTML = pageNotes.map((note, index) => {
-      const lineNumber = startIndex + index + 1;
-      return `
-        <div class="answer-line">
-          <span class="line-number">${lineNumber}</span>
-          <div class="answer-content">
-            <span class="question-marker">&lt;Q&gt;</span>
-            <span class="question-text">${note.question}</span>
-            <span class="wrong-marker">&lt;X&gt;</span>
-            <span class="wrong-answer">${note.wrongAnswer}</span>
-            <span class="correct-marker">&lt;O&gt;</span>
-            <span class="correct-answer">${note.correctAnswer}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-    
-    // 빈 줄 추가
-    const emptyLinesHTML = Array(emptyLines).fill(0).map((_, index) => {
-      const lineNumber = endIndex + index + 1;
-      return `
-        <div class="answer-line">
-          <span class="line-number">${lineNumber}</span>
-          <div class="answer-content empty-line"></div>
-        </div>
-      `;
-    }).join('');
-    
-    pagesHTML += `
-      <div class="page" ${pageNum > 0 ? 'style="page-break-before: always;"' : ''}>
-        <div class="header">
-          <div class="header-left">답안지 훗면에는 기재하지 말것</div>
-          <div class="header-right">(${pageNum + 1}쪽)</div>
-        </div>
-        
-        <div class="answer-sheet">
-          ${linesHTML}
-          ${emptyLinesHTML}
-        </div>
-        
-        <div class="footer">
-          <div class="footer-left">오답노트</div>
-          <div class="footer-center">${subject} - ${book}</div>
-          <div class="footer-right">학습자료</div>
-        </div>
-      </div>
-    `;
-  }
-
-  return `
-    <!DOCTYPE html>
-    <html lang="ko">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>오답노트 답안지</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
-        
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          font-family: 'Noto Sans KR', sans-serif;
-          background: white;
-          color: #000;
-          font-size: 12px;
-        }
-        
-        .page {
-          width: 210mm;
-          height: 297mm;
-          margin: 0 auto;
-          padding: 15mm;
-          position: relative;
-          background: white;
-        }
-        
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 10mm;
-          font-size: 11px;
-          font-weight: 500;
-        }
-        
-        .answer-sheet {
-          border: 2px solid #000;
-          min-height: 240mm;
-          padding: 5mm;
-        }
-        
-        .answer-line {
-          display: flex;
-          align-items: flex-start;
-          min-height: 8mm;
-          border-bottom: 1px solid #ccc;
-          padding: 1mm 0;
-          position: relative;
-        }
-        
-        .answer-line:last-child {
-          border-bottom: none;
-        }
-        
-        .line-number {
-          width: 8mm;
-          text-align: center;
-          font-weight: 500;
-          font-size: 10px;
-          color: #666;
-          margin-right: 2mm;
-        }
-        
-        .answer-content {
-          flex: 1;
-          display: flex;
-          align-items: flex-start;
-          gap: 3mm;
-          flex-wrap: wrap;
-          font-size: 10px;
-          line-height: 1.4;
-        }
-        
-        .empty-line {
-          height: 6mm;
-        }
-        
-        .question-marker, .wrong-marker, .correct-marker {
-          font-weight: bold;
-          color: #000;
-        }
-        
-        .question-marker {
-          color: #2563eb;
-        }
-        
-        .wrong-marker {
-          color: #dc2626;
-        }
-        
-        .correct-marker {
-          color: #16a34a;
-        }
-        
-        .question-text {
-          flex: 1;
-          min-width: 40mm;
-          word-break: break-all;
-        }
-        
-        .wrong-answer {
-          color: #dc2626;
-          min-width: 20mm;
-        }
-        
-        .correct-answer {
-          color: #16a34a;
-          font-weight: 500;
-          min-width: 20mm;
-        }
-        
-        .footer {
-          position: absolute;
-          bottom: 5mm;
-          left: 15mm;
-          right: 15mm;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 3mm;
-          background: #f5f5f5;
-          border: 1px solid #000;
-          font-size: 11px;
-          font-weight: 500;
-        }
-        
-        @media print {
-          body { margin: 0; }
-          .page { 
-            margin: 0; 
-            padding: 15mm;
-            page-break-after: always;
-          }
-          .page:last-child {
-            page-break-after: avoid;
-          }
-        }
-      </style>
-    </head>
-    <body>
-      ${pagesHTML}
-    </body>
-    </html>
-  `;
-};
-
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 15;
+  const margin = 20;
   const contentWidth = pageWidth - (margin * 2);
   
-  // 한글 폰트 설정
+  // 한글 폰트 설정 (기본 폰트 사용하되 한글 지원을 위해 다른 방식 사용)
   pdf.setFont('helvetica', 'normal');
   
   // 각 페이지당 25줄로 구성
   const notesPerPage = 25;
-  const totalPages = Math.ceil(notes.length / notesPerPage);
+  const totalPages = Math.ceil(notes.length / notesPerPage) || 1;
   
   for (let pageNum = 0; pageNum < totalPages; pageNum++) {
     if (pageNum > 0) {
@@ -249,91 +31,119 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
     
     let yPosition = margin;
     
-    // 헤더
-    pdf.setFontSize(10);
+    // 상단 헤더
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'normal');
     pdf.text('답안지 훗면에는 기재하지 말것', margin, yPosition);
-    pdf.text(`(${pageNum + 1}쪽)`, pageWidth - margin - 20, yPosition);
+    pdf.text(`(${pageNum + 1}쪽)`, pageWidth - margin - 15, yPosition);
     yPosition += 15;
     
-    // 답안지 테두리
-    pdf.setLineWidth(1);
-    pdf.rect(margin, yPosition, contentWidth, pageHeight - yPosition - 30);
+    // 메인 테두리 (두꺼운 선)
+    pdf.setLineWidth(1.5);
+    pdf.setDrawColor(0, 0, 0);
+    const boxHeight = pageHeight - yPosition - 40;
+    pdf.rect(margin, yPosition, contentWidth, boxHeight);
     
-    yPosition += 10;
+    // 내부 여백
+    const innerMargin = 5;
+    const lineHeight = (boxHeight - innerMargin * 2) / notesPerPage;
+    
+    yPosition += innerMargin;
+    
     const startIndex = pageNum * notesPerPage;
     const endIndex = Math.min(startIndex + notesPerPage, notes.length);
     const pageNotes = notes.slice(startIndex, endIndex);
     
-    // 각 줄 그리기
+    // 25줄 그리기
     for (let i = 0; i < notesPerPage; i++) {
-      const lineNumber = startIndex + i + 1;
+      const currentY = yPosition + (i * lineHeight);
       const note = pageNotes[i];
       
-      // 줄 구분선
-      if (i > 0) {
-        pdf.setLineWidth(0.2);
-        pdf.setDrawColor(200, 200, 200);
-        pdf.line(margin + 5, yPosition, pageWidth - margin - 5, yPosition);
+      // 가로 점선 (각 줄)
+      pdf.setLineWidth(0.3);
+      pdf.setDrawColor(150, 150, 150);
+      
+      // 점선 그리기
+      const dashLength = 2;
+      const gapLength = 2;
+      for (let x = margin + innerMargin; x < pageWidth - margin - innerMargin; x += dashLength + gapLength) {
+        pdf.line(x, currentY + lineHeight - 2, Math.min(x + dashLength, pageWidth - margin - innerMargin), currentY + lineHeight - 2);
       }
       
-      yPosition += 2;
-      
-      // 줄 번호
+      // 줄 번호 (왼쪽)
       pdf.setFontSize(8);
       pdf.setTextColor(100, 100, 100);
-      pdf.text(lineNumber.toString(), margin + 2, yPosition + 4);
+      pdf.text((startIndex + i + 1).toString(), margin + 2, currentY + lineHeight / 2 + 2);
       
-      // 내용이 있는 경우
+      // 내용이 있는 경우 작성
       if (note) {
-        let xPosition = margin + 15;
+        let xPos = margin + 12;
+        const textY = currentY + lineHeight / 2 + 2;
         
-        // Q 마커와 문제
         pdf.setFontSize(9);
-        pdf.setTextColor(37, 99, 235); // 파란색
-        pdf.text('<Q>', xPosition, yPosition + 4);
-        xPosition += 10;
         
+        // <Q> 마커 (파란색)
+        pdf.setTextColor(50, 50, 200);
+        pdf.text('<Q>', xPos, textY);
+        xPos += 12;
+        
+        // 문제 내용 (검은색, 길면 자르기)
         pdf.setTextColor(0, 0, 0);
-        const questionText = pdf.splitTextToSize(note.question, 80);
-        pdf.text(questionText[0] || '', xPosition, yPosition + 4);
-        xPosition += 85;
+        const maxQuestionWidth = 65;
+        let questionText = note.question;
+        if (pdf.getTextWidth(questionText) > maxQuestionWidth) {
+          while (pdf.getTextWidth(questionText + '...') > maxQuestionWidth && questionText.length > 1) {
+            questionText = questionText.slice(0, -1);
+          }
+          questionText += '...';
+        }
+        pdf.text(questionText, xPos, textY);
+        xPos += maxQuestionWidth + 5;
         
-        // X 마커와 오답
-        pdf.setTextColor(220, 38, 38); // 빨간색
-        pdf.text('<X>', xPosition, yPosition + 4);
-        xPosition += 10;
+        // <X> 마커 (빨간색)
+        pdf.setTextColor(200, 50, 50);
+        pdf.text('<X>', xPos, textY);
+        xPos += 12;
         
-        pdf.text(note.wrongAnswer, xPosition, yPosition + 4);
-        xPosition += 25;
+        // 오답 (빨간색)
+        pdf.text(note.wrongAnswer.length > 15 ? note.wrongAnswer.substring(0, 15) + '...' : note.wrongAnswer, xPos, textY);
+        xPos += 25;
         
-        // O 마커와 정답
-        pdf.setTextColor(22, 163, 74); // 초록색
-        pdf.text('<O>', xPosition, yPosition + 4);
-        xPosition += 10;
+        // <O> 마커 (초록색)
+        pdf.setTextColor(50, 150, 50);
+        pdf.text('<O>', xPos, textY);
+        xPos += 12;
         
+        // 정답 (초록색, 굵게)
         pdf.setFont('helvetica', 'bold');
-        pdf.text(note.correctAnswer, xPosition, yPosition + 4);
+        pdf.text(note.correctAnswer.length > 15 ? note.correctAnswer.substring(0, 15) + '...' : note.correctAnswer, xPos, textY);
         pdf.setFont('helvetica', 'normal');
       }
-      
-      yPosition += 8;
     }
     
-    // 푸터
-    const footerY = pageHeight - 20;
-    pdf.setFillColor(245, 245, 245);
-    pdf.rect(margin, footerY, contentWidth, 15, 'F');
-    pdf.rect(margin, footerY, contentWidth, 15, 'S');
+    // 하단 푸터 박스
+    const footerY = pageHeight - 25;
+    pdf.setFillColor(240, 240, 240);
+    pdf.setLineWidth(1);
+    pdf.setDrawColor(0, 0, 0);
+    pdf.rect(margin, footerY, contentWidth, 15, 'FD');
     
+    // 푸터 텍스트
     pdf.setFontSize(10);
     pdf.setTextColor(0, 0, 0);
     pdf.text('오답노트', margin + 5, footerY + 10);
-    pdf.text(`${subject} - ${book}`, pageWidth / 2 - 20, footerY + 10);
+    
+    // 가운데 텍스트 (과목-교재)
+    const centerText = `${subject || ''}-${book || ''}`.substring(0, 20);
+    const centerX = pageWidth / 2 - pdf.getTextWidth(centerText) / 2;
+    pdf.text(centerText, centerX, footerY + 10);
+    
     pdf.text('학습자료', pageWidth - margin - 25, footerY + 10);
     
-    // 색상 리셋
+    // 색상 및 설정 리셋
     pdf.setTextColor(0, 0, 0);
     pdf.setDrawColor(0, 0, 0);
+    pdf.setFont('helvetica', 'normal');
   }
   
   return pdf;
@@ -341,9 +151,11 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
 
 export const downloadPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
   try {
+    console.log('PDF 생성 시작:', { notes: notes.length, subject, book, chapter });
     const pdf = await generatePDF(notes, subject, book, chapter);
     const fileName = `오답노트_${subject}_${book}_${chapter}_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.pdf`;
     pdf.save(fileName);
+    console.log('PDF 다운로드 완료:', fileName);
     return true;
   } catch (error) {
     console.error('PDF 생성 오류:', error);
@@ -353,6 +165,7 @@ export const downloadPDF = async (notes: WrongNote[], subject: string, book: str
 
 export const printPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string) => {
   try {
+    console.log('PDF 인쇄 시작');
     const pdf = await generatePDF(notes, subject, book, chapter);
     const blob = pdf.output('blob');
     const url = URL.createObjectURL(blob);
@@ -364,8 +177,8 @@ export const printPDF = async (notes: WrongNote[], subject: string, book: string
       };
     }
     
-    // URL 정리
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    console.log('PDF 인쇄 완료');
     return true;
   } catch (error) {
     console.error('PDF 인쇄 오류:', error);
