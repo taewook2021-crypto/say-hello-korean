@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2 } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +25,7 @@ const Index = () => {
   const [notes, setNotes] = useState<WrongNote[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
-  const [editingNote, setEditingNote] = useState<WrongNote | null>(null);
+  const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } | null }>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
@@ -154,51 +154,60 @@ const Index = () => {
     }
   };
 
-  const handleEditNote = (note: WrongNote) => {
-    setEditingNote(note);
-    setNewNote({
-      question: note.question,
-      wrongAnswer: note.wrongAnswer,
-      correctAnswer: note.correctAnswer
+  const startEdit = (noteId: string, field: string, currentValue: string) => {
+    setEditingFields({
+      ...editingFields,
+      [noteId]: { field, value: currentValue }
     });
   };
 
-  const handleUpdateNote = async () => {
-    if (!editingNote || !newNote.question || !newNote.correctAnswer) {
-      return;
-    }
+  const cancelEdit = (noteId: string) => {
+    setEditingFields({
+      ...editingFields,
+      [noteId]: null
+    });
+  };
+
+  const saveEdit = async (noteId: string) => {
+    const editData = editingFields[noteId];
+    if (!editData) return;
+
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
 
     try {
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (editData.field === 'question') {
+        updateData.question = editData.value;
+      } else if (editData.field === 'wrongAnswer') {
+        updateData.wrong_answer = editData.value;
+      } else if (editData.field === 'correctAnswer') {
+        updateData.correct_answer = editData.value;
+      }
+
       const { error } = await (supabase as any)
         .from('wrong_notes')
-        .update({
-          question: newNote.question,
-          wrong_answer: newNote.wrongAnswer,
-          correct_answer: newNote.correctAnswer,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingNote.id);
+        .update(updateData)
+        .eq('id', noteId);
 
       if (error) throw error;
 
       setNotes(notes.map(note => 
-        note.id === editingNote.id 
+        note.id === noteId 
           ? {
               ...note,
-              question: newNote.question,
-              wrongAnswer: newNote.wrongAnswer,
-              correctAnswer: newNote.correctAnswer
+              [editData.field]: editData.value
             }
           : note
       ));
 
-      setEditingNote(null);
-      setNewNote({
-        question: "",
-        wrongAnswer: "",
-        correctAnswer: ""
+      setEditingFields({
+        ...editingFields,
+        [noteId]: null
       });
-      setShowAddForm(false);
 
       toast({
         title: "성공",
@@ -214,14 +223,14 @@ const Index = () => {
     }
   };
 
-  const cancelEdit = () => {
-    setEditingNote(null);
-    setNewNote({
-      question: "",
-      wrongAnswer: "",
-      correctAnswer: ""
+  const updateEditValue = (noteId: string, value: string) => {
+    const editData = editingFields[noteId];
+    if (!editData) return;
+
+    setEditingFields({
+      ...editingFields,
+      [noteId]: { ...editData, value }
     });
-    setShowAddForm(false);
   };
 
   const toggleShowAnswer = (id: string) => {
@@ -294,6 +303,142 @@ const Index = () => {
     }
   };
 
+  const renderEditableField = (note: WrongNote, field: keyof WrongNote, label: string, isTextarea = false) => {
+    const noteId = note.id;
+    const editData = editingFields[noteId];
+    const isEditing = editData?.field === field;
+    const value = note[field] as string;
+
+    if (isEditing) {
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium">{label}</h4>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => saveEdit(noteId)}
+                className="h-8 w-8 p-0"
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => cancelEdit(noteId)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          {isTextarea ? (
+            <Textarea
+              value={editData.value}
+              onChange={(e) => updateEditValue(noteId, e.target.value)}
+              className="min-h-[100px]"
+              autoFocus
+            />
+          ) : (
+            <Input
+              value={editData.value}
+              onChange={(e) => updateEditValue(noteId, e.target.value)}
+              autoFocus
+            />
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium">{label}</h4>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => startEdit(noteId, field, value)}
+            className="h-8 w-8 p-0"
+          >
+            <Edit2 className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-lg border cursor-pointer" onClick={() => startEdit(noteId, field, value)}>
+          <p className="text-base leading-relaxed">{value || "클릭하여 입력"}</p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAnswerField = (note: WrongNote, field: keyof WrongNote, label: string, bgColor: string, textColor: string) => {
+    const noteId = note.id;
+    const editData = editingFields[noteId];
+    const isEditing = editData?.field === field;
+    const value = note[field] as string;
+
+    if (isEditing) {
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className={`font-medium ${textColor} flex items-center gap-1`}>
+              {field === 'wrongAnswer' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+              {label}
+            </h4>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => saveEdit(noteId)}
+                className="h-6 w-6 p-0"
+              >
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => cancelEdit(noteId)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+          <Input
+            value={editData.value}
+            onChange={(e) => updateEditValue(noteId, e.target.value)}
+            autoFocus
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className={`font-medium ${textColor} flex items-center gap-1`}>
+            {field === 'wrongAnswer' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+            {label}
+          </h4>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => startEdit(noteId, field, value)}
+            className="h-6 w-6 p-0"
+          >
+            <Edit2 className="h-3 w-3" />
+          </Button>
+        </div>
+        <div 
+          className={`text-sm ${bgColor} p-3 rounded-lg border cursor-pointer ${field === 'correctAnswer' ? 'font-medium' : ''}`}
+          onClick={() => startEdit(noteId, field, value)}
+        >
+          {value || "클릭하여 입력"}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
@@ -351,10 +496,10 @@ const Index = () => {
         </div>
 
         {/* Add New Note Form */}
-        {(showAddForm || editingNote) && (
+        {showAddForm && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>{editingNote ? "오답노트 수정" : "새로운 오답 추가"}</CardTitle>
+              <CardTitle>새로운 오답 추가</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -389,10 +534,8 @@ const Index = () => {
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={editingNote ? handleUpdateNote : handleAddNote}>
-                  {editingNote ? "수정" : "저장"}
-                </Button>
-                <Button variant="outline" onClick={editingNote ? cancelEdit : () => setShowAddForm(false)}>
+                <Button onClick={handleAddNote}>저장</Button>
+                <Button variant="outline" onClick={() => setShowAddForm(false)}>
                   취소
                 </Button>
               </div>
@@ -436,44 +579,28 @@ const Index = () => {
                     <span className="text-sm text-muted-foreground">
                       {note.createdAt.toLocaleDateString('ko-KR')}
                     </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditNote(note)}
-                        className="flex items-center gap-1"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                        수정
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleResolved(note.id)}
-                        className="flex items-center gap-1"
-                      >
-                        {note.isResolved ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            해결완료
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            미해결
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleResolved(note.id)}
+                      className="flex items-center gap-1"
+                    >
+                      {note.isResolved ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          해결완료
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4 text-red-600" />
+                          미해결
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-3">문제</h4>
-                    <div className="bg-blue-50 p-4 rounded-lg border">
-                      <p className="text-base leading-relaxed">{note.question}</p>
-                    </div>
-                  </div>
+                  {renderEditableField(note, 'question', '문제', true)}
 
                   <div className="flex justify-center">
                     <Button
@@ -498,27 +625,11 @@ const Index = () => {
                   {showAnswers[note.id] && (
                     <div className="space-y-4 border-t pt-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {note.wrongAnswer && (
-                          <div>
-                            <h4 className="font-medium mb-2 text-red-600 flex items-center gap-1">
-                              <XCircle className="h-4 w-4" />
-                              내가 적은 답
-                            </h4>
-                            <p className="text-sm bg-red-50 p-3 rounded-lg border border-red-200">
-                              {note.wrongAnswer}
-                            </p>
-                          </div>
+                        {(note.wrongAnswer || editingFields[note.id]?.field === 'wrongAnswer') && (
+                          renderAnswerField(note, 'wrongAnswer', '내가 적은 답', 'bg-red-50 border-red-200', 'text-red-600')
                         )}
                         
-                        <div>
-                          <h4 className="font-medium mb-2 text-green-600 flex items-center gap-1">
-                            <CheckCircle className="h-4 w-4" />
-                            정답
-                          </h4>
-                          <p className="text-sm bg-green-50 p-3 rounded-lg border border-green-200 font-medium">
-                            {note.correctAnswer}
-                          </p>
-                        </div>
+                        {renderAnswerField(note, 'correctAnswer', '정답', 'bg-green-50 border-green-200', 'text-green-600')}
                       </div>
                     </div>
                   )}
