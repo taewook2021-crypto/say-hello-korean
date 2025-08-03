@@ -19,8 +19,8 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i];
     
-        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 40자 기준)
-        const maxCharsPerLine = 40;
+        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 60자 기준)
+        const maxCharsPerLine = 60;
     const questionParts = [];
     let remainingQuestion = note.question;
     
@@ -171,11 +171,11 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         
         .answer-line {
           display: flex;
-          align-items: center;
+          align-items: flex-end;
           height: calc((100% - 0px) / 25);
           border-bottom: 1px solid #000;
           position: relative;
-          padding: 0 0 2px 0;
+          padding: 0 0 3px 0;
         }
         
         .answer-line:last-child {
