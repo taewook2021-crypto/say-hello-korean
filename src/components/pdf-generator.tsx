@@ -56,7 +56,6 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         // 첫 번째 줄: <Q>와 문제 첫 부분
         linesHTML.push(`
           <div class="answer-line">
-            <span class="line-number">${currentLineNumber}</span>
             <div class="content-area">
               <span class="q-marker">&lt;Q&gt;</span>
               <span class="question">${questionParts[0] || ''}</span>
@@ -64,11 +63,10 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           </div>
         `);
         
-        // 문제의 나머지 부분들 (줄 번호 없이)
+        // 문제의 나머지 부분들
         for (let j = 1; j < questionParts.length; j++) {
           linesHTML.push(`
             <div class="answer-line">
-              <span class="line-number"></span>
               <div class="content-area">
                 <span class="question" style="margin-left: 12mm;">${questionParts[j]}</span>
               </div>
@@ -79,7 +77,6 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         // 오답 줄
         linesHTML.push(`
           <div class="answer-line">
-            <span class="line-number"></span>
             <div class="content-area">
               <span class="x-marker">&lt;X&gt;</span>
               <span class="wrong-answer">${note.wrongAnswer}</span>
@@ -90,7 +87,6 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         // 정답 줄
         linesHTML.push(`
           <div class="answer-line">
-            <span class="line-number"></span>
             <div class="content-area">
               <span class="o-marker">&lt;O&gt;</span>
               <span class="correct-answer">${note.correctAnswer}</span>
@@ -103,7 +99,6 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         // 빈 줄
         linesHTML.push(`
           <div class="answer-line">
-            <span class="line-number">${currentLineNumber}</span>
             <div class="content-area"></div>
           </div>
         `);
