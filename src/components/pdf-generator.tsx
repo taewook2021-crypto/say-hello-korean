@@ -56,25 +56,75 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
       `);
     }
     
-    // 오답 줄
+    // 오답을 60자씩 분할
+    const wrongAnswerParts = [];
+    let remainingWrongAnswer = note.wrongAnswer;
+    
+    while (remainingWrongAnswer.length > 0) {
+      if (remainingWrongAnswer.length <= maxCharsPerLine) {
+        wrongAnswerParts.push(remainingWrongAnswer);
+        break;
+      }
+      
+      wrongAnswerParts.push(remainingWrongAnswer.substring(0, maxCharsPerLine));
+      remainingWrongAnswer = remainingWrongAnswer.substring(maxCharsPerLine);
+    }
+    
+    // 첫 번째 오답 줄
     allLines.push(`
       <div class="answer-line">
         <div class="content-area">
           <span class="x-marker">&lt;X&gt;</span>
-          <span class="wrong-answer">${note.wrongAnswer}</span>
+          <span class="wrong-answer">${wrongAnswerParts[0] || ''}</span>
         </div>
       </div>
     `);
     
-    // 정답 줄
+    // 오답의 나머지 부분들
+    for (let j = 1; j < wrongAnswerParts.length; j++) {
+      allLines.push(`
+        <div class="answer-line">
+          <div class="content-area">
+            <span class="wrong-answer" style="margin-left: 12mm;">${wrongAnswerParts[j]}</span>
+          </div>
+        </div>
+      `);
+    }
+    
+    // 정답을 60자씩 분할
+    const correctAnswerParts = [];
+    let remainingCorrectAnswer = note.correctAnswer;
+    
+    while (remainingCorrectAnswer.length > 0) {
+      if (remainingCorrectAnswer.length <= maxCharsPerLine) {
+        correctAnswerParts.push(remainingCorrectAnswer);
+        break;
+      }
+      
+      correctAnswerParts.push(remainingCorrectAnswer.substring(0, maxCharsPerLine));
+      remainingCorrectAnswer = remainingCorrectAnswer.substring(maxCharsPerLine);
+    }
+    
+    // 첫 번째 정답 줄
     allLines.push(`
       <div class="answer-line">
         <div class="content-area">
           <span class="o-marker">&lt;O&gt;</span>
-          <span class="correct-answer">${note.correctAnswer}</span>
+          <span class="correct-answer">${correctAnswerParts[0] || ''}</span>
         </div>
       </div>
     `);
+    
+    // 정답의 나머지 부분들
+    for (let j = 1; j < correctAnswerParts.length; j++) {
+      allLines.push(`
+        <div class="answer-line">
+          <div class="content-area">
+            <span class="correct-answer" style="margin-left: 12mm;">${correctAnswerParts[j]}</span>
+          </div>
+        </div>
+      `);
+    }
   }
   
   const totalPages = Math.ceil(allLines.length / linesPerPage) || 1;
