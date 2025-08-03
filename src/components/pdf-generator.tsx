@@ -19,7 +19,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i];
     
-        // 문제 텍스트를 적절한 길이로 분할 (글자 크기가 커졌으므로 60자 기준)
+        // 문제 텍스트를 60자씩 정확히 분할
         const maxCharsPerLine = 60;
     const questionParts = [];
     let remainingQuestion = note.question;
@@ -30,15 +30,9 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
         break;
       }
       
-      // 적절한 분할점 찾기 (공백 기준)
-      let splitIndex = maxCharsPerLine;
-      while (splitIndex > 0 && remainingQuestion[splitIndex] !== ' ') {
-        splitIndex--;
-      }
-      if (splitIndex === 0) splitIndex = maxCharsPerLine;
-      
-      questionParts.push(remainingQuestion.substring(0, splitIndex));
-      remainingQuestion = remainingQuestion.substring(splitIndex).trim();
+      // 정확히 60자씩 분할
+      questionParts.push(remainingQuestion.substring(0, maxCharsPerLine));
+      remainingQuestion = remainingQuestion.substring(maxCharsPerLine);
     }
     
     // 첫 번째 줄: <Q>와 문제 번호, 문제 첫 부분
