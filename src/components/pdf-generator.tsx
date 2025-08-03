@@ -198,6 +198,8 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           gap: 3mm;
           font-size: 13px;
           padding: 1mm 0;
+          overflow: hidden;
+          line-height: 1.2;
         }
         
         .q-marker {
@@ -224,6 +226,9 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           flex: 1;
           word-wrap: break-word;
           overflow-wrap: break-word;
+          word-break: break-all;
+          max-height: 100%;
+          overflow: hidden;
         }
         
         .o-marker {
@@ -238,6 +243,9 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           flex: 1;
           word-wrap: break-word;
           overflow-wrap: break-word;
+          word-break: break-all;
+          max-height: 100%;
+          overflow: hidden;
         }
         
         .footer {
