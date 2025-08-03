@@ -23,26 +23,43 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
     const endIndex = Math.min(startIndex + notesPerPage, notes.length);
     const pageNotes = notes.slice(startIndex, endIndex);
     
-    // 25줄 생성
+    // 각 노트당 3줄씩 사용 (문제, 오답, 정답)
     const linesHTML = Array.from({ length: notesPerPage }, (_, i) => {
       const lineNumber = startIndex + i + 1;
       const note = pageNotes[i];
       
-      return `
-        <div class="answer-line">
-          <span class="line-number">${lineNumber}</span>
-          <div class="content-area">
-            ${note ? `
+      if (note) {
+        return `
+          <div class="answer-line">
+            <span class="line-number">${lineNumber}</span>
+            <div class="content-area">
               <span class="q-marker">&lt;Q&gt;</span>
               <span class="question">${note.question}</span>
+            </div>
+          </div>
+          <div class="answer-line">
+            <span class="line-number"></span>
+            <div class="content-area">
               <span class="x-marker">&lt;X&gt;</span>
               <span class="wrong-answer">${note.wrongAnswer}</span>
+            </div>
+          </div>
+          <div class="answer-line">
+            <span class="line-number"></span>
+            <div class="content-area">
               <span class="o-marker">&lt;O&gt;</span>
               <span class="correct-answer">${note.correctAnswer}</span>
-            ` : ''}
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      } else {
+        return `
+          <div class="answer-line">
+            <span class="line-number">${lineNumber}</span>
+            <div class="content-area"></div>
+          </div>
+        `;
+      }
     }).join('');
     
     pagesHTML += `
