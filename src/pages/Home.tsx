@@ -649,60 +649,58 @@ const Home = () => {
                                     ) : (
                                       <div className="py-1 space-y-1">
                                         {bookMajorChapters[bookKey]?.map((majorChapter, mcIndex) => (
-                                            <div key={mcIndex} className="border rounded-sm ml-2">
-                                               {/* 소단원이 있으면 대단원(소단원 추가만 가능), 없으면 소단원(오답노트 접속 가능) */}
-                                               <div className="flex items-center group">
-                                                 {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 ? (
-                                                   // 대단원: 소단원 목록이 있는 경우 펼치기만 가능
-                                                   <div 
-                                                     className="flex-1 flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer"
-                                                     onClick={() => toggleMajorChapter(majorChapter.id)}
-                                                   >
-                                                     <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                                     <span className="text-xs font-medium">{majorChapter.name}</span>
-                                                   </div>
-                                                 ) : (
-                                                   // 소단원: 소단원 목록이 없는 경우 오답노트 접속 가능
-                                                   <Link 
-                                                     to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(majorChapter.name)}`}
-                                                     className="flex-1"
-                                                   >
-                                                     <div className="flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer">
-                                                       <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                                       <span className="text-xs font-medium">{majorChapter.name}</span>
-                                                     </div>
-                                                   </Link>
-                                                 )}
-                                                 
-                                                 {/* 삭제 버튼 */}
-                                                 <Button
-                                                   size="sm"
-                                                   variant="ghost"
-                                                   onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     openDeleteDialog('major', majorChapter.id, majorChapter.name);
-                                                   }}
-                                                   className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                                 >
-                                                   <Minus className="h-3 w-3 text-destructive" />
-                                                 </Button>
-                                                 
-                                                 {/* 소단원이 있는 경우만 펼치기 버튼 표시 */}
-                                                 {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 && (
-                                                   <Button
-                                                     size="sm"
-                                                     variant="ghost"
-                                                     onClick={() => toggleMajorChapter(majorChapter.id)}
-                                                     className="h-6 w-6 p-0 shrink-0"
-                                                   >
-                                                     {expandedMajorChapter === majorChapter.id ? (
-                                                       <ChevronDown className="h-3 w-3" />
-                                                     ) : (
-                                                       <ChevronRight className="h-3 w-3" />
-                                                     )}
-                                                   </Button>
-                                                 )}
-                                               </div>
+                                           <div key={mcIndex} className="border rounded-sm ml-2">
+                                              {/* 대단원은 항상 클릭하면 펼치기만 되고 오답노트 접속 불가 */}
+                                              <div className="flex items-center group">
+                                                {/* 대단원 표시 (클릭 시 펼치기만) */}
+                                                <div 
+                                                  className="flex-1 flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer"
+                                                  onClick={() => toggleMajorChapter(majorChapter.id)}
+                                                >
+                                                  <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                                  <span className="text-xs font-medium">{majorChapter.name}</span>
+                                                </div>
+                                                
+                                                {/* 삭제 버튼 */}
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openDeleteDialog('major', majorChapter.id, majorChapter.name);
+                                                  }}
+                                                  className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                >
+                                                  <Minus className="h-3 w-3 text-destructive" />
+                                                </Button>
+                                                
+                                                {/* 소단원 추가 버튼 */}
+                                                <Button 
+                                                  size="sm" 
+                                                  variant="ghost" 
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openAddSubChapterDialog(majorChapter.id);
+                                                  }}
+                                                  className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                >
+                                                  <Plus className="h-3 w-3" />
+                                                </Button>
+                                                
+                                                {/* 펼치기 버튼 (항상 표시) */}
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  onClick={() => toggleMajorChapter(majorChapter.id)}
+                                                  className="h-6 w-6 p-0 shrink-0"
+                                                >
+                                                  {expandedMajorChapter === majorChapter.id ? (
+                                                    <ChevronDown className="h-3 w-3" />
+                                                  ) : (
+                                                    <ChevronRight className="h-3 w-3" />
+                                                  )}
+                                                </Button>
+                                              </div>
                                             
                                             {/* 소단원 목록 (있는 경우만) */}
                                             {expandedMajorChapter === majorChapter.id && (
