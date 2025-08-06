@@ -416,7 +416,7 @@ const Index = () => {
             </Button>
           )}
         </div>
-        <div className={`bg-blue-50 p-4 rounded-lg border ${showEditButton ? 'cursor-pointer' : ''}`} onClick={showEditButton ? () => startEdit(noteId, field, value) : undefined}>
+        <div className={`bg-muted p-4 rounded-lg border ${showEditButton ? 'cursor-pointer' : ''}`} onClick={showEditButton ? () => startEdit(noteId, field, value) : undefined}>
           <p className="text-base leading-relaxed">{value || "클릭하여 입력"}</p>
         </div>
       </div>
@@ -679,7 +679,7 @@ const Index = () => {
             </Card>
           ) : (
             notes.map((note) => (
-              <Card key={note.id} className={note.isResolved ? "border-green-200 bg-green-50/50" : ""}>
+              <Card key={note.id} className={note.isResolved ? "border-primary/50 bg-primary/5" : ""}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
@@ -691,17 +691,17 @@ const Index = () => {
                       onClick={() => toggleResolved(note.id)}
                       className="flex items-center gap-1"
                     >
-                      {note.isResolved ? (
-                        <>
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          해결완료
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-4 w-4 text-red-600" />
-                          미해결
-                        </>
-                      )}
+                       {note.isResolved ? (
+                         <>
+                           <CheckCircle className="h-4 w-4 text-primary" />
+                           해결완료
+                         </>
+                       ) : (
+                         <>
+                           <XCircle className="h-4 w-4 text-destructive" />
+                           미해결
+                         </>
+                       )}
                     </Button>
                   </div>
                 </CardHeader>
@@ -731,11 +731,11 @@ const Index = () => {
                   {showAnswers[note.id] && (
                     <div className="space-y-4 border-t pt-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(note.wrongAnswer || editingFields[note.id]?.field === 'wrongAnswer') && (
-                          renderAnswerField(note, 'wrongAnswer', '내가 적은 답', 'bg-red-50 border-red-200', 'text-red-600')
-                        )}
-                        
-                        {renderAnswerField(note, 'correctAnswer', '정답', 'bg-green-50 border-green-200', 'text-green-600')}
+                         {(note.wrongAnswer || editingFields[note.id]?.field === 'wrongAnswer') && (
+                           renderAnswerField(note, 'wrongAnswer', '내가 적은 답', 'bg-destructive/10 border-destructive/20', 'text-destructive')
+                         )}
+                         
+                         {renderAnswerField(note, 'correctAnswer', '정답', 'bg-primary/10 border-primary/20', 'text-primary')}
                       </div>
                     </div>
                   )}
