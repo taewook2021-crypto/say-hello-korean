@@ -1169,10 +1169,42 @@ const Home = () => {
                 <Button 
                   variant="outline" 
                   className="w-full h-auto p-4 flex flex-col items-start"
-                  onClick={() => {
+                  onClick={async () => {
                     setShowAddChapterTypeDialog(false);
-                    // 직접 오답노트 접속이 가능한 소단원으로 대단원을 생성
-                    openAddMajorChapterDialog(selectedSubjectForChapterType, selectedBookForChapterType);
+                    
+                    // 소단원으로 생성하려면 임시 대단원 하위에 소단원으로 생성
+                    try {
+                      // 임시 대단원이 없으면 생성
+                      let tempMajorChapterId = '00000000-0000-0000-0000-000000000001';
+                      
+                      const { data: existingMajor } = await supabase
+                        .from('major_chapters')
+                        .select('id')
+                        .eq('id', tempMajorChapterId)
+                        .eq('subject_name', selectedSubjectForChapterType)
+                        .eq('book_name', selectedBookForChapterType)
+                        .single();
+                      
+                      if (!existingMajor) {
+                        const { data: newMajor } = await supabase
+                          .from('major_chapters')
+                          .insert({
+                            id: tempMajorChapterId,
+                            name: '기본단원',
+                            subject_name: selectedSubjectForChapterType,
+                            book_name: selectedBookForChapterType
+                          })
+                          .select()
+                          .single();
+                        
+                        if (newMajor) tempMajorChapterId = newMajor.id;
+                      }
+                      
+                      // 소단원 추가 다이얼로그 열기
+                      openAddSubChapterDialog(tempMajorChapterId);
+                    } catch (error) {
+                      console.error('Error creating temp major chapter:', error);
+                    }
                   }}
                 >
                   <div className="text-left">
