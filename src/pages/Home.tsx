@@ -39,7 +39,7 @@ const Home = () => {
   const [selectedSubjectForChapterType, setSelectedSubjectForChapterType] = useState("");
   const [selectedBookForChapterType, setSelectedBookForChapterType] = useState("");
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [deleteTargetType, setDeleteTargetType] = useState<'major' | 'sub'>('major');
+  const [deleteTargetType, setDeleteTargetType] = useState<'subject' | 'book' | 'major' | 'sub'>('major');
   const [deleteTargetId, setDeleteTargetId] = useState("");
   const [deleteTargetName, setDeleteTargetName] = useState("");
   
@@ -352,7 +352,7 @@ const Home = () => {
     setShowAddChapterTypeDialog(true);
   };
 
-  const openDeleteDialog = (type: 'major' | 'sub', id: string, name: string) => {
+  const openDeleteDialog = (type: 'subject' | 'book' | 'major' | 'sub', id: string, name: string) => {
     setDeleteTargetType(type);
     setDeleteTargetId(id);
     setDeleteTargetName(name);
@@ -466,8 +466,93 @@ const Home = () => {
     }
   };
 
+  const deleteSubject = async () => {
+    console.log('과목 삭제 시도:', deleteTargetName);
+    
+    try {
+      // CASCADE 옵션으로 인해 subjects만 삭제하면 연관된 모든 테이블 데이터가 자동 삭제됨
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('name', deleteTargetName);
+
+      if (error) throw error;
+
+      // UI 상태 업데이트
+      setSubjects(prev => prev.filter(subject => subject !== deleteTargetName));
+      
+      // 관련 상태도 정리
+      setSubjectBooks(prev => {
+        const newState = { ...prev };
+        delete newState[deleteTargetName];
+        return newState;
+      });
+      
+      setShowDeleteConfirmDialog(false);
+      
+      toast({
+        title: "과목 삭제됨",
+        description: `${deleteTargetName} 과목이 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      toast({
+        title: "오류",
+        description: "과목 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteBook = async () => {
+    console.log('책 삭제 시도:', deleteTargetId, deleteTargetName);
+    
+    try {
+      // CASCADE 옵션으로 인해 books만 삭제하면 연관된 모든 테이블 데이터가 자동 삭제됨
+      const { error } = await supabase
+        .from('books')
+        .delete()
+        .eq('name', deleteTargetName)
+        .eq('subject_name', deleteTargetId); // deleteTargetId에 subject_name이 저장됨
+
+      if (error) throw error;
+
+      // UI 상태 업데이트
+      setSubjectBooks(prev => ({
+        ...prev,
+        [deleteTargetId]: prev[deleteTargetId]?.filter(book => book !== deleteTargetName) || []
+      }));
+      
+      // 관련 상태도 정리
+      const bookKey = `${deleteTargetId}|${deleteTargetName}`;
+      setBookMajorChapters(prev => {
+        const newState = { ...prev };
+        delete newState[bookKey];
+        return newState;
+      });
+      
+      setShowDeleteConfirmDialog(false);
+      
+      toast({
+        title: "책 삭제됨",
+        description: `${deleteTargetName} 책이 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting book:', error);
+      toast({
+        title: "오류",
+        description: "책 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDelete = () => {
-    if (deleteTargetType === 'major') {
+    if (deleteTargetType === 'subject') {
+      deleteSubject();
+    } else if (deleteTargetType === 'book') {
+      deleteBook();
+    } else if (deleteTargetType === 'major') {
       deleteMajorChapter();
     } else {
       deleteSubChapter();
@@ -714,9 +799,21 @@ const Home = () => {
                          e.stopPropagation();
                          openEditDialog('subject', '', subject);
                        }}
-                       className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-2"
+                       className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-1"
                      >
                        <Edit className="h-4 w-4" />
+                     </Button>
+                     {/* 과목 삭제 버튼 */}
+                     <Button
+                       size="sm"
+                       variant="ghost"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         openDeleteDialog('subject', '', subject);
+                       }}
+                       className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-2"
+                     >
+                       <Minus className="h-4 w-4 text-destructive" />
                      </Button>
                    </div>
                   
@@ -763,6 +860,18 @@ const Home = () => {
                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-1"
                                    >
                                      <Edit className="h-3 w-3" />
+                                   </Button>
+                                   {/* 책 삭제 버튼 */}
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       openDeleteDialog('book', subject, book);
+                                     }}
+                                     className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-1"
+                                   >
+                                     <Minus className="h-3 w-3 text-destructive" />
                                    </Button>
                                  </div>
                                 
@@ -1127,10 +1236,10 @@ const Home = () => {
              </DialogHeader>
              <div className="space-y-4">
                <p className="text-sm text-muted-foreground">
-                 {deleteTargetType === 'major' 
-                   ? `"${deleteTargetName}" 단원을 삭제하시겠습니까? 하위 소단원들도 함께 삭제됩니다.`
-                   : `"${deleteTargetName}" 소단원을 삭제하시겠습니까?`
-                 }
+                 {deleteTargetType === 'subject' && `"${deleteTargetName}" 과목을 삭제하시겠습니까? 관련된 모든 책, 단원, 오답노트가 함께 삭제됩니다.`}
+                 {deleteTargetType === 'book' && `"${deleteTargetName}" 책을 삭제하시겠습니까? 관련된 모든 단원, 오답노트가 함께 삭제됩니다.`}
+                 {deleteTargetType === 'major' && `"${deleteTargetName}" 단원을 삭제하시겠습니까? 하위 소단원들도 함께 삭제됩니다.`}
+                 {deleteTargetType === 'sub' && `"${deleteTargetName}" 소단원을 삭제하시겠습니까?`}
                </p>
                <div className="flex gap-2 justify-end">
                  <Button variant="outline" onClick={() => setShowDeleteConfirmDialog(false)}>
