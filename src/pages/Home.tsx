@@ -325,12 +325,7 @@ const Home = () => {
                         </div>
                       ) : (
                         <div className="space-y-1">
-                          {subjectBooks[subject]?.length === 0 ? (
-                            <div className="py-2 text-center text-muted-foreground text-sm">
-                              등록된 책이 없습니다
-                            </div>
-                          ) : (
-                            subjectBooks[subject]?.map((book, bookIndex) => {
+                          {subjectBooks[subject]?.map((book, bookIndex) => {
                               const bookKey = `${subject}|${book}`;
                               return (
                                 <div key={bookIndex} className="border rounded-md ml-4">
@@ -383,8 +378,7 @@ const Home = () => {
                                   )}
                                 </div>
                               );
-                            })
-                          )}
+                            })}
                           
                           {/* 책 추가 버튼 */}
                           <div className="mt-2">
