@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link, useSearchParams } from "react-router-dom";
 import { FlashCard } from "@/components/study/FlashCard";
 import { Quiz } from "@/components/study/Quiz";
+import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { ReviewScheduler } from "@/components/study/ReviewScheduler";
 
@@ -35,6 +36,7 @@ const Index = () => {
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } | null }>({});
   const [loading, setLoading] = useState(true);
   const [showStudyModal, setShowStudyModal] = useState(false);
+  const [quizType, setQuizType] = useState<'multiple-choice' | 'subjective'>('multiple-choice');
   const [pdfOptions, setPdfOptions] = useState({
     includeWrongAnswers: true
   });
@@ -769,26 +771,68 @@ const Index = () => {
               </TabsContent>
 
               <TabsContent value="quiz" className="mt-6">
-                <Quiz 
-                  notes={notes.map(n => ({
-                    id: n.id,
-                    question: n.question,
-                    wrong_answer: n.wrongAnswer,
-                    correct_answer: n.correctAnswer,
-                    explanation: null,
-                    subject_name: subject || '',
-                    book_name: book || '',
-                    chapter_name: chapter || '',
-                    is_resolved: n.isResolved
-                  }))} 
-                  onComplete={() => {
-                    loadNotes();
-                    toast({
-                      title: "퀴즈 완료",
-                      description: "퀴즈가 완료되었습니다."
-                    });
-                  }} 
-                />
+                <div className="space-y-4">
+                  <div className="flex gap-4 justify-center mb-6">
+                    <Button
+                      variant={quizType === 'multiple-choice' ? 'default' : 'outline'}
+                      onClick={() => setQuizType('multiple-choice')}
+                    >
+                      객관식
+                    </Button>
+                    <Button
+                      variant={quizType === 'subjective' ? 'default' : 'outline'}
+                      onClick={() => setQuizType('subjective')}
+                    >
+                      주관식
+                    </Button>
+                  </div>
+
+                  {quizType === 'multiple-choice' ? (
+                    <Quiz 
+                      notes={notes.map(n => ({
+                        id: n.id,
+                        question: n.question,
+                        wrong_answer: n.wrongAnswer,
+                        correct_answer: n.correctAnswer,
+                        explanation: null,
+                        subject_name: subject || '',
+                        book_name: book || '',
+                        chapter_name: chapter || '',
+                        is_resolved: n.isResolved
+                      }))} 
+                      onComplete={() => {
+                        setShowStudyModal(false);
+                        loadNotes();
+                        toast({
+                          title: "퀴즈 완료",
+                          description: "객관식 퀴즈가 완료되었습니다."
+                        });
+                      }} 
+                    />
+                  ) : (
+                    <SubjectiveQuiz 
+                      notes={notes.map(n => ({
+                        id: n.id,
+                        question: n.question,
+                        wrong_answer: n.wrongAnswer,
+                        correct_answer: n.correctAnswer,
+                        explanation: null,
+                        subject_name: subject || '',
+                        book_name: book || '',
+                        chapter_name: chapter || '',
+                        is_resolved: n.isResolved
+                      }))} 
+                      onComplete={() => {
+                        setShowStudyModal(false);
+                        loadNotes();
+                        toast({
+                          title: "퀴즈 완료",
+                          description: "주관식 퀴즈가 완료되었습니다."
+                        });
+                      }} 
+                    />
+                  )}
+                </div>
               </TabsContent>
 
               <TabsContent value="progress" className="mt-6">
