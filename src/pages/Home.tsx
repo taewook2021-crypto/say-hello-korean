@@ -20,6 +20,9 @@ const Home = () => {
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
   const [bookChapters, setBookChapters] = useState<{[key: string]: string[]}>({});
   const [chaptersLoading, setChaptersLoading] = useState<{[key: string]: boolean}>({});
+  const [showAddBookDialog, setShowAddBookDialog] = useState(false);
+  const [newBook, setNewBook] = useState("");
+  const [selectedSubjectForBook, setSelectedSubjectForBook] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -140,6 +143,48 @@ const Home = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const addBook = async () => {
+    if (!newBook.trim() || !selectedSubjectForBook) return;
+
+    try {
+      const { error } = await supabase
+        .from('books')
+        .insert({ 
+          name: newBook.trim(),
+          subject_name: selectedSubjectForBook
+        });
+
+      if (error) throw error;
+
+      // 해당 과목의 책 목록 업데이트
+      setSubjectBooks(prev => ({
+        ...prev,
+        [selectedSubjectForBook]: [...(prev[selectedSubjectForBook] || []), newBook.trim()]
+      }));
+      
+      setNewBook("");
+      setShowAddBookDialog(false);
+      setSelectedSubjectForBook("");
+      
+      toast({
+        title: "책 추가됨",
+        description: `${newBook} 책이 추가되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error adding book:', error);
+      toast({
+        title: "오류",
+        description: "책 추가에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openAddBookDialog = (subjectName: string) => {
+    setSelectedSubjectForBook(subjectName);
+    setShowAddBookDialog(true);
   };
 
   return (
@@ -269,20 +314,29 @@ const Home = () => {
                   
                   {expandedSubject === subject && (
                     <div className="px-4 pb-4 border-t bg-muted/20">
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-sm font-medium text-muted-foreground">책 목록</span>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => openAddBookDialog(subject)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
                       {booksLoading[subject] ? (
-                        <div className="py-4">
-                          <div className="space-y-2">
-                            {Array.from({ length: 3 }).map((_, idx) => (
-                              <div key={idx} className="h-8 bg-muted rounded animate-pulse" />
-                            ))}
-                          </div>
+                        <div className="space-y-2">
+                          {Array.from({ length: 3 }).map((_, idx) => (
+                            <div key={idx} className="h-8 bg-muted rounded animate-pulse" />
+                          ))}
                         </div>
                       ) : subjectBooks[subject]?.length === 0 ? (
                         <div className="py-4 text-center text-muted-foreground">
                           등록된 책이 없습니다
                         </div>
                       ) : (
-                        <div className="py-2 space-y-1">
+                        <div className="space-y-1">
                           {subjectBooks[subject]?.map((book, bookIndex) => {
                             const bookKey = `${subject}|${book}`;
                             return (
@@ -347,6 +401,31 @@ const Home = () => {
           )}
           </CardContent>
         </Card>
+
+        {/* 책 추가 다이얼로그 */}
+        <Dialog open={showAddBookDialog} onOpenChange={setShowAddBookDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>새 책 추가</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="책명을 입력하세요 (예: 최재형 연습서)"
+                value={newBook}
+                onChange={(e) => setNewBook(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addBook()}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowAddBookDialog(false)}>
+                  취소
+                </Button>
+                <Button onClick={addBook} disabled={!newBook.trim()}>
+                  추가
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
