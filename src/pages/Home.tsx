@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, ChevronRight } from "lucide-react";
+import { BookOpen, Plus, ChevronRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,9 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [newSubject, setNewSubject] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  const [subjectBooks, setSubjectBooks] = useState<{[key: string]: string[]}>({});
+  const [booksLoading, setBooksLoading] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -34,6 +37,40 @@ const Home = () => {
       console.error('Error loading subjects:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBooksForSubject = async (subjectName: string) => {
+    if (subjectBooks[subjectName]) return;
+    
+    setBooksLoading(prev => ({ ...prev, [subjectName]: true }));
+    
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .select('name')
+        .eq('subject_name', subjectName)
+        .order('name');
+      
+      if (error) throw error;
+      
+      setSubjectBooks(prev => ({
+        ...prev,
+        [subjectName]: data?.map((book: any) => book.name) || []
+      }));
+    } catch (error) {
+      console.error('Error loading books:', error);
+    } finally {
+      setBooksLoading(prev => ({ ...prev, [subjectName]: false }));
+    }
+  };
+
+  const toggleSubject = async (subjectName: string) => {
+    if (expandedSubject === subjectName) {
+      setExpandedSubject(null);
+    } else {
+      setExpandedSubject(subjectName);
+      await loadBooksForSubject(subjectName);
     }
   };
 
@@ -174,15 +211,55 @@ const Home = () => {
           ) : (
             <div className="space-y-2">
               {subjects.map((subject, index) => (
-                <Link key={index} to={`/subject/${encodeURIComponent(subject)}`}>
-                  <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors cursor-pointer group">
+                <div key={index} className="border rounded-lg">
+                  <div 
+                    className="flex items-center justify-between p-4 hover:bg-accent transition-colors cursor-pointer group"
+                    onClick={() => toggleSubject(subject)}
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 bg-primary rounded-full"></div>
                       <span className="text-lg font-medium">{subject}</span>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    {expandedSubject === subject ? (
+                      <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    ) : (
+                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    )}
                   </div>
-                </Link>
+                  
+                  {expandedSubject === subject && (
+                    <div className="px-4 pb-4 border-t bg-muted/20">
+                      {booksLoading[subject] ? (
+                        <div className="py-4">
+                          <div className="space-y-2">
+                            {Array.from({ length: 3 }).map((_, idx) => (
+                              <div key={idx} className="h-8 bg-muted rounded animate-pulse" />
+                            ))}
+                          </div>
+                        </div>
+                      ) : subjectBooks[subject]?.length === 0 ? (
+                        <div className="py-4 text-center text-muted-foreground">
+                          등록된 책이 없습니다
+                        </div>
+                      ) : (
+                        <div className="py-2 space-y-1">
+                          {subjectBooks[subject]?.map((book, bookIndex) => (
+                            <Link 
+                              key={bookIndex} 
+                              to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
+                              className="block"
+                            >
+                              <div className="flex items-center gap-2 p-2 rounded hover:bg-accent transition-colors cursor-pointer">
+                                <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                                <span className="text-sm">{book}</span>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
