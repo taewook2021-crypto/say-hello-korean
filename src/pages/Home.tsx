@@ -1,14 +1,20 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BookOpen, Plus, FolderOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Home = () => {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newSubject, setNewSubject] = useState("");
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadSubjects();
@@ -28,6 +34,34 @@ const Home = () => {
       console.error('Error loading subjects:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const addSubject = async () => {
+    if (!newSubject.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .insert({ name: newSubject.trim() });
+
+      if (error) throw error;
+
+      setSubjects([...subjects, newSubject.trim()]);
+      setNewSubject("");
+      setShowAddDialog(false);
+      
+      toast({
+        title: "과목 추가됨",
+        description: `${newSubject} 과목이 추가되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error adding subject:', error);
+      toast({
+        title: "오류",
+        description: "과목 추가에 실패했습니다.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -57,12 +91,35 @@ const Home = () => {
                 <FolderOpen className="h-5 w-5" />
                 과목 선택
               </CardTitle>
-              <Link to="/index">
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  과목 관리
-                </Button>
-              </Link>
+              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    과목 추가
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>새 과목 추가</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="과목명을 입력하세요 (예: 세법)"
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && addSubject()}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                        취소
+                      </Button>
+                      <Button onClick={addSubject} disabled={!newSubject.trim()}>
+                        추가
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardHeader>
           <CardContent>
@@ -84,12 +141,35 @@ const Home = () => {
                 <p className="text-muted-foreground mb-4">
                   첫 번째 과목을 추가해보세요!
                 </p>
-                <Link to="/index">
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    과목 추가하기
-                  </Button>
-                </Link>
+                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      과목 추가하기
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>새 과목 추가</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <Input
+                        placeholder="과목명을 입력하세요 (예: 세법)"
+                        value={newSubject}
+                        onChange={(e) => setNewSubject(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addSubject()}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                          취소
+                        </Button>
+                        <Button onClick={addSubject} disabled={!newSubject.trim()}>
+                          추가
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
