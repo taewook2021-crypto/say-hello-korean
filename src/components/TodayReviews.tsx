@@ -31,6 +31,7 @@ export function TodayReviews() {
 
   const loadReviews = async () => {
     try {
+      const now = new Date();
       const today = new Date();
       today.setHours(23, 59, 59, 999); // 오늘 끝까지
       
@@ -40,7 +41,7 @@ export function TodayReviews() {
       const nextWeek = new Date(today);
       nextWeek.setDate(nextWeek.getDate() + 7);
 
-      // 오늘 복습할 문제들
+      // 오늘 복습할 문제들 (현재 시간 이전 또는 오늘 안에 예정된 것들)
       const { data: todayData, error: todayError } = await supabase
         .from('review_schedule')
         .select(`
