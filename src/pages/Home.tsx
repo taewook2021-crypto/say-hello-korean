@@ -530,9 +530,9 @@ const Home = () => {
                                             </div>
                                             
                                             {expandedMajorChapter === majorChapter.id && (
-                                              <div className="px-1 pb-1 border-t bg-muted/5">
+                                              <div className="px-2 pb-2 border-t bg-muted/5">
                                                 <div className="flex items-center justify-between py-1">
-                                                  <span className="text-xs text-muted-foreground">소단원 목록</span>
+                                                  <span className="text-xs text-muted-foreground ml-2">소단원 목록</span>
                                                   <Button 
                                                     size="sm" 
                                                     variant="ghost" 
@@ -543,7 +543,7 @@ const Home = () => {
                                                   </Button>
                                                 </div>
                                                 {subChaptersLoading[majorChapter.id] ? (
-                                                  <div className="py-1">
+                                                  <div className="py-1 ml-4">
                                                     <div className="space-y-1">
                                                       {Array.from({ length: 2 }).map((_, idx) => (
                                                         <div key={idx} className="h-4 bg-muted rounded animate-pulse" />
@@ -551,16 +551,16 @@ const Home = () => {
                                                     </div>
                                                   </div>
                                                 ) : (
-                                                  <div className="space-y-1">
+                                                  <div className="space-y-1 ml-4">
                                                     {majorChapterSubChapters[majorChapter.id]?.map((subChapter, scIndex) => (
                                                       <Link 
                                                         key={scIndex} 
                                                         to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(subChapter)}`}
                                                         className="block"
                                                       >
-                                                        <div className="flex items-center gap-1 p-1 rounded hover:bg-accent transition-colors cursor-pointer ml-2">
+                                                        <div className="flex items-center gap-2 p-1.5 rounded hover:bg-accent transition-colors cursor-pointer border border-dashed border-transparent hover:border-border">
                                                           <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-                                                          <span className="text-xs">{subChapter}</span>
+                                                          <span className="text-xs text-muted-foreground">{subChapter}</span>
                                                         </div>
                                                       </Link>
                                                     ))}
