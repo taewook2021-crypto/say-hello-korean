@@ -286,23 +286,9 @@ export function TodayReviews() {
               오늘 복습할 문제가 없습니다! 🎉
             </p>
           ) : (
-            <div className="space-y-3">
-              {todayReviews.map((review) => (
-                <div key={review.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline">
-                      {review.subject_name} &gt; {review.book_name}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {review.review_count + 1}회차 복습
-                    </Badge>
-                  </div>
-                  <p className="text-sm font-medium line-clamp-2">
-                    {review.question}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {todayReviews.length}개의 문제가 복습 대기 중입니다.
+            </p>
           )}
         </CardContent>
       </Card>
