@@ -113,9 +113,9 @@ const Index = () => {
 
       if (error) throw error;
 
-      // 에빙하우스 망각곡선에 따른 첫 번째 복습 스케줄 생성 (1일 후)
+      // 에빙하우스 망각곡선에 따른 첫 번째 복습 스케줄 생성 (20분 후)
       const nextReviewDate = new Date();
-      nextReviewDate.setDate(nextReviewDate.getDate() + 1);
+      nextReviewDate.setMinutes(nextReviewDate.getMinutes() + 20);
 
       const { error: scheduleError } = await supabase
         .from('review_schedule')

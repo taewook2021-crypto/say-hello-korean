@@ -118,7 +118,16 @@ export function ReviewScheduler({ subject, book, chapter }: ReviewSchedulerProps
       );
 
       const nextReviewDate = new Date();
-      nextReviewDate.setDate(nextReviewDate.getDate() + newInterval);
+      if (newInterval === 0) {
+        // 20분 후
+        nextReviewDate.setMinutes(nextReviewDate.getMinutes() + 20);
+      } else if (newInterval === -1) {
+        // 당일 자정
+        nextReviewDate.setHours(23, 59, 59, 999);
+      } else {
+        // N일 후
+        nextReviewDate.setDate(nextReviewDate.getDate() + newInterval);
+      }
 
       // 복습 스케줄 업데이트
       await supabase
@@ -173,19 +182,22 @@ export function ReviewScheduler({ subject, book, chapter }: ReviewSchedulerProps
   };
 
   const calculateNextInterval = (currentInterval: number, easeFactor: number, performance: number): number => {
-    // 에빙하우스 망각곡선 기반 간격 계산
+    // 새로운 에빙하우스 망각곡선: 20분 → 당일 자정 → 1일 → 2일 → 3일...
     if (performance < 3) {
-      // 성과가 낮으면 간격을 줄임
-      return Math.max(1, Math.floor(currentInterval * 0.5));
+      // 성과가 낮으면 20분으로 리셋
+      return 0; // 0은 20분을 의미
     }
     
-    if (currentInterval === 1) {
-      return performance >= 4 ? 6 : 3;
+    if (currentInterval === 0) { // 20분 후
+      return -1; // -1은 당일 자정을 의미
     }
     
-    if (currentInterval <= 6) {
-      return performance >= 4 ? currentInterval * 2 : currentInterval;
+    if (currentInterval === -1) { // 당일 자정 후
+      return 1; // 1일 후
     }
+    
+    // 1일부터는 매일 1일씩 증가
+    return currentInterval + 1;
     
     // 성과가 좋으면 에빙하우스 곡선에 따라 간격 증가
     return Math.floor(currentInterval * easeFactor);
