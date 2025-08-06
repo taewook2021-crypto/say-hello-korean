@@ -113,6 +113,27 @@ const Index = () => {
 
       if (error) throw error;
 
+      // 에빙하우스 망각곡선에 따른 첫 번째 복습 스케줄 생성 (1일 후)
+      const nextReviewDate = new Date();
+      nextReviewDate.setDate(nextReviewDate.getDate() + 1);
+
+      const { error: scheduleError } = await supabase
+        .from('review_schedule')
+        .insert({
+          wrong_note_id: data.id,
+          review_count: 0,
+          next_review_date: nextReviewDate.toISOString(),
+          interval_days: 1,
+          ease_factor: 2.5,
+          is_completed: false,
+          user_id: null // RLS가 있어서 자동으로 설정됨
+        });
+
+      if (scheduleError) {
+        console.error('Error creating review schedule:', scheduleError);
+        // 스케줄 생성 실패해도 오답노트는 저장되도록 함
+      }
+
       const note: WrongNote = {
         id: data.id,
         question: data.question,
@@ -129,10 +150,12 @@ const Index = () => {
         correctAnswer: ""
       });
       setShowAddForm(false);
+      
       toast({
-        title: "성공",
-        description: "오답노트가 저장되었습니다.",
+        title: "오답노트 추가됨",
+        description: "내일부터 복습 알림이 시작됩니다. 🗓️",
       });
+      
     } catch (error) {
       console.error('Error adding note:', error);
       toast({

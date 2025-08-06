@@ -1,212 +1,229 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { BookOpen, Users, Calendar, Plus, FolderOpen } from "lucide-react";
 import { Link } from "react-router-dom";
+import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+
+interface Stats {
+  subjects: number;
+  books: number;
+  wrongNotes: number;
+}
 
 const Home = () => {
-  const [folders, setFolders] = useState<string[]>([]);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [stats, setStats] = useState<Stats>({ subjects: 0, books: 0, wrongNotes: 0 });
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
+    loadStats();
     loadSubjects();
   }, []);
 
+  const loadStats = async () => {
+    try {
+      // 과목 수
+      const { data: subjectsData, error: subjectsError } = await supabase
+        .from('subjects')
+        .select('id', { count: 'exact' });
+      
+      if (subjectsError) throw subjectsError;
+
+      // 교재 수
+      const { data: booksData, error: booksError } = await supabase
+        .from('books')
+        .select('id', { count: 'exact' });
+      
+      if (booksError) throw booksError;
+
+      // 오답노트 수
+      const { data: notesData, error: notesError } = await supabase
+        .from('wrong_notes')
+        .select('id', { count: 'exact' });
+      
+      if (notesError) throw notesError;
+
+      setStats({
+        subjects: subjectsData?.length || 0,
+        books: booksData?.length || 0,
+        wrongNotes: notesData?.length || 0,
+      });
+
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
+
   const loadSubjects = async () => {
     try {
-      console.log('Loading subjects from database...');
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('subjects')
         .select('name')
         .order('name');
       
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log('Subjects loaded:', data);
-      setFolders(data?.map((subject: any) => subject.name) || []);
+      setSubjects(data?.map((subject: any) => subject.name) || []);
     } catch (error) {
       console.error('Error loading subjects:', error);
-      // If database tables don't exist yet, show default subjects
-      setFolders([
-        "재무회계",
-        "세법", 
-        "재무관리",
-        "원가회계",
-        "회계감사"
-      ]);
-      toast({
-        title: "알림",
-        description: "기본 과목을 표시합니다. 데이터베이스 설정이 필요합니다.",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddFolder = async () => {
-    if (!newFolderName.trim()) return;
-    
-    try {
-      const { error } = await (supabase as any)
-        .from('subjects')
-        .insert({ name: newFolderName.trim() });
-      
-      if (error) throw error;
-      
-      setFolders([...folders, newFolderName.trim()]);
-      setNewFolderName("");
-      setIsDialogOpen(false);
-      toast({
-        title: "성공",
-        description: "새 과목이 추가되었습니다.",
-      });
-    } catch (error) {
-      console.error('Error adding subject:', error);
-      toast({
-        title: "오류",
-        description: "과목 추가에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteFolder = async (folderName: string) => {
-    try {
-      console.log('Deleting folder:', folderName);
-      const { error } = await (supabase as any)
-        .from('subjects')
-        .delete()
-        .eq('name', folderName);
-      
-      if (error) {
-        console.error('Delete error:', error);
-        throw error;
-      }
-      
-      console.log('Delete successful');
-      setFolders(folders.filter(folder => folder !== folderName));
-      toast({
-        title: "성공",
-        description: "과목이 삭제되었습니다.",
-      });
-    } catch (error) {
-      console.error('Error deleting subject:', error);
-      toast({
-        title: "오류",
-        description: "과목 삭제에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="flex justify-end mb-6">
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="icon" variant="outline">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>새 폴더 추가</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="folderName">폴더 이름</Label>
-                <Input
-                  id="folderName"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="폴더 이름을 입력하세요"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddFolder();
-                    }
-                  }}
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  취소
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            오답노트
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            체계적인 복습으로 완벽한 학습을
+          </p>
+        </div>
+
+        {/* 오늘의 복습 */}
+        <div className="mb-8">
+          <TodayReviews />
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">총 과목 수</CardTitle>
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.subjects}</div>
+              <p className="text-xs text-muted-foreground">등록된 과목</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">총 교재 수</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.books}</div>
+              <p className="text-xs text-muted-foreground">등록된 교재</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">총 오답 수</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.wrongNotes}</div>
+              <p className="text-xs text-muted-foreground">기록된 오답</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 과목 선택 섹션 */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5" />
+                과목 선택
+              </CardTitle>
+              <Link to="/index">
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  과목 관리
                 </Button>
-                <Button onClick={handleAddFolder}>
-                  추가
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {loading ? (
-          Array.from({ length: 5 }).map((_, index) => (
-            <Card key={index} className="p-4 text-center animate-pulse">
-              <CardContent className="p-0">
-                <div className="h-12 w-12 bg-muted rounded mx-auto mb-2" />
-                <div className="h-4 bg-muted rounded" />
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          folders.map((folder, index) => (
-            <div key={index} className="relative group">
-              <Link to={`/subject/${encodeURIComponent(folder)}`}>
-                <Card className="p-4 text-center cursor-pointer hover:bg-accent">
-                  <CardContent className="p-0">
-                    <FolderOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                    <p className="text-sm font-medium">{folder}</p>
-                  </CardContent>
-                </Card>
               </Link>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="destructive"
-                    className="absolute -top-2 -right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>폴더 삭제</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      '{folder}' 폴더를 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>취소</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFolder(folder);
-                      }}
-                    >
-                      삭제
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
-          ))
-        )}
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Card key={index} className="p-4 text-center animate-pulse">
+                    <CardContent className="p-0">
+                      <div className="h-12 w-12 bg-muted rounded mx-auto mb-2" />
+                      <div className="h-4 bg-muted rounded" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : subjects.length === 0 ? (
+              <div className="text-center py-8">
+                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">등록된 과목이 없습니다</h3>
+                <p className="text-muted-foreground mb-4">
+                  첫 번째 과목을 추가해보세요!
+                </p>
+                <Link to="/index">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    과목 추가하기
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {subjects.map((subject, index) => (
+                  <Link key={index} to={`/subject/${encodeURIComponent(subject)}`}>
+                    <Card className="p-4 text-center cursor-pointer hover:bg-accent transition-colors">
+                      <CardContent className="p-0">
+                        <FolderOpen className="h-12 w-12 text-primary mx-auto mb-2" />
+                        <p className="text-sm font-medium">{subject}</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>빠른 시작</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Link to="/index">
+                <Button variant="outline" className="w-full justify-start">
+                  <Plus className="h-4 w-4 mr-2" />
+                  새 과목 추가
+                </Button>
+              </Link>
+              {subjects.length > 0 && (
+                <Link to={`/subject/${encodeURIComponent(subjects[0])}`}>
+                  <Button variant="outline" className="w-full justify-start">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    최근 과목으로 이동
+                  </Button>
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>복습 안내</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>📚 오답노트를 추가하면 자동으로 복습 일정이 생성됩니다</p>
+                <p>🗓️ 에빙하우스 망각곡선에 따라 복습 주기가 조정됩니다</p>
+                <p>🎯 오늘 복습할 문제들이 위에 표시됩니다</p>
+                <p>✅ 복습 완료 시 다음 복습 날짜가 자동 업데이트됩니다</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
