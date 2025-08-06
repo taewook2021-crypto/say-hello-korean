@@ -700,7 +700,7 @@ const Index = () => {
               <DialogTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
                 복습하기
-                <Badge variant="outline">{notes.filter(n => !n.isResolved).length}개 문제</Badge>
+                <Badge variant="outline">{notes.length}개 문제</Badge>
               </DialogTitle>
             </DialogHeader>
             
@@ -726,8 +726,7 @@ const Index = () => {
 
               <TabsContent value="flashcard" className="mt-6">
                 {(() => {
-                  const filteredNotes = notes.filter(n => !n.isResolved);
-                  const mappedNotes = filteredNotes.map(n => ({
+                  const mappedNotes = notes.map(n => ({
                     id: n.id,
                     question: n.question,
                     wrong_answer: n.wrongAnswer,
@@ -739,16 +738,15 @@ const Index = () => {
                     is_resolved: n.isResolved
                   }));
                   
-                  console.log('Total notes:', notes.length);
-                  console.log('Filtered notes (unresolved):', filteredNotes.length);
-                  console.log('Mapped notes for FlashCard:', mappedNotes);
+                  console.log('Total notes for FlashCard:', mappedNotes.length);
+                  console.log('Notes data:', mappedNotes);
                   
                   if (mappedNotes.length === 0) {
                     return (
                       <div className="text-center py-8">
-                        <p className="text-muted-foreground">복습할 미해결 문제가 없습니다.</p>
+                        <p className="text-muted-foreground">복습할 문제가 없습니다.</p>
                         <p className="text-sm text-muted-foreground mt-2">
-                          모든 문제가 해결됨으로 표시되어 있거나, 등록된 문제가 없습니다.
+                          먼저 오답노트를 추가해주세요.
                         </p>
                       </div>
                     );
@@ -771,7 +769,7 @@ const Index = () => {
 
               <TabsContent value="quiz" className="mt-6">
                 <Quiz 
-                  notes={notes.filter(n => !n.isResolved).map(n => ({
+                  notes={notes.map(n => ({
                     id: n.id,
                     question: n.question,
                     wrong_answer: n.wrongAnswer,
