@@ -234,14 +234,23 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
           </Badge>
         )}
 
-        <Button
-          variant="outline"
-          onClick={nextCard}
-          disabled={currentIndex === notes.length - 1}
-        >
-          다음
-          <ChevronRight className="h-4 w-4 ml-2" />
-        </Button>
+        {currentIndex === notes.length - 1 ? (
+          <Button
+            variant="default"
+            onClick={onComplete}
+          >
+            <Check className="h-4 w-4 mr-2" />
+            종료
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            onClick={nextCard}
+          >
+            다음
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        )}
       </div>
     </div>
   );
