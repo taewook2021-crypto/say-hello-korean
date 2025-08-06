@@ -321,8 +321,7 @@ const Index = () => {
 
     const extendedOptions = {
       ...options,
-      coverTemplate: selectedPdfTemplates.cover,
-      paperTemplate: selectedPdfTemplates.paper
+      paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
     };
 
     const success = await downloadPDF(filteredNotes, subject, book, chapter, extendedOptions);
@@ -365,7 +364,10 @@ const Index = () => {
       return;
     }
 
-    const success = await printPDF(filteredNotes, subject, book, chapter, options);
+    const success = await printPDF(filteredNotes, subject, book, chapter, {
+      ...options,
+      paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
+    });
     if (!success) {
       toast({
         title: "오류",

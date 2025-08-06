@@ -10,8 +10,24 @@ interface WrongNote {
   isResolved: boolean;
 }
 
+// 템플릿 클래스 반환 함수
+const getTemplateClass = (templateId: string) => {
+  switch (templateId) {
+    case 'lined-paper':
+      return 'lined-template';
+    case 'dotted-paper':
+      return 'dotted-template';
+    case 'grid-paper':
+      return 'grid-template';
+    case 'cornell-paper':
+      return 'cornell-template';
+    default:
+      return '';
+  }
+};
+
 // HTML 기반으로 정확한 답안지 양식 생성
-const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }): string => {
+const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }): string => {
   const linesPerPage = 25;
   let allLines: string[] = [];
   
@@ -155,7 +171,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           <div class="header-right">(${pageNum + 1}쪽)</div>
         </div>
         
-        <div class="answer-sheet">
+        <div class="answer-sheet ${getTemplateClass(options.paperTemplate || 'lined-paper')}">
           ${pageLines.join('')}
         </div>
         
@@ -227,6 +243,65 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
           padding: 5mm;
           display: flex;
           flex-direction: column;
+          position: relative;
+        }
+        
+        /* 템플릿 스타일 */
+        .lined-template {
+          background-image: repeating-linear-gradient(
+            transparent,
+            transparent calc((100% - 0px) / 25 - 1px),
+            #000 calc((100% - 0px) / 25 - 1px),
+            #000 calc((100% - 0px) / 25)
+          );
+        }
+        
+        .dotted-template {
+          background-image: 
+            radial-gradient(circle at 2px 2px, #666 1px, transparent 1px);
+          background-size: 15px 15px;
+        }
+        
+        .grid-template {
+          background-image: 
+            linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+            linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
+          background-size: 15px 15px;
+        }
+        
+        .cornell-template {
+          background: 
+            linear-gradient(to bottom, transparent 40px, #dc2626 40px, #dc2626 42px, transparent 42px), 
+            repeating-linear-gradient(
+              transparent,
+              transparent calc((100% - 42px) / 24 - 1px),
+              rgba(220, 38, 38, 0.3) calc((100% - 42px) / 24 - 1px),
+              rgba(220, 38, 38, 0.3) calc((100% - 42px) / 24)
+            );
+          background-size: 100% 100%, 100% calc(100% - 42px);
+          background-position: 0 0, 0 42px;
+        }
+        
+        .cornell-template::before {
+          content: '';
+          position: absolute;
+          left: 50mm;
+          top: 0;
+          bottom: 0;
+          width: 2px;
+          background-color: #dc2626;
+          z-index: 1;
+        }
+        
+        .cornell-template::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 25mm;
+          height: 2px;
+          background-color: #dc2626;
+          z-index: 1;
         }
         
         .answer-line {
@@ -334,7 +409,7 @@ const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string
   `;
 };
 
-export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }) => {
+export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
   console.log('PDF 생성 시작:', { notes: notes.length, subject, book, chapter, options });
   
   // HTML 템플릿 생성
@@ -439,7 +514,7 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
   }
 };
 
-export const downloadPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }) => {
+export const downloadPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
   try {
     const pdf = await generatePDF(notes, subject, book, chapter, options);
     const fileName = `오답노트_${subject}_${book}_${chapter}_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.pdf`;
@@ -452,7 +527,7 @@ export const downloadPDF = async (notes: WrongNote[], subject: string, book: str
   }
 };
 
-export const printPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true }) => {
+export const printPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
   try {
     const pdf = await generatePDF(notes, subject, book, chapter, options);
     const blob = pdf.output('blob');
