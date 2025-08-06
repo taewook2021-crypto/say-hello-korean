@@ -148,11 +148,27 @@ export function TodayReviews() {
       {/* 오늘 복습할 문제들 */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-orange-500" />
-            오늘 복습할 문제
-            <Badge variant="destructive">{todayReviews.length}</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-orange-500" />
+              오늘 복습할 문제
+              <Badge variant="destructive">{todayReviews.length}</Badge>
+            </CardTitle>
+            {todayReviews.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  // 첫 번째 문제의 정보로 복습 페이지로 이동
+                  const firstReview = todayReviews[0];
+                  startReview(firstReview.subject_name, firstReview.book_name, firstReview.chapter_name);
+                }}
+              >
+                <BookOpen className="h-4 w-4 mr-2" />
+                빠르게 복습하기
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {todayReviews.length === 0 ? (
