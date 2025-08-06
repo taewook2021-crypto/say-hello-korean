@@ -725,8 +725,9 @@ const Index = () => {
               </TabsList>
 
               <TabsContent value="flashcard" className="mt-6">
-                <FlashCard 
-                  notes={notes.filter(n => !n.isResolved).map(n => ({
+                {(() => {
+                  const filteredNotes = notes.filter(n => !n.isResolved);
+                  const mappedNotes = filteredNotes.map(n => ({
                     id: n.id,
                     question: n.question,
                     wrong_answer: n.wrongAnswer,
@@ -736,15 +737,36 @@ const Index = () => {
                     book_name: book || '',
                     chapter_name: chapter || '',
                     is_resolved: n.isResolved
-                  }))} 
-                  onComplete={() => {
-                    loadNotes();
-                    toast({
-                      title: "복습 완료",
-                      description: "플래시카드 학습이 완료되었습니다."
-                    });
-                  }} 
-                />
+                  }));
+                  
+                  console.log('Total notes:', notes.length);
+                  console.log('Filtered notes (unresolved):', filteredNotes.length);
+                  console.log('Mapped notes for FlashCard:', mappedNotes);
+                  
+                  if (mappedNotes.length === 0) {
+                    return (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">복습할 미해결 문제가 없습니다.</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          모든 문제가 해결됨으로 표시되어 있거나, 등록된 문제가 없습니다.
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <FlashCard 
+                      notes={mappedNotes} 
+                      onComplete={() => {
+                        loadNotes();
+                        toast({
+                          title: "복습 완료",
+                          description: "플래시카드 학습이 완료되었습니다."
+                        });
+                      }} 
+                    />
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="quiz" className="mt-6">
