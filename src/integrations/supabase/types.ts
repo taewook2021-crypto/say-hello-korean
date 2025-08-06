@@ -70,7 +70,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "chapters_book_name_subject_name_fkey"
+            foreignKeyName: "chapters_book_subject_fkey"
             columns: ["book_name", "subject_name"]
             isOneToOne: false
             referencedRelation: "books"
@@ -82,6 +82,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "major_chapters"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapters_subject_name_fkey"
+            columns: ["subject_name"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["name"]
           },
         ]
       }
@@ -110,7 +117,22 @@ export type Database = {
           subject_name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "major_chapters_book_subject_fkey"
+            columns: ["book_name", "subject_name"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["name", "subject_name"]
+          },
+          {
+            foreignKeyName: "major_chapters_subject_name_fkey"
+            columns: ["subject_name"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["name"]
+          },
+        ]
       }
       memorization_checklist: {
         Row: {
