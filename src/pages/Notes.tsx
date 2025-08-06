@@ -7,11 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useSearchParams } from "react-router-dom";
+import { FlashCard } from "@/components/study/FlashCard";
+import { Quiz } from "@/components/study/Quiz";
+import { ProgressTracker } from "@/components/study/ProgressTracker";
+import { ReviewScheduler } from "@/components/study/ReviewScheduler";
 
 interface WrongNote {
   id: string;
@@ -29,6 +34,7 @@ const Index = () => {
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } | null }>({});
   const [loading, setLoading] = useState(true);
+  const [showStudyModal, setShowStudyModal] = useState(false);
   const [pdfOptions, setPdfOptions] = useState({
     includeWrongAnswers: true
   });
@@ -475,6 +481,14 @@ const Index = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowStudyModal(true)}
+              disabled={notes.length === 0}
+              className="flex items-center gap-2"
+            >
+              <Brain className="h-4 w-4" />
+              복습하기
+            </Button>
             <Dialog>
               <DialogTrigger asChild>
                 <Button 
@@ -678,6 +692,102 @@ const Index = () => {
             ))
           )}
         </div>
+
+        {/* 복습 모달 */}
+        <Dialog open={showStudyModal} onOpenChange={setShowStudyModal}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                복습하기
+                <Badge variant="outline">{notes.filter(n => !n.isResolved).length}개 문제</Badge>
+              </DialogTitle>
+            </DialogHeader>
+            
+            <Tabs defaultValue="flashcard" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="flashcard" className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  플래시카드
+                </TabsTrigger>
+                <TabsTrigger value="quiz" className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  퀴즈
+                </TabsTrigger>
+                <TabsTrigger value="progress" className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  진도추적
+                </TabsTrigger>
+                <TabsTrigger value="schedule" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  복습계획
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="flashcard" className="mt-6">
+                <FlashCard 
+                  notes={notes.filter(n => !n.isResolved).map(n => ({
+                    id: n.id,
+                    question: n.question,
+                    wrong_answer: n.wrongAnswer,
+                    correct_answer: n.correctAnswer,
+                    explanation: null,
+                    subject_name: subject || '',
+                    book_name: book || '',
+                    chapter_name: chapter || '',
+                    is_resolved: n.isResolved
+                  }))} 
+                  onComplete={() => {
+                    loadNotes();
+                    toast({
+                      title: "복습 완료",
+                      description: "플래시카드 학습이 완료되었습니다."
+                    });
+                  }} 
+                />
+              </TabsContent>
+
+              <TabsContent value="quiz" className="mt-6">
+                <Quiz 
+                  notes={notes.filter(n => !n.isResolved).map(n => ({
+                    id: n.id,
+                    question: n.question,
+                    wrong_answer: n.wrongAnswer,
+                    correct_answer: n.correctAnswer,
+                    explanation: null,
+                    subject_name: subject || '',
+                    book_name: book || '',
+                    chapter_name: chapter || '',
+                    is_resolved: n.isResolved
+                  }))} 
+                  onComplete={() => {
+                    loadNotes();
+                    toast({
+                      title: "퀴즈 완료",
+                      description: "퀴즈가 완료되었습니다."
+                    });
+                  }} 
+                />
+              </TabsContent>
+
+              <TabsContent value="progress" className="mt-6">
+                <ProgressTracker 
+                  subject={subject || ''}
+                  book={book || ''}
+                  chapter={chapter || ''}
+                />
+              </TabsContent>
+
+              <TabsContent value="schedule" className="mt-6">
+                <ReviewScheduler 
+                  subject={subject || ''}
+                  book={book || ''}
+                  chapter={chapter || ''}
+                />
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
