@@ -2,9 +2,13 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, BookOpen, Target } from "lucide-react";
+import { Calendar, Clock, BookOpen, Target, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { StudyModeSelector } from "@/components/study/StudyModeSelector";
+import { FlashCard } from "@/components/study/FlashCard";
+import { Quiz } from "@/components/study/Quiz";
+import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 
 interface ReviewItem {
   id: string;
@@ -19,10 +23,25 @@ interface ReviewItem {
   chapter_name: string;
 }
 
+interface WrongNote {
+  id: string;
+  question: string;
+  wrong_answer: string | null;
+  correct_answer: string;
+  explanation: string | null;
+  subject_name: string;
+  book_name: string;
+  chapter_name: string;
+  is_resolved: boolean;
+}
+
 export function TodayReviews() {
   const [todayReviews, setTodayReviews] = useState<ReviewItem[]>([]);
   const [upcomingReviews, setUpcomingReviews] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [studyMode, setStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
+  const [showStudyModeSelector, setShowStudyModeSelector] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState<WrongNote[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -112,8 +131,39 @@ export function TodayReviews() {
     }
   };
 
-  const startReview = (subjectName: string, bookName: string, chapterName: string) => {
-    navigate(`/notes?subject=${encodeURIComponent(subjectName)}&book=${encodeURIComponent(bookName)}&chapter=${encodeURIComponent(chapterName)}`);
+  const startQuickReview = async () => {
+    try {
+      // 오늘 복습할 문제들의 오답노트 정보 가져오기
+      const noteIds = todayReviews.map(review => review.wrong_note_id);
+      
+      const { data: notes, error } = await supabase
+        .from('wrong_notes')
+        .select('*')
+        .in('id', noteIds);
+      
+      if (error) throw error;
+      
+      setReviewNotes(notes || []);
+      setShowStudyModeSelector(true);
+    } catch (error) {
+      console.error('Error loading review notes:', error);
+    }
+  };
+
+  const handleModeSelect = (mode: 'flashcard' | 'multiple-choice' | 'subjective') => {
+    setStudyMode(mode);
+    setShowStudyModeSelector(false);
+  };
+
+  const handleStudyComplete = () => {
+    setStudyMode(null);
+    setShowStudyModeSelector(false);
+    loadReviews(); // 복습 완료 후 데이터 새로고침
+  };
+
+  const handleBackToReviews = () => {
+    setStudyMode(null);
+    setShowStudyModeSelector(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -143,6 +193,70 @@ export function TodayReviews() {
     );
   }
 
+  // 스터디 모드 화면들
+  if (showStudyModeSelector) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={handleBackToReviews}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            돌아가기
+          </Button>
+          <h2 className="text-lg font-semibold">빠른 복습</h2>
+        </div>
+        <StudyModeSelector 
+          noteCount={reviewNotes.length} 
+          onModeSelect={handleModeSelect} 
+        />
+      </div>
+    );
+  }
+
+  if (studyMode === 'flashcard') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={handleBackToReviews}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            돌아가기
+          </Button>
+          <h2 className="text-lg font-semibold">플래시카드 복습</h2>
+        </div>
+        <FlashCard notes={reviewNotes} onComplete={handleStudyComplete} />
+      </div>
+    );
+  }
+
+  if (studyMode === 'multiple-choice') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={handleBackToReviews}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            돌아가기
+          </Button>
+          <h2 className="text-lg font-semibold">객관식 퀴즈</h2>
+        </div>
+        <Quiz notes={reviewNotes} onComplete={handleStudyComplete} />
+      </div>
+    );
+  }
+
+  if (studyMode === 'subjective') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={handleBackToReviews}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            돌아가기
+          </Button>
+          <h2 className="text-lg font-semibold">주관식 퀴즈</h2>
+        </div>
+        <SubjectiveQuiz notes={reviewNotes} onComplete={handleStudyComplete} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* 오늘 복습할 문제들 */}
@@ -158,11 +272,7 @@ export function TodayReviews() {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => {
-                  // 첫 번째 문제의 정보로 복습 페이지로 이동
-                  const firstReview = todayReviews[0];
-                  startReview(firstReview.subject_name, firstReview.book_name, firstReview.chapter_name);
-                }}
+                onClick={startQuickReview}
               >
                 <BookOpen className="h-4 w-4 mr-2" />
                 빠르게 복습하기
