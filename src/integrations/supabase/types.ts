@@ -48,6 +48,48 @@ export type Database = {
           book_name: string
           created_at: string
           id: string
+          major_chapter_id: string | null
+          name: string
+          subject_name: string
+        }
+        Insert: {
+          book_name: string
+          created_at?: string
+          id?: string
+          major_chapter_id?: string | null
+          name: string
+          subject_name: string
+        }
+        Update: {
+          book_name?: string
+          created_at?: string
+          id?: string
+          major_chapter_id?: string | null
+          name?: string
+          subject_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapters_book_name_subject_name_fkey"
+            columns: ["book_name", "subject_name"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["name", "subject_name"]
+          },
+          {
+            foreignKeyName: "chapters_major_chapter_id_fkey"
+            columns: ["major_chapter_id"]
+            isOneToOne: false
+            referencedRelation: "major_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      major_chapters: {
+        Row: {
+          book_name: string
+          created_at: string
+          id: string
           name: string
           subject_name: string
         }
@@ -65,15 +107,7 @@ export type Database = {
           name?: string
           subject_name?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "chapters_book_name_subject_name_fkey"
-            columns: ["book_name", "subject_name"]
-            isOneToOne: false
-            referencedRelation: "books"
-            referencedColumns: ["name", "subject_name"]
-          },
-        ]
+        Relationships: []
       }
       memorization_checklist: {
         Row: {
