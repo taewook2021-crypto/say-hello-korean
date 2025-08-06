@@ -17,6 +17,9 @@ const Home = () => {
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
   const [subjectBooks, setSubjectBooks] = useState<{[key: string]: string[]}>({});
   const [booksLoading, setBooksLoading] = useState<{[key: string]: boolean}>({});
+  const [expandedBook, setExpandedBook] = useState<string | null>(null);
+  const [bookChapters, setBookChapters] = useState<{[key: string]: string[]}>({});
+  const [chaptersLoading, setChaptersLoading] = useState<{[key: string]: boolean}>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,12 +68,49 @@ const Home = () => {
     }
   };
 
+  const loadChaptersForBook = async (subjectName: string, bookName: string) => {
+    const bookKey = `${subjectName}|${bookName}`;
+    if (bookChapters[bookKey]) return;
+    
+    setChaptersLoading(prev => ({ ...prev, [bookKey]: true }));
+    
+    try {
+      const { data, error } = await supabase
+        .from('chapters')
+        .select('name')
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .order('name');
+      
+      if (error) throw error;
+      
+      setBookChapters(prev => ({
+        ...prev,
+        [bookKey]: data?.map((chapter: any) => chapter.name) || []
+      }));
+    } catch (error) {
+      console.error('Error loading chapters:', error);
+    } finally {
+      setChaptersLoading(prev => ({ ...prev, [bookKey]: false }));
+    }
+  };
+
   const toggleSubject = async (subjectName: string) => {
     if (expandedSubject === subjectName) {
       setExpandedSubject(null);
     } else {
       setExpandedSubject(subjectName);
       await loadBooksForSubject(subjectName);
+    }
+  };
+
+  const toggleBook = async (subjectName: string, bookName: string) => {
+    const bookKey = `${subjectName}|${bookName}`;
+    if (expandedBook === bookKey) {
+      setExpandedBook(null);
+    } else {
+      setExpandedBook(bookKey);
+      await loadChaptersForBook(subjectName, bookName);
     }
   };
 
@@ -243,18 +283,60 @@ const Home = () => {
                         </div>
                       ) : (
                         <div className="py-2 space-y-1">
-                          {subjectBooks[subject]?.map((book, bookIndex) => (
-                            <Link 
-                              key={bookIndex} 
-                              to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
-                              className="block"
-                            >
-                              <div className="flex items-center gap-2 p-2 rounded hover:bg-accent transition-colors cursor-pointer">
-                                <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                                <span className="text-sm">{book}</span>
+                          {subjectBooks[subject]?.map((book, bookIndex) => {
+                            const bookKey = `${subject}|${book}`;
+                            return (
+                              <div key={bookIndex} className="border rounded-md ml-4">
+                                <div 
+                                  className="flex items-center justify-between p-2 hover:bg-accent transition-colors cursor-pointer group"
+                                  onClick={() => toggleBook(subject, book)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                                    <span className="text-sm">{book}</span>
+                                  </div>
+                                  {expandedBook === bookKey ? (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                  )}
+                                </div>
+                                
+                                {expandedBook === bookKey && (
+                                  <div className="px-2 pb-2 border-t bg-muted/10">
+                                    {chaptersLoading[bookKey] ? (
+                                      <div className="py-2">
+                                        <div className="space-y-1">
+                                          {Array.from({ length: 2 }).map((_, idx) => (
+                                            <div key={idx} className="h-6 bg-muted rounded animate-pulse" />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : bookChapters[bookKey]?.length === 0 ? (
+                                      <div className="py-2 text-center text-muted-foreground text-xs">
+                                        등록된 단원이 없습니다
+                                      </div>
+                                    ) : (
+                                      <div className="py-1 space-y-1">
+                                        {bookChapters[bookKey]?.map((chapter, chapterIndex) => (
+                                          <Link 
+                                            key={chapterIndex} 
+                                            to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(chapter)}`}
+                                            className="block"
+                                          >
+                                            <div className="flex items-center gap-2 p-1 rounded hover:bg-accent transition-colors cursor-pointer">
+                                              <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                              <span className="text-xs">{chapter}</span>
+                                            </div>
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            </Link>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
