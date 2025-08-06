@@ -100,7 +100,6 @@ const Home = () => {
 
   const loadMajorChaptersForBook = async (subjectName: string, bookName: string) => {
     const bookKey = `${subjectName}|${bookName}`;
-    if (bookMajorChapters[bookKey]) return;
     
     setMajorChaptersLoading(prev => ({ ...prev, [bookKey]: true }));
     
@@ -118,6 +117,13 @@ const Home = () => {
         ...prev,
         [bookKey]: data || []
       }));
+      
+      // 기존에 로드된 소단원 상태 초기화 (새로고침 효과)
+      if (data) {
+        data.forEach(chapter => {
+          delete majorChapterSubChapters[chapter.id];
+        });
+      }
     } catch (error) {
       console.error('Error loading major chapters:', error);
     } finally {
@@ -126,8 +132,6 @@ const Home = () => {
   };
 
   const loadSubChaptersForMajorChapter = async (majorChapterId: string) => {
-    if (majorChapterSubChapters[majorChapterId]) return;
-    
     setSubChaptersLoading(prev => ({ ...prev, [majorChapterId]: true }));
     
     try {
@@ -306,6 +310,24 @@ const Home = () => {
         .single();
 
       if (majorChapterError) throw majorChapterError;
+
+      // 중복 체크
+      const { data: existingChapter } = await supabase
+        .from('chapters')
+        .select('id')
+        .eq('name', newSubChapter.trim())
+        .eq('subject_name', majorChapterData.subject_name)
+        .eq('book_name', majorChapterData.book_name)
+        .single();
+
+      if (existingChapter) {
+        toast({
+          title: "중복된 소단원",
+          description: `"${newSubChapter.trim()}" 소단원이 이미 존재합니다.`,
+          variant: "destructive",
+        });
+        return;
+      }
 
       const { error } = await supabase
         .from('chapters')
