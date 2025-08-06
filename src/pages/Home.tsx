@@ -107,45 +107,6 @@ const Home = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>빠른 시작</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Link to="/index">
-                <Button variant="outline" className="w-full justify-start">
-                  <Plus className="h-4 w-4 mr-2" />
-                  새 과목 추가
-                </Button>
-              </Link>
-              {subjects.length > 0 && (
-                <Link to={`/subject/${encodeURIComponent(subjects[0])}`}>
-                  <Button variant="outline" className="w-full justify-start">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    최근 과목으로 이동
-                  </Button>
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>복습 안내</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>📚 오답노트를 추가하면 자동으로 복습 일정이 생성됩니다</p>
-                <p>🗓️ 에빙하우스 망각곡선에 따라 복습 주기가 조정됩니다</p>
-                <p>🎯 오늘 복습할 문제들이 위에 표시됩니다</p>
-                <p>✅ 복습 완료 시 다음 복습 날짜가 자동 업데이트됩니다</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
