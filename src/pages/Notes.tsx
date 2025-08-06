@@ -12,7 +12,7 @@ import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download,
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { FlashCard } from "@/components/study/FlashCard";
 import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
@@ -30,7 +30,11 @@ interface WrongNote {
 }
 
 const Index = () => {
-  const [searchParams] = useSearchParams();
+  const { subjectName, bookName, chapterName } = useParams<{
+    subjectName: string;
+    bookName: string;
+    chapterName: string;
+  }>();
   const [notes, setNotes] = useState<WrongNote[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
@@ -44,9 +48,9 @@ const Index = () => {
   });
   const { toast } = useToast();
   
-  const subject = searchParams.get('subject');
-  const book = searchParams.get('book');
-  const chapter = searchParams.get('chapter');
+  const subject = decodeURIComponent(subjectName || '');
+  const book = decodeURIComponent(bookName || '');
+  const chapter = decodeURIComponent(chapterName || '');
 
   const [newNote, setNewNote] = useState({
     question: "",
@@ -499,14 +503,12 @@ const Index = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            {subject && book && (
-              <Link to={`/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`}>
-                <Button variant="outline" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  뒤로가기
-                </Button>
-              </Link>
-            )}
+            <Link to="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                뒤로가기
+              </Button>
+            </Link>
             <div>
               <div className="flex items-center gap-2">
                 <BookOpen className="h-8 w-8 text-primary" />
