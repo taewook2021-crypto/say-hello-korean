@@ -16,6 +16,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { FlashCard } from "@/components/study/FlashCard";
 import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
+import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { ReviewScheduler } from "@/components/study/ReviewScheduler";
 
@@ -36,7 +37,7 @@ const Index = () => {
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } | null }>({});
   const [loading, setLoading] = useState(true);
   const [showStudyModal, setShowStudyModal] = useState(false);
-  const [quizType, setQuizType] = useState<'multiple-choice' | 'subjective'>('multiple-choice');
+  const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
   const [pdfOptions, setPdfOptions] = useState({
     includeWrongAnswers: true
   });
@@ -696,98 +697,81 @@ const Index = () => {
         </div>
 
         {/* 복습 모달 */}
-        <Dialog open={showStudyModal} onOpenChange={setShowStudyModal}>
-          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={showStudyModal} onOpenChange={(open) => {
+          setShowStudyModal(open);
+          if (!open) setSelectedStudyMode(null);
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Brain className="h-5 w-5" />
-                복습하기
+                {selectedStudyMode ? '복습하기' : '복습 모드 선택'}
                 <Badge variant="outline">{notes.length}개 문제</Badge>
               </DialogTitle>
             </DialogHeader>
             
-            <Tabs defaultValue="flashcard" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="flashcard" className="flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  플래시카드
-                </TabsTrigger>
-                <TabsTrigger value="quiz" className="flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  퀴즈
-                </TabsTrigger>
-                <TabsTrigger value="progress" className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  진도추적
-                </TabsTrigger>
-                <TabsTrigger value="schedule" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  복습계획
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="flashcard" className="mt-6">
-                {(() => {
-                  const mappedNotes = notes.map(n => ({
-                    id: n.id,
-                    question: n.question,
-                    wrong_answer: n.wrongAnswer,
-                    correct_answer: n.correctAnswer,
-                    explanation: null,
-                    subject_name: subject || '',
-                    book_name: book || '',
-                    chapter_name: chapter || '',
-                    is_resolved: n.isResolved
-                  }));
-                  
-                  console.log('Total notes for FlashCard:', mappedNotes.length);
-                  console.log('Notes data:', mappedNotes);
-                  
-                  if (mappedNotes.length === 0) {
-                    return (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground">복습할 문제가 없습니다.</p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                          먼저 오답노트를 추가해주세요.
-                        </p>
-                      </div>
-                    );
-                  }
-                  
-                   return (
-                     <FlashCard 
-                       notes={mappedNotes} 
-                       onComplete={() => {
-                         setShowStudyModal(false);
-                         loadNotes();
-                         toast({
-                           title: "복습 완료",
-                           description: "플래시카드 학습이 완료되었습니다."
-                         });
-                       }} 
-                     />
-                   );
-                })()}
-              </TabsContent>
-
-              <TabsContent value="quiz" className="mt-6">
+            <div className="mt-6">
+              {!selectedStudyMode ? (
+                <StudyModeSelector 
+                  noteCount={notes.length}
+                  onModeSelect={(mode) => setSelectedStudyMode(mode)}
+                />
+              ) : (
                 <div className="space-y-4">
-                  <div className="flex gap-4 justify-center mb-6">
-                    <Button
-                      variant={quizType === 'multiple-choice' ? 'default' : 'outline'}
-                      onClick={() => setQuizType('multiple-choice')}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setSelectedStudyMode(null)}
                     >
-                      객관식
-                    </Button>
-                    <Button
-                      variant={quizType === 'subjective' ? 'default' : 'outline'}
-                      onClick={() => setQuizType('subjective')}
-                    >
-                      주관식
+                      ← 모드 선택으로 돌아가기
                     </Button>
                   </div>
 
-                  {quizType === 'multiple-choice' ? (
+                  {selectedStudyMode === 'flashcard' && (() => {
+                    const mappedNotes = notes.map(n => ({
+                      id: n.id,
+                      question: n.question,
+                      wrong_answer: n.wrongAnswer,
+                      correct_answer: n.correctAnswer,
+                      explanation: null,
+                      subject_name: subject || '',
+                      book_name: book || '',
+                      chapter_name: chapter || '',
+                      is_resolved: n.isResolved
+                    }));
+                    
+                    console.log('Total notes for FlashCard:', mappedNotes.length);
+                    console.log('Notes data:', mappedNotes);
+                    
+                    if (mappedNotes.length === 0) {
+                      return (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">복습할 문제가 없습니다.</p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            먼저 오답노트를 추가해주세요.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <FlashCard 
+                        notes={mappedNotes} 
+                        onComplete={() => {
+                          setShowStudyModal(false);
+                          setSelectedStudyMode(null);
+                          loadNotes();
+                          toast({
+                            title: "복습 완료",
+                            description: "플래시카드 학습이 완료되었습니다."
+                          });
+                        }} 
+                      />
+                    );
+                  })()}
+
+                  {selectedStudyMode === 'multiple-choice' && (
                     <Quiz 
                       notes={notes.map(n => ({
                         id: n.id,
@@ -802,6 +786,7 @@ const Index = () => {
                       }))} 
                       onComplete={() => {
                         setShowStudyModal(false);
+                        setSelectedStudyMode(null);
                         loadNotes();
                         toast({
                           title: "퀴즈 완료",
@@ -809,7 +794,9 @@ const Index = () => {
                         });
                       }} 
                     />
-                  ) : (
+                  )}
+
+                  {selectedStudyMode === 'subjective' && (
                     <SubjectiveQuiz 
                       notes={notes.map(n => ({
                         id: n.id,
@@ -824,6 +811,7 @@ const Index = () => {
                       }))} 
                       onComplete={() => {
                         setShowStudyModal(false);
+                        setSelectedStudyMode(null);
                         loadNotes();
                         toast({
                           title: "퀴즈 완료",
@@ -833,24 +821,8 @@ const Index = () => {
                     />
                   )}
                 </div>
-              </TabsContent>
-
-              <TabsContent value="progress" className="mt-6">
-                <ProgressTracker 
-                  subject={subject || ''}
-                  book={book || ''}
-                  chapter={chapter || ''}
-                />
-              </TabsContent>
-
-              <TabsContent value="schedule" className="mt-6">
-                <ReviewScheduler 
-                  subject={subject || ''}
-                  book={book || ''}
-                  chapter={chapter || ''}
-                />
-              </TabsContent>
-            </Tabs>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
