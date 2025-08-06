@@ -306,45 +306,6 @@ export function TodayReviews() {
           )}
         </CardContent>
       </Card>
-
-      {/* 향후 복습 일정 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-blue-500" />
-            다가오는 복습 일정
-            <Badge variant="outline">{upcomingReviews.length}</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {upcomingReviews.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              예정된 복습이 없습니다.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {upcomingReviews.map((review) => (
-                <div key={review.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">
-                        {review.subject_name} &gt; {review.book_name}
-                      </Badge>
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDate(review.next_review_date)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm font-medium line-clamp-2">
-                      {review.question}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

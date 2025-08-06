@@ -1,60 +1,18 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Users, Calendar, Plus, FolderOpen } from "lucide-react";
+import { BookOpen, Plus, FolderOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
 
-interface Stats {
-  subjects: number;
-  books: number;
-  wrongNotes: number;
-}
-
 const Home = () => {
-  const [stats, setStats] = useState<Stats>({ subjects: 0, books: 0, wrongNotes: 0 });
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
     loadSubjects();
   }, []);
-
-  const loadStats = async () => {
-    try {
-      // 과목 수
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from('subjects')
-        .select('id', { count: 'exact' });
-      
-      if (subjectsError) throw subjectsError;
-
-      // 교재 수
-      const { data: booksData, error: booksError } = await supabase
-        .from('books')
-        .select('id', { count: 'exact' });
-      
-      if (booksError) throw booksError;
-
-      // 오답노트 수
-      const { data: notesData, error: notesError } = await supabase
-        .from('wrong_notes')
-        .select('id', { count: 'exact' });
-      
-      if (notesError) throw notesError;
-
-      setStats({
-        subjects: subjectsData?.length || 0,
-        books: booksData?.length || 0,
-        wrongNotes: notesData?.length || 0,
-      });
-
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
-  };
 
   const loadSubjects = async () => {
     try {
@@ -89,42 +47,6 @@ const Home = () => {
         {/* 오늘의 복습 */}
         <div className="mb-8">
           <TodayReviews />
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 과목 수</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.subjects}</div>
-              <p className="text-xs text-muted-foreground">등록된 과목</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 교재 수</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.books}</div>
-              <p className="text-xs text-muted-foreground">등록된 교재</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 오답 수</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.wrongNotes}</div>
-              <p className="text-xs text-muted-foreground">기록된 오답</p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* 과목 선택 섹션 */}
