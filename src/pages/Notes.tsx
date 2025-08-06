@@ -752,18 +752,19 @@ const Index = () => {
                     );
                   }
                   
-                  return (
-                    <FlashCard 
-                      notes={mappedNotes} 
-                      onComplete={() => {
-                        loadNotes();
-                        toast({
-                          title: "복습 완료",
-                          description: "플래시카드 학습이 완료되었습니다."
-                        });
-                      }} 
-                    />
-                  );
+                   return (
+                     <FlashCard 
+                       notes={mappedNotes} 
+                       onComplete={() => {
+                         setShowStudyModal(false);
+                         loadNotes();
+                         toast({
+                           title: "복습 완료",
+                           description: "플래시카드 학습이 완료되었습니다."
+                         });
+                       }} 
+                     />
+                   );
                 })()}
               </TabsContent>
 
