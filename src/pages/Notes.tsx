@@ -290,12 +290,11 @@ const Index = () => {
   };
 
   const handleDownloadPDF = async (options = pdfOptions) => {
-    // 템플릿이 선택되지 않았으면 선택기를 먼저 보여줌
-    if (!selectedPdfTemplates.cover || !selectedPdfTemplates.paper) {
-      setShowPdfTemplateSelector(true);
-      return;
-    }
+    // 항상 템플릿 선택기를 먼저 보여줌
+    setShowPdfTemplateSelector(true);
+  };
 
+  const proceedWithDownload = async (options = pdfOptions) => {
     const filteredNotes = options.unresolvedOnly 
       ? notes.filter(note => !note.isResolved)
       : notes;
@@ -909,7 +908,7 @@ const Index = () => {
                   setShowPdfTemplateSelector(false);
                   // 템플릿 선택 후 PDF 다운로드 실행
                   setTimeout(() => {
-                    handleDownloadPDF(pdfOptions);
+                    proceedWithDownload(pdfOptions);
                   }, 100);
                 }}
                 selectedCover={selectedPdfTemplates.cover}
