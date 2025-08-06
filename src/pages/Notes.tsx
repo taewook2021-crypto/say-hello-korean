@@ -908,9 +908,13 @@ const Index = () => {
                 onSelect={(coverTemplate, paperTemplate) => {
                   handleTemplateSelect(coverTemplate, paperTemplate);
                   setShowPdfTemplateSelector(false);
-                  // 템플릿 선택 후 PDF 다운로드 실행
+                  // 템플릿 선택 후 PDF 다운로드 실행 (새로 선택된 템플릿 사용)
                   setTimeout(() => {
-                    proceedWithDownload(pdfOptions);
+                    const updatedOptions = {
+                      ...pdfOptions,
+                      paperTemplate: paperTemplate.id
+                    };
+                    proceedWithDownload(updatedOptions);
                   }, 100);
                 }}
                 selectedCover={selectedPdfTemplates.cover}
