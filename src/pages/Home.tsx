@@ -35,6 +35,9 @@ const Home = () => {
   const [showAddSubChapterDialog, setShowAddSubChapterDialog] = useState(false);
   const [newSubChapter, setNewSubChapter] = useState("");
   const [selectedMajorChapterForSubChapter, setSelectedMajorChapterForSubChapter] = useState("");
+  const [showAddChapterTypeDialog, setShowAddChapterTypeDialog] = useState(false);
+  const [selectedSubjectForChapterType, setSelectedSubjectForChapterType] = useState("");
+  const [selectedBookForChapterType, setSelectedBookForChapterType] = useState("");
   
   const { toast } = useToast();
 
@@ -332,6 +335,12 @@ const Home = () => {
     setShowAddSubChapterDialog(true);
   };
 
+  const openAddChapterTypeDialog = (subjectName: string, bookName: string) => {
+    setSelectedSubjectForChapterType(subjectName);
+    setSelectedBookForChapterType(bookName);
+    setShowAddChapterTypeDialog(true);
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -489,19 +498,20 @@ const Home = () => {
                                   )}
                                 </div>
                                 
-                                {expandedBook === bookKey && (
-                                  <div className="px-2 pb-2 border-t bg-muted/10">
-                                    <div className="flex items-center justify-between py-1">
-                                      <span className="text-xs text-muted-foreground">대단원 목록</span>
-                                      <Button 
-                                        size="sm" 
-                                        variant="ghost" 
-                                        onClick={() => openAddMajorChapterDialog(subject, book)}
-                                        className="h-4 w-4 p-0"
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                      </Button>
-                                    </div>
+                                 {expandedBook === bookKey && (
+                                   <div className="px-2 pb-2 border-t bg-muted/10">
+                                     <div className="flex items-center justify-between py-1">
+                                       <span className="text-xs text-muted-foreground">단원 목록</span>
+                                       <Button 
+                                         size="sm" 
+                                         variant="outline" 
+                                         onClick={() => openAddChapterTypeDialog(subject, book)}
+                                         className="h-5 text-xs px-2"
+                                       >
+                                         <Plus className="h-2 w-2 mr-1" />
+                                         단원 추가
+                                       </Button>
+                                     </div>
                                     {majorChaptersLoading[bookKey] ? (
                                       <div className="py-2">
                                         <div className="space-y-1">
@@ -513,29 +523,46 @@ const Home = () => {
                                     ) : (
                                       <div className="py-1 space-y-1">
                                         {bookMajorChapters[bookKey]?.map((majorChapter, mcIndex) => (
-                                          <div key={mcIndex} className="border rounded-sm ml-2">
-                                             {/* 대단원은 오답노트 접속 불가, 소단원 추가만 가능 */}
-                                             <div className="flex items-center">
-                                               <div 
-                                                 className="flex-1 flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer"
-                                                 onClick={() => toggleMajorChapter(majorChapter.id)}
-                                               >
-                                                 <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                                 <span className="text-xs font-medium">{majorChapter.name}</span>
-                                               </div>
-                                               <Button
-                                                 size="sm"
-                                                 variant="ghost"
-                                                 onClick={() => toggleMajorChapter(majorChapter.id)}
-                                                 className="h-6 w-6 p-0 shrink-0"
-                                               >
-                                                 {expandedMajorChapter === majorChapter.id ? (
-                                                   <ChevronDown className="h-3 w-3" />
-                                                 ) : (
-                                                   <ChevronRight className="h-3 w-3" />
-                                                 )}
-                                               </Button>
-                                             </div>
+                                           <div key={mcIndex} className="border rounded-sm ml-2">
+                                              {/* 소단원이 있으면 대단원(소단원 추가만 가능), 없으면 소단원(오답노트 접속 가능) */}
+                                              <div className="flex items-center">
+                                                {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 ? (
+                                                  // 대단원: 소단원 목록이 있는 경우 펼치기만 가능
+                                                  <div 
+                                                    className="flex-1 flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer"
+                                                    onClick={() => toggleMajorChapter(majorChapter.id)}
+                                                  >
+                                                    <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                                    <span className="text-xs font-medium">{majorChapter.name}</span>
+                                                  </div>
+                                                ) : (
+                                                  // 소단원: 소단원 목록이 없는 경우 오답노트 접속 가능
+                                                  <Link 
+                                                    to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(majorChapter.name)}`}
+                                                    className="flex-1"
+                                                  >
+                                                    <div className="flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer">
+                                                      <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                                      <span className="text-xs font-medium">{majorChapter.name}</span>
+                                                    </div>
+                                                  </Link>
+                                                )}
+                                                {/* 소단원이 있는 경우만 펼치기 버튼 표시 */}
+                                                {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 && (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => toggleMajorChapter(majorChapter.id)}
+                                                    className="h-6 w-6 p-0 shrink-0"
+                                                  >
+                                                    {expandedMajorChapter === majorChapter.id ? (
+                                                      <ChevronDown className="h-3 w-3" />
+                                                    ) : (
+                                                      <ChevronRight className="h-3 w-3" />
+                                                    )}
+                                                  </Button>
+                                                )}
+                                              </div>
                                             
                                             {/* 소단원 목록 (있는 경우만) */}
                                             {expandedMajorChapter === majorChapter.id && (
@@ -680,6 +707,58 @@ const Home = () => {
                 </Button>
                 <Button onClick={addSubChapter} disabled={!newSubChapter.trim()}>
                   추가
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 단원 타입 선택 다이얼로그 */}
+        <Dialog open={showAddChapterTypeDialog} onOpenChange={setShowAddChapterTypeDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>단원 추가</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                어떤 종류의 단원을 추가하시겠습니까?
+              </p>
+              <div className="space-y-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full h-auto p-4 flex flex-col items-start"
+                  onClick={() => {
+                    setShowAddChapterTypeDialog(false);
+                    openAddMajorChapterDialog(selectedSubjectForChapterType, selectedBookForChapterType);
+                  }}
+                >
+                  <div className="text-left">
+                    <div className="font-medium">대단원</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      하위에 소단원들을 포함하는 상위 단원 (예: 법인세, 소득세)
+                    </div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full h-auto p-4 flex flex-col items-start"
+                  onClick={() => {
+                    setShowAddChapterTypeDialog(false);
+                    // 직접 오답노트 접속이 가능한 소단원으로 대단원을 생성
+                    openAddMajorChapterDialog(selectedSubjectForChapterType, selectedBookForChapterType);
+                  }}
+                >
+                  <div className="text-left">
+                    <div className="font-medium">소단원</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      직접 오답노트에 접속 가능한 단원 (예: 재고자산 Ch3)
+                    </div>
+                  </div>
+                </Button>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowAddChapterTypeDialog(false)}>
+                  취소
                 </Button>
               </div>
             </div>
