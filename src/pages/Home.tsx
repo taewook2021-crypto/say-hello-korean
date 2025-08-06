@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, FolderOpen } from "lucide-react";
+import { BookOpen, Plus, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
@@ -88,7 +88,7 @@ const Home = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5" />
+                <BookOpen className="h-5 w-5" />
                 과목 선택
               </CardTitle>
               <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -134,13 +134,13 @@ const Home = () => {
                   </Card>
                 ))}
               </div>
-            ) : subjects.length === 0 ? (
-              <div className="text-center py-8">
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">등록된 과목이 없습니다</h3>
-                <p className="text-muted-foreground mb-4">
-                  첫 번째 과목을 추가해보세요!
-                </p>
+          ) : subjects.length === 0 ? (
+            <div className="text-center py-8">
+              <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">등록된 과목이 없습니다</h3>
+              <p className="text-muted-foreground mb-4">
+                첫 번째 과목을 추가해보세요!
+              </p>
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
                     <Button>
@@ -171,20 +171,21 @@ const Home = () => {
                   </DialogContent>
                 </Dialog>
               </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {subjects.map((subject, index) => (
-                  <Link key={index} to={`/subject/${encodeURIComponent(subject)}`}>
-                    <Card className="p-4 text-center cursor-pointer hover:bg-accent transition-colors">
-                      <CardContent className="p-0">
-                        <FolderOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                        <p className="text-sm font-medium">{subject}</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            )}
+          ) : (
+            <div className="space-y-2">
+              {subjects.map((subject, index) => (
+                <Link key={index} to={`/subject/${encodeURIComponent(subject)}`}>
+                  <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent transition-colors cursor-pointer group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 bg-primary rounded-full"></div>
+                      <span className="text-lg font-medium">{subject}</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
           </CardContent>
         </Card>
       </div>
