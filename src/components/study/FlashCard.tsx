@@ -147,72 +147,74 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
         </Button>
       </div>
 
-      <div className="perspective-1000">
-        <Card 
-          className={`min-h-[400px] cursor-pointer transition-transform duration-700 preserve-3d ${
+      <div className="perspective-1000 h-[500px]">
+        <div 
+          className={`relative w-full h-full cursor-pointer transition-transform duration-700 preserve-3d ${
             isFlipped ? "rotate-y-180" : ""
           }`}
           onClick={() => setIsFlipped(!isFlipped)}
         >
-          <div className={`absolute inset-0 backface-hidden ${isFlipped ? "rotate-y-180" : ""}`}>
+          {/* 앞면 - 문제 */}
+          <Card className={`absolute inset-0 backface-hidden ${isFlipped ? "opacity-0" : "opacity-100"}`}>
             <CardContent className="p-8 h-full flex flex-col justify-center">
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-medium text-primary mb-4">문제</h3>
-                <p className="text-xl leading-relaxed">{currentNote.question}</p>
+                <p className="text-xl leading-relaxed whitespace-pre-wrap">{currentNote.question}</p>
                 <p className="text-sm text-muted-foreground mt-8">
                   클릭하여 정답 확인
                 </p>
               </div>
             </CardContent>
-          </div>
+          </Card>
 
-          <div className={`absolute inset-0 backface-hidden rotate-y-180 ${isFlipped ? "rotate-y-0" : ""}`}>
-            <CardContent className="p-8 h-full flex flex-col justify-center">
-              <div className="space-y-6">
+          {/* 뒷면 - 정답 */}
+          <Card className={`absolute inset-0 backface-hidden rotate-y-180 ${isFlipped ? "opacity-100" : "opacity-0"}`}>
+            <CardContent className="p-8 h-full flex flex-col justify-between">
+              <div className="space-y-6 flex-1">
                 <div className="text-center">
                   <h3 className="text-lg font-medium text-green-600 mb-4">정답</h3>
-                  <p className="text-xl leading-relaxed mb-6">{currentNote.correct_answer}</p>
+                  <p className="text-xl leading-relaxed mb-6 whitespace-pre-wrap">{currentNote.correct_answer}</p>
                 </div>
 
                 {currentNote.wrong_answer && (
-                  <div className="bg-red-50 dark:bg-red-950 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-red-600 mb-2">내가 틀린 답</h4>
-                    <p className="text-red-700 dark:text-red-300">{currentNote.wrong_answer}</p>
+                  <div className="bg-destructive/10 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-destructive mb-2">내가 틀린 답</h4>
+                    <p className="text-destructive/80 whitespace-pre-wrap">{currentNote.wrong_answer}</p>
                   </div>
                 )}
 
                 {currentNote.explanation && (
-                  <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-blue-600 mb-2">설명</h4>
-                    <p className="text-blue-700 dark:text-blue-300">{currentNote.explanation}</p>
+                  <div className="bg-primary/10 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-primary mb-2">설명</h4>
+                    <p className="text-primary/80 whitespace-pre-wrap">{currentNote.explanation}</p>
                   </div>
                 )}
+              </div>
 
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground mb-4">이 문제를 얼마나 잘 기억하고 있나요?</p>
-                  <div className="flex justify-center gap-2">
-                    {[1, 2, 3, 4, 5].map((level) => (
-                      <Button
-                        key={level}
-                        size="sm"
-                        variant={confidence === level ? "default" : "outline"}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleConfidenceSelect(level);
-                        }}
-                      >
-                        {level}
-                      </Button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    1: 전혀 모름 ~ 5: 완벽히 암기
-                  </p>
+              <div className="text-center mt-6">
+                <p className="text-sm text-muted-foreground mb-4">이 문제를 얼마나 잘 기억하고 있나요?</p>
+                <div className="flex justify-center gap-2">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <Button
+                      key={level}
+                      size="sm"
+                      variant={confidence === level ? "default" : "outline"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleConfidenceSelect(level);
+                      }}
+                    >
+                      {level}
+                    </Button>
+                  ))}
                 </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  1: 전혀 모름 ~ 5: 완벽히 암기
+                </p>
               </div>
             </CardContent>
-          </div>
-        </Card>
+          </Card>
+        </div>
       </div>
 
       <div className="flex justify-between items-center">
