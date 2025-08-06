@@ -494,32 +494,90 @@ const Home = () => {
       
       switch (editTargetType) {
         case 'subject':
-          ({ error } = await supabase
-            .from('subjects')
-            .update({ name: newEditName.trim() })
-            .eq('name', editTargetName));
-          
-          if (!error) {
+          // 과목 이름 변경 시 연관된 모든 테이블 업데이트
+          try {
+            console.log('과목 이름 변경 시작:', editTargetName, '->', newEditName.trim());
+            
+            // 연관 테이블들 먼저 업데이트
+            await supabase
+              .from('wrong_notes')
+              .update({ subject_name: newEditName.trim() })
+              .eq('subject_name', editTargetName);
+              
+            await supabase
+              .from('chapters')
+              .update({ subject_name: newEditName.trim() })
+              .eq('subject_name', editTargetName);
+              
+            await supabase
+              .from('major_chapters')
+              .update({ subject_name: newEditName.trim() })
+              .eq('subject_name', editTargetName);
+              
+            await supabase
+              .from('books')
+              .update({ subject_name: newEditName.trim() })
+              .eq('subject_name', editTargetName);
+            
+            // 마지막에 subjects 테이블 업데이트
+            const { error: finalError } = await supabase
+              .from('subjects')
+              .update({ name: newEditName.trim() })
+              .eq('name', editTargetName);
+              
+            if (finalError) throw finalError;
+            
             setSubjects(prev => prev.map(subject => 
               subject === editTargetName ? newEditName.trim() : subject
             ));
+          } catch (err) {
+            console.error('과목 업데이트 오류:', err);
+            throw err;
           }
           break;
           
         case 'book':
-          ({ error } = await supabase
-            .from('books')
-            .update({ name: newEditName.trim() })
-            .eq('name', editTargetName)
-            .eq('subject_name', editTargetId)); // editTargetId에 subject_name이 저장됨
-          
-          if (!error) {
+          // 책 이름 변경 시 연관된 모든 테이블 업데이트
+          try {
+            console.log('책 이름 변경 시작:', editTargetName, '->', newEditName.trim());
+            
+            // 연관 테이블들 먼저 업데이트
+            await supabase
+              .from('wrong_notes')
+              .update({ book_name: newEditName.trim() })
+              .eq('book_name', editTargetName)
+              .eq('subject_name', editTargetId);
+              
+            await supabase
+              .from('chapters')
+              .update({ book_name: newEditName.trim() })
+              .eq('book_name', editTargetName)
+              .eq('subject_name', editTargetId);
+              
+            await supabase
+              .from('major_chapters')
+              .update({ book_name: newEditName.trim() })
+              .eq('book_name', editTargetName)
+              .eq('subject_name', editTargetId);
+            
+            // 마지막에 books 테이블 업데이트
+            const { error: finalBookError } = await supabase
+              .from('books')
+              .update({ name: newEditName.trim() })
+              .eq('name', editTargetName)
+              .eq('subject_name', editTargetId);
+              
+            if (finalBookError) throw finalBookError;
+            
             setSubjectBooks(prev => ({
               ...prev,
               [editTargetId]: prev[editTargetId]?.map(book => 
                 book === editTargetName ? newEditName.trim() : book
               ) || []
             }));
+          } catch (err) {
+            console.error('책 업데이트 오류:', err);
+            throw err;
           }
           break;
           
@@ -549,7 +607,7 @@ const Home = () => {
             .from('chapters')
             .update({ name: newEditName.trim() })
             .eq('name', editTargetName)
-            .eq('major_chapter_id', editTargetId)); // editTargetId에 major_chapter_id가 저장됨
+            .eq('major_chapter_id', editTargetId));
           
           if (!error) {
             setMajorChapterSubChapters(prev => ({
