@@ -92,6 +92,7 @@ export type Database = {
           id: string
           name: string
           subject_name: string
+          updated_at: string
         }
         Insert: {
           book_name: string
@@ -99,6 +100,7 @@ export type Database = {
           id?: string
           name: string
           subject_name: string
+          updated_at?: string
         }
         Update: {
           book_name?: string
@@ -106,6 +108,7 @@ export type Database = {
           id?: string
           name?: string
           subject_name?: string
+          updated_at?: string
         }
         Relationships: []
       }

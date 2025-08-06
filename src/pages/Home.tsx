@@ -514,21 +514,35 @@ const Home = () => {
                                       <div className="py-1 space-y-1">
                                         {bookMajorChapters[bookKey]?.map((majorChapter, mcIndex) => (
                                           <div key={mcIndex} className="border rounded-sm ml-2">
-                                            <div 
-                                              className="flex items-center justify-between p-1 hover:bg-accent transition-colors cursor-pointer group"
-                                              onClick={() => toggleMajorChapter(majorChapter.id)}
-                                            >
-                                              <div className="flex items-center gap-2">
-                                                <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                                <span className="text-xs font-medium">{majorChapter.name}</span>
-                                              </div>
-                                              {expandedMajorChapter === majorChapter.id ? (
-                                                <ChevronDown className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                                              ) : (
-                                                <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary transition-colors" />
+                                            {/* 대단원 클릭 시 오답노트로 이동하거나 소단원 펼치기 */}
+                                            <div className="flex items-center">
+                                              <Link 
+                                                to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(majorChapter.name)}`}
+                                                className="flex-1"
+                                              >
+                                                <div className="flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer">
+                                                  <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                                  <span className="text-xs font-medium">{majorChapter.name}</span>
+                                                </div>
+                                              </Link>
+                                              {/* 소단원이 있는 경우만 펼치기 버튼 표시 */}
+                                              {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 && (
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  onClick={() => toggleMajorChapter(majorChapter.id)}
+                                                  className="h-6 w-6 p-0 shrink-0"
+                                                >
+                                                  {expandedMajorChapter === majorChapter.id ? (
+                                                    <ChevronDown className="h-3 w-3" />
+                                                  ) : (
+                                                    <ChevronRight className="h-3 w-3" />
+                                                  )}
+                                                </Button>
                                               )}
                                             </div>
                                             
+                                            {/* 소단원 목록 (있는 경우만) */}
                                             {expandedMajorChapter === majorChapter.id && (
                                               <div className="px-2 pb-2 border-t bg-muted/5">
                                                 <div className="flex items-center justify-between py-1">
