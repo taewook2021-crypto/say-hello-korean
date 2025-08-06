@@ -178,26 +178,18 @@ export function TodayReviews() {
           ) : (
             <div className="space-y-3">
               {todayReviews.map((review) => (
-                <div key={review.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">
-                        {review.subject_name} &gt; {review.book_name}
-                      </Badge>
-                      <Badge variant="secondary">
-                        {review.review_count + 1}회차 복습
-                      </Badge>
-                    </div>
-                    <p className="text-sm font-medium line-clamp-2">
-                      {review.question}
-                    </p>
+                <div key={review.id} className="p-3 border rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline">
+                      {review.subject_name} &gt; {review.book_name}
+                    </Badge>
+                    <Badge variant="secondary">
+                      {review.review_count + 1}회차 복습
+                    </Badge>
                   </div>
-                  <Button 
-                    size="sm"
-                    onClick={() => startReview(review.subject_name, review.book_name, review.chapter_name)}
-                  >
-                    복습하기
-                  </Button>
+                  <p className="text-sm font-medium line-clamp-2">
+                    {review.question}
+                  </p>
                 </div>
               ))}
             </div>
