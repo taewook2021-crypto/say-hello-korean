@@ -75,6 +75,138 @@ export type Database = {
           },
         ]
       }
+      memorization_checklist: {
+        Row: {
+          confidence_level: number | null
+          created_at: string
+          id: string
+          is_memorized: boolean
+          last_reviewed_at: string | null
+          updated_at: string
+          user_id: string | null
+          wrong_note_id: string
+        }
+        Insert: {
+          confidence_level?: number | null
+          created_at?: string
+          id?: string
+          is_memorized?: boolean
+          last_reviewed_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+          wrong_note_id: string
+        }
+        Update: {
+          confidence_level?: number | null
+          created_at?: string
+          id?: string
+          is_memorized?: boolean
+          last_reviewed_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+          wrong_note_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memorization_checklist_wrong_note_id_fkey"
+            columns: ["wrong_note_id"]
+            isOneToOne: false
+            referencedRelation: "wrong_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      review_schedule: {
+        Row: {
+          created_at: string
+          ease_factor: number
+          id: string
+          interval_days: number
+          is_completed: boolean
+          next_review_date: string
+          review_count: number
+          updated_at: string
+          user_id: string | null
+          wrong_note_id: string
+        }
+        Insert: {
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          is_completed?: boolean
+          next_review_date: string
+          review_count?: number
+          updated_at?: string
+          user_id?: string | null
+          wrong_note_id: string
+        }
+        Update: {
+          created_at?: string
+          ease_factor?: number
+          id?: string
+          interval_days?: number
+          is_completed?: boolean
+          next_review_date?: string
+          review_count?: number
+          updated_at?: string
+          user_id?: string | null
+          wrong_note_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_schedule_wrong_note_id_fkey"
+            columns: ["wrong_note_id"]
+            isOneToOne: false
+            referencedRelation: "wrong_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_sessions: {
+        Row: {
+          completed_at: string
+          confidence_level: number | null
+          created_at: string
+          id: string
+          score: number | null
+          session_type: Database["public"]["Enums"]["study_session_type"]
+          time_spent: number
+          user_id: string | null
+          wrong_note_id: string
+        }
+        Insert: {
+          completed_at?: string
+          confidence_level?: number | null
+          created_at?: string
+          id?: string
+          score?: number | null
+          session_type: Database["public"]["Enums"]["study_session_type"]
+          time_spent?: number
+          user_id?: string | null
+          wrong_note_id: string
+        }
+        Update: {
+          completed_at?: string
+          confidence_level?: number | null
+          created_at?: string
+          id?: string
+          score?: number | null
+          session_type?: Database["public"]["Enums"]["study_session_type"]
+          time_spent?: number
+          user_id?: string | null
+          wrong_note_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_sessions_wrong_note_id_fkey"
+            columns: ["wrong_note_id"]
+            isOneToOne: false
+            referencedRelation: "wrong_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           created_at: string
@@ -140,10 +272,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_next_review_date: {
+        Args: {
+          current_interval: number
+          ease_factor: number
+          performance_score?: number
+        }
+        Returns: number
+      }
     }
     Enums: {
-      [_ in never]: never
+      study_session_type: "flashcard" | "quiz" | "review"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -270,6 +409,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      study_session_type: ["flashcard", "quiz", "review"],
+    },
   },
 } as const
