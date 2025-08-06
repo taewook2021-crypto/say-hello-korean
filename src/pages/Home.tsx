@@ -353,28 +353,42 @@ const Home = () => {
   };
 
   const deleteMajorChapter = async () => {
+    console.log('삭제 시도:', deleteTargetId, deleteTargetName);
+    
     try {
       // 대단원 삭제 시 하위 소단원들도 함께 삭제
+      console.log('소단원 삭제 시도...');
       const { error: subChapterError } = await supabase
         .from('chapters')
         .delete()
         .eq('major_chapter_id', deleteTargetId);
 
-      if (subChapterError) throw subChapterError;
+      if (subChapterError) {
+        console.error('소단원 삭제 에러:', subChapterError);
+        throw subChapterError;
+      }
+      console.log('소단원 삭제 완료');
 
+      console.log('대단원 삭제 시도...');
       const { error: majorChapterError } = await supabase
         .from('major_chapters')
         .delete()
         .eq('id', deleteTargetId);
 
-      if (majorChapterError) throw majorChapterError;
+      if (majorChapterError) {
+        console.error('대단원 삭제 에러:', majorChapterError);
+        throw majorChapterError;
+      }
+      console.log('대단원 삭제 완료');
 
       // UI 상태 업데이트
+      console.log('UI 상태 업데이트 시작...');
       setBookMajorChapters(prev => {
         const newState = { ...prev };
         Object.keys(newState).forEach(bookKey => {
           newState[bookKey] = newState[bookKey].filter(chapter => chapter.id !== deleteTargetId);
         });
+        console.log('업데이트된 major chapters:', newState);
         return newState;
       });
 
@@ -382,6 +396,7 @@ const Home = () => {
       setMajorChapterSubChapters(prev => {
         const newState = { ...prev };
         delete newState[deleteTargetId];
+        console.log('업데이트된 sub chapters:', newState);
         return newState;
       });
 
@@ -402,6 +417,8 @@ const Home = () => {
   };
 
   const deleteSubChapter = async () => {
+    console.log('소단원 삭제 시도:', deleteTargetId, deleteTargetName);
+    
     try {
       const { error } = await supabase
         .from('chapters')
@@ -409,13 +426,22 @@ const Home = () => {
         .eq('name', deleteTargetName)
         .eq('major_chapter_id', deleteTargetId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('소단원 삭제 에러:', error);
+        throw error;
+      }
+      console.log('소단원 삭제 완료');
 
       // UI 상태 업데이트
-      setMajorChapterSubChapters(prev => ({
-        ...prev,
-        [deleteTargetId]: prev[deleteTargetId]?.filter(chapter => chapter !== deleteTargetName) || []
-      }));
+      console.log('소단원 UI 상태 업데이트 시작...');
+      setMajorChapterSubChapters(prev => {
+        const newState = {
+          ...prev,
+          [deleteTargetId]: prev[deleteTargetId]?.filter(chapter => chapter !== deleteTargetName) || []
+        };
+        console.log('업데이트된 소단원 상태:', newState);
+        return newState;
+      });
 
       setShowDeleteConfirmDialog(false);
       
