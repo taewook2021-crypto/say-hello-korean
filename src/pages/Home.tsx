@@ -314,16 +314,8 @@ const Home = () => {
                   
                   {expandedSubject === subject && (
                     <div className="px-4 pb-4 border-t bg-muted/20">
-                      <div className="flex items-center justify-between py-2">
+                      <div className="py-2">
                         <span className="text-sm font-medium text-muted-foreground">책 목록</span>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => openAddBookDialog(subject)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
                       </div>
                       {booksLoading[subject] ? (
                         <div className="space-y-2">
@@ -331,66 +323,81 @@ const Home = () => {
                             <div key={idx} className="h-8 bg-muted rounded animate-pulse" />
                           ))}
                         </div>
-                      ) : subjectBooks[subject]?.length === 0 ? (
-                        <div className="py-4 text-center text-muted-foreground">
-                          등록된 책이 없습니다
-                        </div>
                       ) : (
                         <div className="space-y-1">
-                          {subjectBooks[subject]?.map((book, bookIndex) => {
-                            const bookKey = `${subject}|${book}`;
-                            return (
-                              <div key={bookIndex} className="border rounded-md ml-4">
-                                <div 
-                                  className="flex items-center justify-between p-2 hover:bg-accent transition-colors cursor-pointer group"
-                                  onClick={() => toggleBook(subject, book)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                                    <span className="text-sm">{book}</span>
-                                  </div>
-                                  {expandedBook === bookKey ? (
-                                    <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                  )}
-                                </div>
-                                
-                                {expandedBook === bookKey && (
-                                  <div className="px-2 pb-2 border-t bg-muted/10">
-                                    {chaptersLoading[bookKey] ? (
-                                      <div className="py-2">
-                                        <div className="space-y-1">
-                                          {Array.from({ length: 2 }).map((_, idx) => (
-                                            <div key={idx} className="h-6 bg-muted rounded animate-pulse" />
-                                          ))}
-                                        </div>
-                                      </div>
-                                    ) : bookChapters[bookKey]?.length === 0 ? (
-                                      <div className="py-2 text-center text-muted-foreground text-xs">
-                                        등록된 단원이 없습니다
-                                      </div>
+                          {subjectBooks[subject]?.length === 0 ? (
+                            <div className="py-2 text-center text-muted-foreground text-sm">
+                              등록된 책이 없습니다
+                            </div>
+                          ) : (
+                            subjectBooks[subject]?.map((book, bookIndex) => {
+                              const bookKey = `${subject}|${book}`;
+                              return (
+                                <div key={bookIndex} className="border rounded-md ml-4">
+                                  <div 
+                                    className="flex items-center justify-between p-2 hover:bg-accent transition-colors cursor-pointer group"
+                                    onClick={() => toggleBook(subject, book)}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                                      <span className="text-sm">{book}</span>
+                                    </div>
+                                    {expandedBook === bookKey ? (
+                                      <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                     ) : (
-                                      <div className="py-1 space-y-1">
-                                        {bookChapters[bookKey]?.map((chapter, chapterIndex) => (
-                                          <Link 
-                                            key={chapterIndex} 
-                                            to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(chapter)}`}
-                                            className="block"
-                                          >
-                                            <div className="flex items-center gap-2 p-1 rounded hover:bg-accent transition-colors cursor-pointer">
-                                              <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                              <span className="text-xs">{chapter}</span>
-                                            </div>
-                                          </Link>
-                                        ))}
-                                      </div>
+                                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                     )}
                                   </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                                  
+                                  {expandedBook === bookKey && (
+                                    <div className="px-2 pb-2 border-t bg-muted/10">
+                                      {chaptersLoading[bookKey] ? (
+                                        <div className="py-2">
+                                          <div className="space-y-1">
+                                            {Array.from({ length: 2 }).map((_, idx) => (
+                                              <div key={idx} className="h-6 bg-muted rounded animate-pulse" />
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ) : bookChapters[bookKey]?.length === 0 ? (
+                                        <div className="py-2 text-center text-muted-foreground text-xs">
+                                          등록된 단원이 없습니다
+                                        </div>
+                                      ) : (
+                                        <div className="py-1 space-y-1">
+                                          {bookChapters[bookKey]?.map((chapter, chapterIndex) => (
+                                            <Link 
+                                              key={chapterIndex} 
+                                              to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(chapter)}`}
+                                              className="block"
+                                            >
+                                              <div className="flex items-center gap-2 p-1 rounded hover:bg-accent transition-colors cursor-pointer">
+                                                <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                                <span className="text-xs">{chapter}</span>
+                                              </div>
+                                            </Link>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                          
+                          {/* 책 추가 버튼 */}
+                          <div className="mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => openAddBookDialog(subject)}
+                              className="w-full justify-center border-dashed"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              책 추가
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
