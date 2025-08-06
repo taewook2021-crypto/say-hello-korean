@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, ChevronRight, ChevronDown } from "lucide-react";
+import { BookOpen, Plus, ChevronRight, ChevronDown, Minus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,10 @@ const Home = () => {
   const [showAddChapterTypeDialog, setShowAddChapterTypeDialog] = useState(false);
   const [selectedSubjectForChapterType, setSelectedSubjectForChapterType] = useState("");
   const [selectedBookForChapterType, setSelectedBookForChapterType] = useState("");
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [deleteTargetType, setDeleteTargetType] = useState<'major' | 'sub'>('major');
+  const [deleteTargetId, setDeleteTargetId] = useState("");
+  const [deleteTargetName, setDeleteTargetName] = useState("");
   
   const { toast } = useToast();
 
@@ -341,6 +345,102 @@ const Home = () => {
     setShowAddChapterTypeDialog(true);
   };
 
+  const openDeleteDialog = (type: 'major' | 'sub', id: string, name: string) => {
+    setDeleteTargetType(type);
+    setDeleteTargetId(id);
+    setDeleteTargetName(name);
+    setShowDeleteConfirmDialog(true);
+  };
+
+  const deleteMajorChapter = async () => {
+    try {
+      // 대단원 삭제 시 하위 소단원들도 함께 삭제
+      const { error: subChapterError } = await supabase
+        .from('chapters')
+        .delete()
+        .eq('major_chapter_id', deleteTargetId);
+
+      if (subChapterError) throw subChapterError;
+
+      const { error: majorChapterError } = await supabase
+        .from('major_chapters')
+        .delete()
+        .eq('id', deleteTargetId);
+
+      if (majorChapterError) throw majorChapterError;
+
+      // UI 상태 업데이트
+      setBookMajorChapters(prev => {
+        const newState = { ...prev };
+        Object.keys(newState).forEach(bookKey => {
+          newState[bookKey] = newState[bookKey].filter(chapter => chapter.id !== deleteTargetId);
+        });
+        return newState;
+      });
+
+      // 소단원 상태도 삭제
+      setMajorChapterSubChapters(prev => {
+        const newState = { ...prev };
+        delete newState[deleteTargetId];
+        return newState;
+      });
+
+      setShowDeleteConfirmDialog(false);
+      
+      toast({
+        title: "단원 삭제됨",
+        description: `${deleteTargetName} 단원이 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting major chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteSubChapter = async () => {
+    try {
+      const { error } = await supabase
+        .from('chapters')
+        .delete()
+        .eq('name', deleteTargetName)
+        .eq('major_chapter_id', deleteTargetId);
+
+      if (error) throw error;
+
+      // UI 상태 업데이트
+      setMajorChapterSubChapters(prev => ({
+        ...prev,
+        [deleteTargetId]: prev[deleteTargetId]?.filter(chapter => chapter !== deleteTargetName) || []
+      }));
+
+      setShowDeleteConfirmDialog(false);
+      
+      toast({
+        title: "소단원 삭제됨",
+        description: `${deleteTargetName} 소단원이 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting sub chapter:', error);
+      toast({
+        title: "오류",
+        description: "소단원 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (deleteTargetType === 'major') {
+      deleteMajorChapter();
+    } else {
+      deleteSubChapter();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -523,46 +623,60 @@ const Home = () => {
                                     ) : (
                                       <div className="py-1 space-y-1">
                                         {bookMajorChapters[bookKey]?.map((majorChapter, mcIndex) => (
-                                           <div key={mcIndex} className="border rounded-sm ml-2">
-                                              {/* 소단원이 있으면 대단원(소단원 추가만 가능), 없으면 소단원(오답노트 접속 가능) */}
-                                              <div className="flex items-center">
-                                                {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 ? (
-                                                  // 대단원: 소단원 목록이 있는 경우 펼치기만 가능
-                                                  <div 
-                                                    className="flex-1 flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer"
-                                                    onClick={() => toggleMajorChapter(majorChapter.id)}
-                                                  >
-                                                    <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                                    <span className="text-xs font-medium">{majorChapter.name}</span>
-                                                  </div>
-                                                ) : (
-                                                  // 소단원: 소단원 목록이 없는 경우 오답노트 접속 가능
-                                                  <Link 
-                                                    to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(majorChapter.name)}`}
-                                                    className="flex-1"
-                                                  >
-                                                    <div className="flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer">
-                                                      <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                                      <span className="text-xs font-medium">{majorChapter.name}</span>
-                                                    </div>
-                                                  </Link>
-                                                )}
-                                                {/* 소단원이 있는 경우만 펼치기 버튼 표시 */}
-                                                {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 && (
-                                                  <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => toggleMajorChapter(majorChapter.id)}
-                                                    className="h-6 w-6 p-0 shrink-0"
-                                                  >
-                                                    {expandedMajorChapter === majorChapter.id ? (
-                                                      <ChevronDown className="h-3 w-3" />
-                                                    ) : (
-                                                      <ChevronRight className="h-3 w-3" />
-                                                    )}
-                                                  </Button>
-                                                )}
-                                              </div>
+                                            <div key={mcIndex} className="border rounded-sm ml-2">
+                                               {/* 소단원이 있으면 대단원(소단원 추가만 가능), 없으면 소단원(오답노트 접속 가능) */}
+                                               <div className="flex items-center group">
+                                                 {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 ? (
+                                                   // 대단원: 소단원 목록이 있는 경우 펼치기만 가능
+                                                   <div 
+                                                     className="flex-1 flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer"
+                                                     onClick={() => toggleMajorChapter(majorChapter.id)}
+                                                   >
+                                                     <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                                     <span className="text-xs font-medium">{majorChapter.name}</span>
+                                                   </div>
+                                                 ) : (
+                                                   // 소단원: 소단원 목록이 없는 경우 오답노트 접속 가능
+                                                   <Link 
+                                                     to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(majorChapter.name)}`}
+                                                     className="flex-1"
+                                                   >
+                                                     <div className="flex items-center gap-2 p-1 hover:bg-accent transition-colors cursor-pointer">
+                                                       <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                                       <span className="text-xs font-medium">{majorChapter.name}</span>
+                                                     </div>
+                                                   </Link>
+                                                 )}
+                                                 
+                                                 {/* 삭제 버튼 */}
+                                                 <Button
+                                                   size="sm"
+                                                   variant="ghost"
+                                                   onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     openDeleteDialog('major', majorChapter.id, majorChapter.name);
+                                                   }}
+                                                   className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                 >
+                                                   <Minus className="h-3 w-3 text-destructive" />
+                                                 </Button>
+                                                 
+                                                 {/* 소단원이 있는 경우만 펼치기 버튼 표시 */}
+                                                 {majorChapterSubChapters[majorChapter.id] && majorChapterSubChapters[majorChapter.id].length > 0 && (
+                                                   <Button
+                                                     size="sm"
+                                                     variant="ghost"
+                                                     onClick={() => toggleMajorChapter(majorChapter.id)}
+                                                     className="h-6 w-6 p-0 shrink-0"
+                                                   >
+                                                     {expandedMajorChapter === majorChapter.id ? (
+                                                       <ChevronDown className="h-3 w-3" />
+                                                     ) : (
+                                                       <ChevronRight className="h-3 w-3" />
+                                                     )}
+                                                   </Button>
+                                                 )}
+                                               </div>
                                             
                                             {/* 소단원 목록 (있는 경우만) */}
                                             {expandedMajorChapter === majorChapter.id && (
@@ -587,20 +701,32 @@ const Home = () => {
                                                     </div>
                                                   </div>
                                                 ) : (
-                                                  <div className="space-y-1 ml-4">
-                                                    {majorChapterSubChapters[majorChapter.id]?.map((subChapter, scIndex) => (
-                                                      <Link 
-                                                        key={scIndex} 
-                                                        to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(subChapter)}`}
-                                                        className="block"
-                                                      >
-                                                        <div className="flex items-center gap-2 p-1.5 rounded hover:bg-accent transition-colors cursor-pointer border border-dashed border-transparent hover:border-border">
-                                                          <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-                                                          <span className="text-xs text-muted-foreground">{subChapter}</span>
-                                                        </div>
-                                                      </Link>
-                                                    ))}
-                                                  </div>
+                                                   <div className="space-y-1 ml-4">
+                                                     {majorChapterSubChapters[majorChapter.id]?.map((subChapter, scIndex) => (
+                                                       <div key={scIndex} className="flex items-center group">
+                                                         <Link 
+                                                           to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(subChapter)}`}
+                                                           className="flex-1"
+                                                         >
+                                                           <div className="flex items-center gap-2 p-1.5 rounded hover:bg-accent transition-colors cursor-pointer border border-dashed border-transparent hover:border-border">
+                                                             <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                                                             <span className="text-xs text-muted-foreground">{subChapter}</span>
+                                                           </div>
+                                                         </Link>
+                                                         <Button
+                                                           size="sm"
+                                                           variant="ghost"
+                                                           onClick={(e) => {
+                                                             e.stopPropagation();
+                                                             openDeleteDialog('sub', majorChapter.id, subChapter);
+                                                           }}
+                                                           className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                         >
+                                                           <Minus className="h-2 w-2 text-destructive" />
+                                                         </Button>
+                                                       </div>
+                                                     ))}
+                                                   </div>
                                                 )}
                                               </div>
                                             )}
@@ -759,6 +885,31 @@ const Home = () => {
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowAddChapterTypeDialog(false)}>
                   취소
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 삭제 확인 다이얼로그 */}
+        <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>삭제 확인</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {deleteTargetType === 'major' 
+                  ? `"${deleteTargetName}" 단원을 삭제하시겠습니까? 하위 소단원들도 함께 삭제됩니다.`
+                  : `"${deleteTargetName}" 소단원을 삭제하시겠습니까?`
+                }
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowDeleteConfirmDialog(false)}>
+                  취소
+                </Button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  삭제
                 </Button>
               </div>
             </div>
