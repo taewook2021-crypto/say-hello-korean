@@ -249,20 +249,23 @@ export function SubjectiveQuiz({ notes, onComplete }: SubjectiveQuizProps) {
                   내 답안이 얼마나 정확한가요?
                 </p>
                 <div className="flex justify-center gap-2">
-                  {[1, 2, 3, 4, 5].map((level) => (
+                  {[
+                    { label: "X", value: 1, desc: "틀림" },
+                    { label: "△", value: 3, desc: "애매" },
+                    { label: "O", value: 5, desc: "정답" }
+                  ].map(({ label, value, desc }) => (
                     <Button
-                      key={level}
+                      key={value}
                       size="sm"
-                      variant={confidence === level ? "default" : "outline"}
-                      onClick={() => handleConfidenceSelect(level)}
+                      variant={confidence === value ? "default" : "outline"}
+                      onClick={() => handleConfidenceSelect(value)}
+                      className="flex flex-col items-center gap-1 h-auto py-2"
                     >
-                      {level}
+                      <span className="text-lg font-bold">{label}</span>
+                      <span className="text-xs">{desc}</span>
                     </Button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  1: 전혀 틀림 ~ 5: 완전히 정답
-                </p>
               </div>
             </div>
           )}

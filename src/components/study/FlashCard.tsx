@@ -194,23 +194,26 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
               <div className="text-center mt-6">
                 <p className="text-sm text-muted-foreground mb-4">이 문제를 얼마나 잘 기억하고 있나요?</p>
                 <div className="flex justify-center gap-2">
-                  {[1, 2, 3, 4, 5].map((level) => (
+                  {[
+                    { label: "X", value: 1, desc: "모름" },
+                    { label: "△", value: 3, desc: "애매" },
+                    { label: "O", value: 5, desc: "확실" }
+                  ].map(({ label, value, desc }) => (
                     <Button
-                      key={level}
+                      key={value}
                       size="sm"
-                      variant={confidence === level ? "default" : "outline"}
+                      variant={confidence === value ? "default" : "outline"}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleConfidenceSelect(level);
+                        handleConfidenceSelect(value);
                       }}
+                      className="flex flex-col items-center gap-1 h-auto py-2"
                     >
-                      {level}
+                      <span className="text-lg font-bold">{label}</span>
+                      <span className="text-xs">{desc}</span>
                     </Button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  1: 전혀 모름 ~ 5: 완벽히 암기
-                </p>
               </div>
             </CardContent>
           </Card>
@@ -230,7 +233,7 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
         {confidence !== null && (
           <Badge variant="default" className="flex items-center gap-2">
             <Check className="h-3 w-3" />
-            자신감 수준: {confidence}/5
+            자신감: {confidence === 1 ? "X" : confidence === 3 ? "△" : "O"}
           </Badge>
         )}
 
