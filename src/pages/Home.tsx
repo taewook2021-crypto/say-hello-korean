@@ -23,6 +23,10 @@ const Home = () => {
   const [showAddBookDialog, setShowAddBookDialog] = useState(false);
   const [newBook, setNewBook] = useState("");
   const [selectedSubjectForBook, setSelectedSubjectForBook] = useState("");
+  const [showAddChapterDialog, setShowAddChapterDialog] = useState(false);
+  const [newChapter, setNewChapter] = useState("");
+  const [selectedBookForChapter, setSelectedBookForChapter] = useState("");
+  const [selectedSubjectForChapter, setSelectedSubjectForChapter] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -158,7 +162,6 @@ const Home = () => {
 
       if (error) throw error;
 
-      // 해당 과목의 책 목록 업데이트
       setSubjectBooks(prev => ({
         ...prev,
         [selectedSubjectForBook]: [...(prev[selectedSubjectForBook] || []), newBook.trim()]
@@ -185,6 +188,51 @@ const Home = () => {
   const openAddBookDialog = (subjectName: string) => {
     setSelectedSubjectForBook(subjectName);
     setShowAddBookDialog(true);
+  };
+
+  const addChapter = async () => {
+    if (!newChapter.trim() || !selectedSubjectForChapter || !selectedBookForChapter) return;
+
+    try {
+      const { error } = await supabase
+        .from('chapters')
+        .insert({ 
+          name: newChapter.trim(),
+          subject_name: selectedSubjectForChapter,
+          book_name: selectedBookForChapter
+        });
+
+      if (error) throw error;
+
+      const bookKey = `${selectedSubjectForChapter}|${selectedBookForChapter}`;
+      setBookChapters(prev => ({
+        ...prev,
+        [bookKey]: [...(prev[bookKey] || []), newChapter.trim()]
+      }));
+      
+      setNewChapter("");
+      setShowAddChapterDialog(false);
+      setSelectedSubjectForChapter("");
+      setSelectedBookForChapter("");
+      
+      toast({
+        title: "단원 추가됨",
+        description: `${newChapter} 단원이 추가되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error adding chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원 추가에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openAddChapterDialog = (subjectName: string, bookName: string) => {
+    setSelectedSubjectForChapter(subjectName);
+    setSelectedBookForChapter(bookName);
+    setShowAddChapterDialog(true);
   };
 
   return (
@@ -326,70 +374,76 @@ const Home = () => {
                       ) : (
                         <div className="space-y-1">
                           {subjectBooks[subject]?.map((book, bookIndex) => {
-                              const bookKey = `${subject}|${book}`;
-                              return (
-                                <div key={bookIndex} className="border rounded-md ml-4">
-                                  <div 
-                                    className="flex items-center justify-between p-2 hover:bg-accent transition-colors cursor-pointer group"
-                                    onClick={() => toggleBook(subject, book)}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                                      <span className="text-sm">{book}</span>
-                                    </div>
-                                    {expandedBook === bookKey ? (
-                                      <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                    )}
+                            const bookKey = `${subject}|${book}`;
+                            return (
+                              <div key={bookIndex} className="border rounded-md ml-4">
+                                <div 
+                                  className="flex items-center justify-between p-2 hover:bg-accent transition-colors cursor-pointer group"
+                                  onClick={() => toggleBook(subject, book)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                                    <span className="text-sm">{book}</span>
                                   </div>
-                                  
-                                  {expandedBook === bookKey && (
-                                    <div className="px-2 pb-2 border-t bg-muted/10">
-                                      {chaptersLoading[bookKey] ? (
-                                        <div className="py-2">
-                                          <div className="space-y-1">
-                                            {Array.from({ length: 2 }).map((_, idx) => (
-                                              <div key={idx} className="h-6 bg-muted rounded animate-pulse" />
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ) : bookChapters[bookKey]?.length === 0 ? (
-                                        <div className="py-2 text-center text-muted-foreground text-xs">
-                                          등록된 단원이 없습니다
-                                        </div>
-                                      ) : (
-                                        <div className="py-1 space-y-1">
-                                          {bookChapters[bookKey]?.map((chapter, chapterIndex) => (
-                                            <Link 
-                                              key={chapterIndex} 
-                                              to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(chapter)}`}
-                                              className="block"
-                                            >
-                                              <div className="flex items-center gap-2 p-1 rounded hover:bg-accent transition-colors cursor-pointer">
-                                                <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
-                                                <span className="text-xs">{chapter}</span>
-                                              </div>
-                                            </Link>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
+                                  {expandedBook === bookKey ? (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                   )}
                                 </div>
-                              );
-                            })}
+                                
+                                {expandedBook === bookKey && (
+                                  <div className="px-2 pb-2 border-t bg-muted/10">
+                                    <div className="flex items-center justify-between py-1">
+                                      <span className="text-xs text-muted-foreground">단원 목록</span>
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        onClick={() => openAddChapterDialog(subject, book)}
+                                        className="h-4 w-4 p-0"
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    {chaptersLoading[bookKey] ? (
+                                      <div className="py-2">
+                                        <div className="space-y-1">
+                                          {Array.from({ length: 2 }).map((_, idx) => (
+                                            <div key={idx} className="h-6 bg-muted rounded animate-pulse" />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="py-1 space-y-1">
+                                        {bookChapters[bookKey]?.map((chapter, chapterIndex) => (
+                                          <Link 
+                                            key={chapterIndex} 
+                                            to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(chapter)}`}
+                                            className="block"
+                                          >
+                                            <div className="flex items-center gap-2 p-1 rounded hover:bg-accent transition-colors cursor-pointer">
+                                              <div className="w-1.5 h-1.5 bg-accent rounded-full"></div>
+                                              <span className="text-xs">{chapter}</span>
+                                            </div>
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                           
-                          {/* 책 추가 버튼 */}
-                          <div className="mt-2">
+                          {/* 책 추가 버튼 - 작은 + 버튼 */}
+                          <div className="mt-2 flex">
                             <Button 
-                              variant="outline" 
                               size="sm" 
+                              variant="ghost" 
                               onClick={() => openAddBookDialog(subject)}
-                              className="w-full justify-center border-dashed"
+                              className="h-6 w-6 p-0 border border-dashed ml-4"
                             >
-                              <Plus className="h-4 w-4 mr-2" />
-                              책 추가
+                              <Plus className="h-3 w-3" />
                             </Button>
                           </div>
                         </div>
@@ -421,6 +475,31 @@ const Home = () => {
                   취소
                 </Button>
                 <Button onClick={addBook} disabled={!newBook.trim()}>
+                  추가
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* 단원 추가 다이얼로그 */}
+        <Dialog open={showAddChapterDialog} onOpenChange={setShowAddChapterDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>새 단원 추가</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input
+                placeholder="단원명을 입력하세요 (예: Ch 3 재고자산)"
+                value={newChapter}
+                onChange={(e) => setNewChapter(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addChapter()}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowAddChapterDialog(false)}>
+                  취소
+                </Button>
+                <Button onClick={addChapter} disabled={!newChapter.trim()}>
                   추가
                 </Button>
               </div>
