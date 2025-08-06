@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
+import { PdfTemplateSelector, PdfTemplate } from "@/components/PdfTemplateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
 import { FlashCard } from "@/components/study/FlashCard";
@@ -46,6 +47,8 @@ const Index = () => {
     includeWrongAnswers: true,
     unresolvedOnly: false
   });
+  const [showPdfTemplateSelector, setShowPdfTemplateSelector] = useState(false);
+  const [selectedPdfTemplates, setSelectedPdfTemplates] = useState<{cover?: PdfTemplate, paper?: PdfTemplate}>({});
   const { toast } = useToast();
   
   const subject = decodeURIComponent(subjectName || '');
@@ -282,7 +285,17 @@ const Index = () => {
     }));
   };
 
+  const handleTemplateSelect = (coverTemplate: PdfTemplate, paperTemplate: PdfTemplate) => {
+    setSelectedPdfTemplates({ cover: coverTemplate, paper: paperTemplate });
+  };
+
   const handleDownloadPDF = async (options = pdfOptions) => {
+    // 템플릿이 선택되지 않았으면 선택기를 먼저 보여줌
+    if (!selectedPdfTemplates.cover || !selectedPdfTemplates.paper) {
+      setShowPdfTemplateSelector(true);
+      return;
+    }
+
     const filteredNotes = options.unresolvedOnly 
       ? notes.filter(note => !note.isResolved)
       : notes;
@@ -307,7 +320,13 @@ const Index = () => {
       return;
     }
 
-    const success = await downloadPDF(filteredNotes, subject, book, chapter, options);
+    const extendedOptions = {
+      ...options,
+      coverTemplate: selectedPdfTemplates.cover,
+      paperTemplate: selectedPdfTemplates.paper
+    };
+
+    const success = await downloadPDF(filteredNotes, subject, book, chapter, extendedOptions);
     if (success) {
       toast({
         title: "성공",
@@ -873,6 +892,29 @@ const Index = () => {
                   )}
                 </div>
               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* PDF 템플릿 선택기 모달 */}
+        <Dialog open={showPdfTemplateSelector} onOpenChange={setShowPdfTemplateSelector}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>PDF 템플릿 선택</DialogTitle>
+            </DialogHeader>
+            <div className="mt-6">
+              <PdfTemplateSelector
+                onSelect={(coverTemplate, paperTemplate) => {
+                  handleTemplateSelect(coverTemplate, paperTemplate);
+                  setShowPdfTemplateSelector(false);
+                  // 템플릿 선택 후 PDF 다운로드 실행
+                  setTimeout(() => {
+                    handleDownloadPDF(pdfOptions);
+                  }, 100);
+                }}
+                selectedCover={selectedPdfTemplates.cover}
+                selectedPaper={selectedPdfTemplates.paper}
+              />
             </div>
           </DialogContent>
         </Dialog>
