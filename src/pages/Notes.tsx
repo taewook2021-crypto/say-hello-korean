@@ -39,7 +39,8 @@ const Index = () => {
   const [showStudyModal, setShowStudyModal] = useState(false);
   const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
   const [pdfOptions, setPdfOptions] = useState({
-    includeWrongAnswers: true
+    includeWrongAnswers: true,
+    unresolvedOnly: false
   });
   const { toast } = useToast();
   
@@ -278,10 +279,16 @@ const Index = () => {
   };
 
   const handleDownloadPDF = async (options = pdfOptions) => {
-    if (notes.length === 0) {
+    const filteredNotes = options.unresolvedOnly 
+      ? notes.filter(note => !note.isResolved)
+      : notes;
+
+    if (filteredNotes.length === 0) {
       toast({
         title: "알림",
-        description: "내보낼 오답노트가 없습니다.",
+        description: options.unresolvedOnly 
+          ? "미해결 오답노트가 없습니다."
+          : "내보낼 오답노트가 없습니다.",
         variant: "destructive",
       });
       return;
@@ -296,7 +303,7 @@ const Index = () => {
       return;
     }
 
-    const success = await downloadPDF(notes, subject, book, chapter, options);
+    const success = await downloadPDF(filteredNotes, subject, book, chapter, options);
     if (success) {
       toast({
         title: "성공",
@@ -312,10 +319,16 @@ const Index = () => {
   };
 
   const handlePrintPDF = async (options = pdfOptions) => {
-    if (notes.length === 0) {
+    const filteredNotes = options.unresolvedOnly 
+      ? notes.filter(note => !note.isResolved)
+      : notes;
+
+    if (filteredNotes.length === 0) {
       toast({
         title: "알림",
-        description: "인쇄할 오답노트가 없습니다.",
+        description: options.unresolvedOnly 
+          ? "미해결 오답노트가 없습니다."
+          : "인쇄할 오답노트가 없습니다.",
         variant: "destructive",
       });
       return;
@@ -330,7 +343,7 @@ const Index = () => {
       return;
     }
 
-    const success = await printPDF(notes, subject, book, chapter, options);
+    const success = await printPDF(filteredNotes, subject, book, chapter, options);
     if (!success) {
       toast({
         title: "오류",
@@ -543,6 +556,19 @@ const Index = () => {
                       }
                     />
                     <Label htmlFor="includeWrongAnswers">내가 작성한 답 포함</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="unresolvedOnly"
+                      checked={pdfOptions.unresolvedOnly}
+                      onCheckedChange={(checked) => 
+                        setPdfOptions(prev => ({ 
+                          ...prev, 
+                          unresolvedOnly: checked as boolean 
+                        }))
+                      }
+                    />
+                    <Label htmlFor="unresolvedOnly">미해결 문제만 인쇄</Label>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
