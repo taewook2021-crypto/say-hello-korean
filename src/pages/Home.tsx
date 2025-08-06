@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, ChevronRight, ChevronDown, Minus } from "lucide-react";
+import { BookOpen, Plus, ChevronRight, ChevronDown, Minus, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +42,13 @@ const Home = () => {
   const [deleteTargetType, setDeleteTargetType] = useState<'major' | 'sub'>('major');
   const [deleteTargetId, setDeleteTargetId] = useState("");
   const [deleteTargetName, setDeleteTargetName] = useState("");
+  
+  // 편집 다이얼로그 상태
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editTargetType, setEditTargetType] = useState<'subject' | 'book' | 'major' | 'sub'>('subject');
+  const [editTargetId, setEditTargetId] = useState("");
+  const [editTargetName, setEditTargetName] = useState("");
+  const [newEditName, setNewEditName] = useState("");
   
   const { toast } = useToast();
 
@@ -467,6 +474,111 @@ const Home = () => {
     }
   };
 
+  // 편집 관련 함수들
+  const openEditDialog = (type: 'subject' | 'book' | 'major' | 'sub', id: string, name: string) => {
+    setEditTargetType(type);
+    setEditTargetId(id);
+    setEditTargetName(name);
+    setNewEditName(name);
+    setShowEditDialog(true);
+  };
+
+  const handleEdit = async () => {
+    if (!newEditName.trim() || newEditName.trim() === editTargetName) {
+      setShowEditDialog(false);
+      return;
+    }
+
+    try {
+      let error;
+      
+      switch (editTargetType) {
+        case 'subject':
+          ({ error } = await supabase
+            .from('subjects')
+            .update({ name: newEditName.trim() })
+            .eq('name', editTargetName));
+          
+          if (!error) {
+            setSubjects(prev => prev.map(subject => 
+              subject === editTargetName ? newEditName.trim() : subject
+            ));
+          }
+          break;
+          
+        case 'book':
+          ({ error } = await supabase
+            .from('books')
+            .update({ name: newEditName.trim() })
+            .eq('name', editTargetName)
+            .eq('subject_name', editTargetId)); // editTargetId에 subject_name이 저장됨
+          
+          if (!error) {
+            setSubjectBooks(prev => ({
+              ...prev,
+              [editTargetId]: prev[editTargetId]?.map(book => 
+                book === editTargetName ? newEditName.trim() : book
+              ) || []
+            }));
+          }
+          break;
+          
+        case 'major':
+          ({ error } = await supabase
+            .from('major_chapters')
+            .update({ name: newEditName.trim() })
+            .eq('id', editTargetId));
+          
+          if (!error) {
+            setBookMajorChapters(prev => {
+              const newState = { ...prev };
+              Object.keys(newState).forEach(bookKey => {
+                newState[bookKey] = newState[bookKey].map(chapter => 
+                  chapter.id === editTargetId 
+                    ? { ...chapter, name: newEditName.trim() }
+                    : chapter
+                );
+              });
+              return newState;
+            });
+          }
+          break;
+          
+        case 'sub':
+          ({ error } = await supabase
+            .from('chapters')
+            .update({ name: newEditName.trim() })
+            .eq('name', editTargetName)
+            .eq('major_chapter_id', editTargetId)); // editTargetId에 major_chapter_id가 저장됨
+          
+          if (!error) {
+            setMajorChapterSubChapters(prev => ({
+              ...prev,
+              [editTargetId]: prev[editTargetId]?.map(chapter => 
+                chapter === editTargetName ? newEditName.trim() : chapter
+              ) || []
+            }));
+          }
+          break;
+      }
+
+      if (error) throw error;
+
+      setShowEditDialog(false);
+      toast({
+        title: "이름 변경됨",
+        description: `"${editTargetName}"이(가) "${newEditName.trim()}"으로 변경되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error updating name:', error);
+      toast({
+        title: "오류",
+        description: "이름 변경에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -577,20 +689,34 @@ const Home = () => {
             <div className="space-y-2">
               {subjects.map((subject, index) => (
                 <div key={index} className="border rounded-lg">
-                  <div 
-                    className="flex items-center justify-between p-4 hover:bg-accent transition-colors cursor-pointer group"
-                    onClick={() => toggleSubject(subject)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-primary rounded-full"></div>
-                      <span className="text-lg font-medium">{subject}</span>
-                    </div>
-                    {expandedSubject === subject ? (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    )}
-                  </div>
+                   <div className="flex items-center group">
+                     <div 
+                       className="flex-1 flex items-center justify-between p-4 hover:bg-accent transition-colors cursor-pointer"
+                       onClick={() => toggleSubject(subject)}
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className="w-3 h-3 bg-primary rounded-full"></div>
+                         <span className="text-lg font-medium">{subject}</span>
+                       </div>
+                       {expandedSubject === subject ? (
+                         <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                       ) : (
+                         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                       )}
+                     </div>
+                     {/* 과목 편집 버튼 */}
+                     <Button
+                       size="sm"
+                       variant="ghost"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         openEditDialog('subject', '', subject);
+                       }}
+                       className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-2"
+                     >
+                       <Edit className="h-4 w-4" />
+                     </Button>
+                   </div>
                   
                   {expandedSubject === subject && (
                     <div className="px-4 pb-4 border-t bg-muted/20">
@@ -609,20 +735,34 @@ const Home = () => {
                             const bookKey = `${subject}|${book}`;
                             return (
                               <div key={bookIndex} className="border rounded-md ml-4">
-                                <div 
-                                  className="flex items-center justify-between p-2 hover:bg-accent transition-colors cursor-pointer group"
-                                  onClick={() => toggleBook(subject, book)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-secondary rounded-full"></div>
-                                    <span className="text-sm">{book}</span>
-                                  </div>
-                                  {expandedBook === bookKey ? (
-                                    <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                  )}
-                                </div>
+                                 <div className="flex items-center group">
+                                   <div 
+                                     className="flex-1 flex items-center justify-between p-2 hover:bg-accent transition-colors cursor-pointer"
+                                     onClick={() => toggleBook(subject, book)}
+                                   >
+                                     <div className="flex items-center gap-2">
+                                       <div className="w-2 h-2 bg-secondary rounded-full"></div>
+                                       <span className="text-sm">{book}</span>
+                                     </div>
+                                     {expandedBook === bookKey ? (
+                                       <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                     ) : (
+                                       <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                     )}
+                                   </div>
+                                   {/* 책 편집 버튼 */}
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       openEditDialog('book', subject, book);
+                                     }}
+                                     className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-1"
+                                   >
+                                     <Edit className="h-3 w-3" />
+                                   </Button>
+                                 </div>
                                 
                                  {expandedBook === bookKey && (
                                    <div className="px-2 pb-2 border-t bg-muted/10">
@@ -661,18 +801,31 @@ const Home = () => {
                                                   <span className="text-xs font-medium">{majorChapter.name}</span>
                                                 </div>
                                                 
-                                                {/* 삭제 버튼 */}
-                                                <Button
-                                                  size="sm"
-                                                  variant="ghost"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openDeleteDialog('major', majorChapter.id, majorChapter.name);
-                                                  }}
-                                                  className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                                >
-                                                  <Minus className="h-3 w-3 text-destructive" />
-                                                </Button>
+                                                 {/* 편집 버튼 */}
+                                                 <Button
+                                                   size="sm"
+                                                   variant="ghost"
+                                                   onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     openEditDialog('major', majorChapter.id, majorChapter.name);
+                                                   }}
+                                                   className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                 >
+                                                   <Edit className="h-3 w-3" />
+                                                 </Button>
+                                                 
+                                                 {/* 삭제 버튼 */}
+                                                 <Button
+                                                   size="sm"
+                                                   variant="ghost"
+                                                   onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     openDeleteDialog('major', majorChapter.id, majorChapter.name);
+                                                   }}
+                                                   className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                 >
+                                                   <Minus className="h-3 w-3 text-destructive" />
+                                                 </Button>
                                                 
                                                 {/* 소단원 추가 버튼 */}
                                                 <Button 
@@ -727,28 +880,41 @@ const Home = () => {
                                                 ) : (
                                                    <div className="space-y-1 ml-4">
                                                      {majorChapterSubChapters[majorChapter.id]?.map((subChapter, scIndex) => (
-                                                       <div key={scIndex} className="flex items-center group">
-                                                         <Link 
-                                                           to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(subChapter)}`}
-                                                           className="flex-1"
-                                                         >
-                                                           <div className="flex items-center gap-2 p-1.5 rounded hover:bg-accent transition-colors cursor-pointer border border-dashed border-transparent hover:border-border">
-                                                             <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
-                                                             <span className="text-xs text-muted-foreground">{subChapter}</span>
-                                                           </div>
-                                                         </Link>
-                                                         <Button
-                                                           size="sm"
-                                                           variant="ghost"
-                                                           onClick={(e) => {
-                                                             e.stopPropagation();
-                                                             openDeleteDialog('sub', majorChapter.id, subChapter);
-                                                           }}
-                                                           className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                                         >
-                                                           <Minus className="h-2 w-2 text-destructive" />
-                                                         </Button>
-                                                       </div>
+                                                        <div key={scIndex} className="flex items-center group">
+                                                          <Link 
+                                                            to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(subChapter)}`}
+                                                            className="flex-1"
+                                                          >
+                                                            <div className="flex items-center gap-2 p-1.5 rounded hover:bg-accent transition-colors cursor-pointer border border-dashed border-transparent hover:border-border">
+                                                              <div className="w-1 h-1 bg-muted-foreground rounded-full"></div>
+                                                              <span className="text-xs text-muted-foreground">{subChapter}</span>
+                                                            </div>
+                                                          </Link>
+                                                          {/* 소단원 편집 버튼 */}
+                                                          <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              openEditDialog('sub', majorChapter.id, subChapter);
+                                                            }}
+                                                            className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                          >
+                                                            <Edit className="h-2 w-2" />
+                                                          </Button>
+                                                          {/* 소단원 삭제 버튼 */}
+                                                          <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              openDeleteDialog('sub', majorChapter.id, subChapter);
+                                                            }}
+                                                            className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                                          >
+                                                            <Minus className="h-2 w-2 text-destructive" />
+                                                          </Button>
+                                                        </div>
                                                      ))}
                                                    </div>
                                                 )}
@@ -915,30 +1081,66 @@ const Home = () => {
           </DialogContent>
         </Dialog>
 
-        {/* 삭제 확인 다이얼로그 */}
-        <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>삭제 확인</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {deleteTargetType === 'major' 
-                  ? `"${deleteTargetName}" 단원을 삭제하시겠습니까? 하위 소단원들도 함께 삭제됩니다.`
-                  : `"${deleteTargetName}" 소단원을 삭제하시겠습니까?`
-                }
-              </p>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowDeleteConfirmDialog(false)}>
-                  취소
-                </Button>
-                <Button variant="destructive" onClick={handleDelete}>
-                  삭제
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+         {/* 편집 다이얼로그 */}
+         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+           <DialogContent>
+             <DialogHeader>
+               <DialogTitle>이름 변경</DialogTitle>
+             </DialogHeader>
+             <div className="space-y-4">
+               <div className="text-sm text-muted-foreground">
+                 {editTargetType === 'subject' && '과목'}
+                 {editTargetType === 'book' && '책'}
+                 {editTargetType === 'major' && '대단원'}
+                 {editTargetType === 'sub' && '소단원'}
+                 의 이름을 변경합니다.
+               </div>
+               <Input
+                 placeholder={`새로운 ${
+                   editTargetType === 'subject' ? '과목' :
+                   editTargetType === 'book' ? '책' :
+                   editTargetType === 'major' ? '대단원' : '소단원'
+                 }명을 입력하세요`}
+                 value={newEditName}
+                 onChange={(e) => setNewEditName(e.target.value)}
+                 onKeyPress={(e) => e.key === 'Enter' && handleEdit()}
+               />
+               <div className="flex gap-2 justify-end">
+                 <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                   취소
+                 </Button>
+                 <Button onClick={handleEdit} disabled={!newEditName.trim() || newEditName.trim() === editTargetName}>
+                   변경
+                 </Button>
+               </div>
+             </div>
+           </DialogContent>
+         </Dialog>
+
+         {/* 삭제 확인 다이얼로그 */}
+         <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+           <DialogContent>
+             <DialogHeader>
+               <DialogTitle>삭제 확인</DialogTitle>
+             </DialogHeader>
+             <div className="space-y-4">
+               <p className="text-sm text-muted-foreground">
+                 {deleteTargetType === 'major' 
+                   ? `"${deleteTargetName}" 단원을 삭제하시겠습니까? 하위 소단원들도 함께 삭제됩니다.`
+                   : `"${deleteTargetName}" 소단원을 삭제하시겠습니까?`
+                 }
+               </p>
+               <div className="flex gap-2 justify-end">
+                 <Button variant="outline" onClick={() => setShowDeleteConfirmDialog(false)}>
+                   취소
+                 </Button>
+                 <Button variant="destructive" onClick={handleDelete}>
+                   삭제
+                 </Button>
+               </div>
+             </div>
+           </DialogContent>
+         </Dialog>
       </div>
     </div>
   );
