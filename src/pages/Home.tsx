@@ -318,10 +318,32 @@ const Home = () => {
 
       if (error) throw error;
 
+      // UI 상태 업데이트
       setMajorChapterSubChapters(prev => ({
         ...prev,
         [selectedMajorChapterForSubChapter]: [...(prev[selectedMajorChapterForSubChapter] || []), newSubChapter.trim()]
       }));
+      
+      // 대단원이 펼쳐져 있지 않으면 펼치기
+      if (expandedMajorChapter !== selectedMajorChapterForSubChapter) {
+        setExpandedMajorChapter(selectedMajorChapterForSubChapter);
+      }
+
+      // 책 레벨에서도 확장되어 있는지 확인하고 필요시 확장
+      const bookKey = `${majorChapterData.subject_name}|${majorChapterData.book_name}`;
+      if (expandedBook !== bookKey) {
+        setExpandedBook(bookKey);
+      }
+      
+      // 대단원 목록 새로고침 (새로 생성된 기본단원이 있을 수 있음)
+      await loadMajorChaptersForBook(majorChapterData.subject_name, majorChapterData.book_name);
+
+      // 과목 레벨에서도 확장되어 있는지 확인하고 필요시 확장  
+      if (expandedSubject !== majorChapterData.subject_name) {
+        setExpandedSubject(majorChapterData.subject_name);
+        // 책 목록도 로드
+        await loadBooksForSubject(majorChapterData.subject_name);
+      }
       
       setNewSubChapter("");
       setShowAddSubChapterDialog(false);
