@@ -738,7 +738,7 @@ const Home = () => {
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Link to="/ocr-demo">
-                  <Button variant="secondary" size="sm">웹 OCR 데모</Button>
+                  <Button variant="secondary" size="sm" className="hover-scale" aria-label="웹 OCR 데모 페이지 열기">웹 OCR 데모</Button>
                 </Link>
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                 <DialogTrigger asChild>
@@ -769,6 +769,7 @@ const Home = () => {
                   </div>
                 </DialogContent>
               </Dialog>
+            </div>
             </div>
           </CardHeader>
           <CardContent>
