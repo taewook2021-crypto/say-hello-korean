@@ -20,7 +20,7 @@ import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { ReviewScheduler } from "@/components/study/ReviewScheduler";
-import { OCRUploader } from "@/components/OCRUploader";
+
 
 interface WrongNote {
   id: string;
@@ -62,16 +62,6 @@ const Index = () => {
     correctAnswer: ""
   });
 
-  const [ocrTarget, setOcrTarget] = useState<"question" | "wrongAnswer" | "correctAnswer">("question");
-
-  const handleOCRTextExtracted = (text: string, target: "question" | "wrongAnswer" | "correctAnswer") => {
-    setNewNote(prev => {
-      const next: any = { ...prev };
-      const prevVal = next[target] as string;
-      next[target] = prevVal ? `${prevVal}\n\n${text}` : text;
-      return next;
-    });
-  };
 
   useEffect(() => {
     if (subject && book && chapter) {
@@ -642,24 +632,6 @@ const Index = () => {
               <CardTitle>새로운 오답 추가</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* OCR 업로더 */}
-              <div className="border-b pb-4 space-y-3">
-                <div className="flex items-center gap-4">
-                  <Label className="text-sm">OCR 대상:</Label>
-                  {(["question","wrongAnswer","correctAnswer"] as const).map(k => (
-                    <label key={k} className="flex items-center gap-1 text-sm">
-                      <input
-                        type="radio"
-                        name="ocrTarget"
-                        checked={ocrTarget === k}
-                        onChange={() => setOcrTarget(k)}
-                      />
-                      {k === "question" ? "문제" : k === "wrongAnswer" ? "내 답" : "정답"}
-                    </label>
-                  ))}
-                </div>
-                <OCRUploader onTextExtracted={handleOCRTextExtracted} />
-              </div>
 
               <div>
                 <Label htmlFor="question">문제</Label>
