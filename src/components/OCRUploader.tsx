@@ -33,6 +33,7 @@ export function OCRUploader({ onTextExtracted }: Props) {
     mathMode: false,
     tableMode: false,
     cleanup: true,
+    stripAnswers: true,
   });
 
   const { recognize, busy, progress, terminate } = useOcr(options);

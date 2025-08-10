@@ -17,6 +17,7 @@ export type OcrOptions = {
   mathMode?: boolean;        // 수식 위주 후처리
   tableMode?: boolean;       // 표 가독성 후처리
   cleanup?: boolean;         // 공백/줄바꿈/하이픈 정리
+  stripAnswers?: boolean;    // "정답", "내 답" 등 답안 텍스트 제거
 };
 
 export type OcrProgress = {
@@ -132,6 +133,19 @@ export function useOcr(defaultOptions?: OcrOptions) {
       t = t.replace(/[ \t]{2,}/g, " ");  // 다중 공백 정리
       t = t.replace(/\n{3,}/g, "\n\n");  // 빈 줄 압축
     }
+
+    // 정답/내 답 제거
+    if (opts.stripAnswers) {
+      // 인라인 "(정답: ...)" / "정답: ..." / "(내 답: ...)" / "내 답: ..."
+      t = t.replace(/\(?\s*(?:정답|내\s*답)\s*[:：]?\s*[^)\n]*\)?/gi, "");
+
+      // 줄 단위로 "정답", "정답은", "내 답"으로 시작하는 라인 제거
+      t = t
+        .split("\n")
+        .filter((line) => !/^\s*(?:정답은?|내\s*답)\b/i.test(line))
+        .join("\n");
+    }
+
     if (opts.tableMode) {
       t = t.replace(/[ ]{3,}/g, "\t");   // 표 간격 탭화
     }
@@ -139,6 +153,9 @@ export function useOcr(defaultOptions?: OcrOptions) {
       t = t.replace(/\bO\b/g, "0").replace(/\bl\b/g, "1");
       t = t.replace(/\s*([=+\-*/()])\s*/g, " $1 ");
     }
+
+    // 최종 정리
+    t = t.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n");
     return t.trim();
   }, []);
 
@@ -151,6 +168,7 @@ export function useOcr(defaultOptions?: OcrOptions) {
         mathMode: false,
         tableMode: false,
         cleanup: true,
+        stripAnswers: true,
         ...(defaultOptions || {}),
         ...(opts || {}),
       };
