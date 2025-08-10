@@ -85,7 +85,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     try {
       const text = await processFile(file, { 
         language,
-        dpi: 300,
+        dpi: 200,
         enhance
       });
       

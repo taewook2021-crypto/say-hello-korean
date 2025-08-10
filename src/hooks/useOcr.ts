@@ -49,6 +49,7 @@ export function useOcr() {
         tessedit_create_hocr: '0',
         tessedit_create_tsv: '0',
         tessedit_create_pdf: '0',
+        user_defined_dpi: String(dpi),
       });
 
       let text = '';
@@ -254,9 +255,12 @@ export function useOcr() {
         await new Promise((resolve, reject) => {
           img.onload = () => {
             // Scale up small images for better OCR
-            const scale = Math.max(1, 800 / Math.max(img.width, img.height));
-            canvas.width = img.width * scale;
-            canvas.height = img.height * scale;
+            const scale = Math.max(1, 1600 / Math.max(img.width, img.height));
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             resolve(null);
