@@ -51,15 +51,19 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
     const wrap = wrapRef.current;
     if (!img || !cvs || !wrap) return;
     const wrapW = wrap.clientWidth || 720;
-    // 모달 헤더/패딩 여유를 고려해 뷰포트 기준 가용 높이 계산
     const viewportH = window.innerHeight || 800;
     const availableH = Math.max(320, viewportH - 200);
     const scaleW = wrapW / img.naturalWidth;
     const scaleH = availableH / img.naturalHeight;
     const s = Math.min(1, scaleW, scaleH);
     setScale(s);
-    cvs.width = Math.round(img.naturalWidth * s);
-    cvs.height = Math.round(img.naturalHeight * s);
+    const w = Math.round(img.naturalWidth * s);
+    const h = Math.round(img.naturalHeight * s);
+    cvs.width = w;
+    cvs.height = h;
+    // CSS 크기도 intrinsic과 동일하게 맞춰 흐림 방지 및 좌표 1:1 매칭
+    cvs.style.width = `${w}px`;
+    cvs.style.height = `${h}px`;
     draw();
   };
   // 캔버스 그리기
@@ -186,8 +190,13 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
     if (!img || !cvs) return;
     setScale((s) => {
       const next = Math.min(3, Math.max(0.4, s * factor));
-      cvs.width = Math.round(img.naturalWidth * next);
-      cvs.height = Math.round(img.naturalHeight * next);
+      const w = Math.round(img.naturalWidth * next);
+      const h = Math.round(img.naturalHeight * next);
+      cvs.width = w;
+      cvs.height = h;
+      cvs.style.width = `${w}px`;
+      cvs.style.height = `${h}px`;
+      scaleRef.current = next;
       requestAnimationFrame(draw);
       return next;
     });
@@ -260,7 +269,7 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
       <div ref={wrapRef} className="w-full max-h-[calc(100vh-12rem)] overflow-auto">
         <canvas
           ref={canvasRef}
-          className="max-w-full h-auto rounded-md border mx-auto block"
+          className="rounded-md border mx-auto block pointer-events-auto"
           style={{ touchAction: "none", userSelect: "none" }}
         />
       </div>
