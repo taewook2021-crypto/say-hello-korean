@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,12 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Upload, FileText, Loader2, Settings } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import Tesseract from 'tesseract.js';
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
-// Configure PDF.js worker for Vite/ESM
-GlobalWorkerOptions.workerSrc = pdfjsWorker as unknown as string;
+import { useOcr, PSM } from '@/hooks/useOcr';
 
 interface OCRUploaderProps {
   onTextExtracted: (text: string) => void;
@@ -29,6 +24,12 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
     mathMode: false
   });
   const { toast } = useToast();
+  const { recognize, busy, progress: ocrProgress } = useOcr();
+  useEffect(() => {
+    if (ocrProgress) {
+      setProgress(Math.round(ocrProgress.progress * 100));
+    }
+  }, [ocrProgress]);
 
   // 이미지 전처리 함수
   const preprocessImage = (canvas: HTMLCanvasElement): Promise<string> => {
