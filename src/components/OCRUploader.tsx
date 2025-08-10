@@ -8,6 +8,11 @@ import { Upload, FileText, Loader2, Settings } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import Tesseract from 'tesseract.js';
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+// Configure PDF.js worker for Vite/ESM
+GlobalWorkerOptions.workerSrc = pdfjsWorker as unknown as string;
 
 interface OCRUploaderProps {
   onTextExtracted: (text: string) => void;
@@ -55,11 +60,13 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // 이미지 파일인지 확인
-    if (!file.type.startsWith('image/')) {
+    // 지원 형식 확인 (이미지 또는 PDF)
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!(isImage || isPdf)) {
       toast({
         title: "오류",
-        description: "이미지 파일만 업로드 가능합니다.",
+        description: "이미지 또는 PDF 파일만 업로드 가능합니다.",
         variant: "destructive",
       });
       return;
@@ -70,81 +77,135 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
     setExtractedText('');
 
     try {
-      let imageToProcess: string | File = file;
-
-      // 이미지 전처리 옵션이 켜져있으면 전처리 수행
-      if (ocrOptions.preprocessImage) {
-        const img = new Image();
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d')!;
-
-        await new Promise((resolve) => {
-          img.onload = resolve;
-          img.src = URL.createObjectURL(file);
-        });
-
-        // 캔버스 크기를 이미지 크기로 설정
-        canvas.width = img.width;
-        canvas.height = img.height;
-        
-        // 이미지를 캔버스에 그리기
-        ctx.drawImage(img, 0, 0);
-        
-        // 전처리 수행
-        imageToProcess = await preprocessImage(canvas);
-        URL.revokeObjectURL(img.src);
-      }
-
       // 언어 설정
-      let language = 'kor+eng';
-      if (ocrOptions.koreanOnly) {
-        language = 'kor';
-      }
+      const language = ocrOptions.koreanOnly ? 'kor' : 'kor+eng';
 
-      // Tesseract 설정
-      const tesseractOptions: any = {
-        logger: (m: any) => {
-          if (m.status === 'recognizing text') {
-            setProgress(Math.round(m.progress * 100));
-          }
-        },
+      // Tesseract 옵션 생성기 (PDF 진행률 반영 가능)
+      const buildTesseractOptions = (pageIndex?: number, totalPages?: number) => {
+        const opts: any = {
+          logger: (m: any) => {
+            if (m.status === 'recognizing text') {
+              const inner = Math.max(0, Math.min(1, m.progress || 0));
+              if (pageIndex && totalPages) {
+                setProgress(Math.round(((pageIndex - 1) + inner) / totalPages * 100));
+              } else {
+                setProgress(Math.round(inner * 100));
+              }
+            }
+          },
+        };
+        if (ocrOptions.mathMode) {
+          opts.tessedit_pageseg_mode = Tesseract.PSM.SINGLE_BLOCK;
+          opts.tessedit_char_whitelist = '0123456789+-×÷=()[]{}.,ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz가-힣';
+        } else {
+          opts.tessedit_pageseg_mode = Tesseract.PSM.AUTO;
+        }
+        return opts;
       };
 
-      // 수학 모드일 때 PSM 설정
-      if (ocrOptions.mathMode) {
-        tesseractOptions.tessedit_pageseg_mode = Tesseract.PSM.SINGLE_BLOCK;
-        tesseractOptions.tessedit_char_whitelist = '0123456789+-×÷=()[]{}.,ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz가-힣';
-      } else {
-        tesseractOptions.tessedit_pageseg_mode = Tesseract.PSM.AUTO;
-      }
+      // PDF 처리
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
+        const ab = await file.arrayBuffer();
+        const pdf = await getDocument({ data: ab }).promise;
 
-      const result = await Tesseract.recognize(
-        imageToProcess,
-        language,
-        tesseractOptions
-      );
+        let combinedText = '';
+        const confidences: number[] = [];
 
-      const text = result.data.text.trim();
-      if (text) {
-        setExtractedText(text);
-        onTextExtracted(text);
-        toast({
-          title: "성공",
-          description: `텍스트 추출이 완료되었습니다. (신뢰도: ${Math.round(result.data.confidence)}%)`,
-        });
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d')!;
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: ctx as any, viewport, canvas }).promise;
+
+          let source: string | HTMLCanvasElement = canvas;
+          if (ocrOptions.preprocessImage) {
+            source = await preprocessImage(canvas);
+          }
+
+          const result = await Tesseract.recognize(
+            source as any,
+            language,
+            buildTesseractOptions(pageNum, pdf.numPages)
+          );
+
+          const pageText = result.data.text.trim();
+          if (pageText) {
+            combinedText += (combinedText ? '\n\n' : '') + pageText;
+          }
+          if (typeof result.data.confidence === 'number') {
+            confidences.push(result.data.confidence);
+          }
+        }
+
+        const avgConf = confidences.length
+          ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
+          : undefined;
+        const finalText = combinedText.trim();
+
+        if (finalText) {
+          setExtractedText(finalText);
+          onTextExtracted(finalText);
+          toast({
+            title: '성공',
+            description: `PDF에서 텍스트 추출이 완료되었습니다.${avgConf ? ` (신뢰도: ${avgConf}%)` : ''}`,
+          });
+        } else {
+          toast({
+            title: '경고',
+            description: '인식된 텍스트가 없습니다. 더 선명한 PDF를 시도해보세요.',
+            variant: 'destructive',
+          });
+        }
       } else {
-        toast({
-          title: "경고",
-          description: "인식된 텍스트가 없습니다. 더 선명한 이미지를 시도해보세요.",
-          variant: "destructive",
-        });
+        // 이미지 처리
+        let imageToProcess: string | File = file;
+        if (ocrOptions.preprocessImage) {
+          const img = new Image();
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d')!;
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.src = URL.createObjectURL(file);
+          });
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          imageToProcess = await preprocessImage(canvas);
+          URL.revokeObjectURL(img.src);
+        }
+
+        const result = await Tesseract.recognize(
+          imageToProcess as any,
+          language,
+          buildTesseractOptions()
+        );
+
+        const text = result.data.text.trim();
+        if (text) {
+          setExtractedText(text);
+          onTextExtracted(text);
+          toast({
+            title: '성공',
+            description: `텍스트 추출이 완료되었습니다. (신뢰도: ${Math.round(result.data.confidence)}%)`,
+          });
+        } else {
+          toast({
+            title: '경고',
+            description: '인식된 텍스트가 없습니다. 더 선명한 이미지를 시도해보세요.',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error) {
       console.error('OCR Error:', error);
       toast({
-        title: "오류",
-        description: "텍스트 추출 중 오류가 발생했습니다.",
-        variant: "destructive",
+        title: '오류',
+        description: '텍스트 추출 중 오류가 발생했습니다.',
+        variant: 'destructive',
       });
     } finally {
       setIsProcessing(false);
@@ -157,15 +218,15 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
       <CardContent className="p-6">
         <div className="space-y-4">
           <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              <span className="font-medium">이미지에서 텍스트 추출</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            <span className="font-medium">이미지/PDF에서 텍스트 추출</span>
+          </div>
             
             <div className="w-full">
               <Input
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf"
                 onChange={handleFileUpload}
                 disabled={isProcessing}
                 className="hidden"
@@ -184,7 +245,7 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
                     ) : (
                       <Upload className="h-4 w-4" />
                     )}
-                    {isProcessing ? '처리 중...' : '이미지 업로드'}
+                    {isProcessing ? '처리 중...' : '파일 업로드'}
                   </div>
                 </Button>
               </label>
