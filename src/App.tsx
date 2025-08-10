@@ -9,6 +9,7 @@ import Subject from "./pages/Subject";
 import Book from "./pages/Book";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
+import OcrDemo from "./pages/OcrDemo";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/subject/:subjectName" element={<Subject />} />
             <Route path="/book/:subjectName/:bookName" element={<Book />} />
             <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
+            <Route path="/ocr-demo" element={<OcrDemo />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
