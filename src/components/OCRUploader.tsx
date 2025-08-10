@@ -33,8 +33,6 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
   const [language, setLanguage] = useState('kor');
   const [extractedText, setExtractedText] = useState('');
   const [selectedText, setSelectedText] = useState('');
-  const [isEditingSelected, setIsEditingSelected] = useState(false);
-  const [editedSelectedText, setEditedSelectedText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -51,8 +49,6 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     setFile(selectedFile);
     setExtractedText('');
     setSelectedText('');
-    setIsEditingSelected(false);
-    setEditedSelectedText('');
     
     // Create preview for images
     if (selectedFile.type.startsWith('image/')) {
@@ -121,34 +117,13 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
       const selected = extractedText.substring(start, end);
       if (selected.trim()) {
         setSelectedText(selected.trim());
-        setEditedSelectedText(selected.trim());
-        setIsEditingSelected(false);
       }
     }
   };
 
-  const startEditingSelected = () => {
-    setIsEditingSelected(true);
-  };
-
-  const saveEditedSelected = () => {
-    setSelectedText(editedSelectedText);
-    setIsEditingSelected(false);
-    toast({
-      title: '텍스트 수정됨',
-      description: '선택된 텍스트가 수정되었습니다.'
-    });
-  };
-
-  const cancelEditingSelected = () => {
-    setEditedSelectedText(selectedText);
-    setIsEditingSelected(false);
-  };
-
   const addToField = (target: 'question' | 'wrongAnswer' | 'correctAnswer') => {
-    const textToAdd = isEditingSelected ? editedSelectedText : selectedText;
-    if (textToAdd.trim()) {
-      onTextExtracted(textToAdd, target);
+    if (selectedText.trim()) {
+      onTextExtracted(selectedText, target);
       toast({
         title: '텍스트 추가됨',
         description: `선택한 텍스트가 ${target === 'question' ? '문제' : target === 'wrongAnswer' ? '오답' : '정답'}란에 추가되었습니다.`
@@ -167,8 +142,6 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     setPreview(null);
     setExtractedText('');
     setSelectedText('');
-    setIsEditingSelected(false);
-    setEditedSelectedText('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -325,100 +298,52 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
           </>
         )}
 
-        {/* Selected Text and Action Buttons */}
+        {/* Action Buttons for Selected Text */}
         {selectedText && (
-          <>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">선택된 텍스트</Label>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs">
-                    {selectedText.length} 문자
-                  </Badge>
-                  {!isEditingSelected && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={startEditingSelected}
-                      className="h-6 px-2"
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-              
-              {isEditingSelected ? (
-                <div className="space-y-2">
-                  <Textarea
-                    value={editedSelectedText}
-                    onChange={(e) => setEditedSelectedText(e.target.value)}
-                    className="min-h-[100px] font-mono text-sm"
-                    placeholder="텍스트를 수정하세요..."
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={cancelEditingSelected}
-                      className="h-8"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      취소
-                    </Button>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={saveEditedSelected}
-                      className="h-8"
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      저장
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-muted p-3 rounded-lg border">
-                  <p className="text-sm whitespace-pre-wrap">{selectedText}</p>
-                </div>
-              )}
-              
-              <div className="flex items-center gap-2">
-                <ArrowDown className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">어디에 추가할까요?</span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => addToField('question')}
-                  className="w-full"
-                  disabled={isEditingSelected}
-                >
-                  문제에 추가
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => addToField('wrongAnswer')}
-                  className="w-full"
-                  disabled={isEditingSelected}
-                >
-                  오답에 추가
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => addToField('correctAnswer')}
-                  className="w-full"
-                  disabled={isEditingSelected}
-                >
-                  정답에 추가
-                </Button>
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">선택된 텍스트</Label>
+              <Badge variant="secondary" className="text-xs">
+                {selectedText.length} 문자
+              </Badge>
             </div>
-          </>
+            
+            <div className="bg-muted p-3 rounded-lg border">
+              <p className="text-sm whitespace-pre-wrap">{selectedText}</p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <ArrowDown className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">어디에 추가할까요?</span>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => addToField('question')}
+                className="w-full"
+              >
+                문제에 추가
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => addToField('wrongAnswer')}
+                className="w-full"
+              >
+                오답에 추가
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => addToField('correctAnswer')}
+                className="w-full"
+              >
+                정답에 추가
+              </Button>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
