@@ -31,6 +31,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [language, setLanguage] = useState('kor');
+  const [enhance, setEnhance] = useState(true);
   const [extractedText, setExtractedText] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -84,7 +85,8 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     try {
       const text = await processFile(file, { 
         language,
-        dpi: 300 
+        dpi: 300,
+        enhance
       });
       
       if (text.trim()) {
@@ -220,29 +222,52 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
           </div>
         )}
 
-        {/* Language Selection */}
-        <div className="space-y-2">
-          <Label>인식 언어</Label>
-          <Select value={language} onValueChange={setLanguage} disabled={isProcessing}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="kor">
-                <div className="flex items-center gap-2">
-                  <span>한국어</span>
-                  <Badge variant="default" className="text-xs">권장</Badge>
-                </div>
-              </SelectItem>
-              <SelectItem value="eng">English</SelectItem>
-              <SelectItem value="kor+eng">
-                <div className="flex items-center gap-2">
-                  <span>한국어 + English</span>
-                  <Badge variant="outline" className="text-xs">느림</Badge>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Options */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>인식 언어</Label>
+            <Select value={language} onValueChange={setLanguage} disabled={isProcessing}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="kor">
+                  <div className="flex items-center gap-2">
+                    <span>한국어</span>
+                    <Badge variant="default" className="text-xs">권장</Badge>
+                  </div>
+                </SelectItem>
+                <SelectItem value="eng">English</SelectItem>
+                <SelectItem value="kor+eng">
+                  <div className="flex items-center gap-2">
+                    <span>한국어 + English</span>
+                    <Badge variant="outline" className="text-xs">느림</Badge>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label>화질 최적화</Label>
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                id="enhance"
+                type="checkbox"
+                checked={enhance}
+                onChange={(e) => setEnhance(e.target.checked)}
+                disabled={isProcessing}
+                className="w-4 h-4 text-primary bg-background border-border rounded focus:ring-primary"
+              />
+              <Label htmlFor="enhance" className="text-sm font-normal">
+                모바일 캡처 최적화
+                <Badge variant="secondary" className="ml-1 text-xs">권장</Badge>
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              다크모드, 작은 글자 등 캡처 화질 개선
+            </p>
+          </div>
         </div>
 
         {/* Progress */}
