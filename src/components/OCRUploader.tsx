@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Upload, FileText, Image, ArrowDown, Edit, Check, X } from 'lucide-react';
 import { useOcr } from '@/hooks/useOcr';
 import { useToast } from '@/hooks/use-toast';
+import { OCRImageSelector } from '@/components/ocr/OCRImageSelector';
 
 interface OCRUploaderProps {
   onTextExtracted: (text: string, target: 'question' | 'wrongAnswer' | 'correctAnswer') => void;
@@ -210,15 +211,18 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
               </Button>
             </div>
             
-            {preview && (
-              <div className="flex justify-center">
-                <img 
-                  src={preview} 
-                  alt="Preview" 
-                  className="max-h-48 rounded-lg border"
-                />
-              </div>
+            {preview && file?.type.startsWith('image/') && (
+              <OCRImageSelector
+                file={file}
+                language={language}
+                enhance={enhance}
+                onExtract={(text) => {
+                  setExtractedText((prev) => (prev ? prev + '\n' + text : text));
+                  toast({ title: '선택 영역 OCR 완료', description: '선택한 문장을 추가했습니다.' });
+                }}
+              />
             )}
+
           </div>
         )}
 
