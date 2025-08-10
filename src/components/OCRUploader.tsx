@@ -7,7 +7,8 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Upload, FileText, Image, ArrowDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Upload, FileText, Image, ArrowDown, Edit, Check, X } from 'lucide-react';
 import { useOcr } from '@/hooks/useOcr';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,6 +33,8 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
   const [language, setLanguage] = useState('kor');
   const [extractedText, setExtractedText] = useState('');
   const [selectedText, setSelectedText] = useState('');
+  const [isEditingSelected, setIsEditingSelected] = useState(false);
+  const [editedSelectedText, setEditedSelectedText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -48,6 +51,8 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     setFile(selectedFile);
     setExtractedText('');
     setSelectedText('');
+    setIsEditingSelected(false);
+    setEditedSelectedText('');
     
     // Create preview for images
     if (selectedFile.type.startsWith('image/')) {
@@ -116,13 +121,34 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
       const selected = extractedText.substring(start, end);
       if (selected.trim()) {
         setSelectedText(selected.trim());
+        setEditedSelectedText(selected.trim());
+        setIsEditingSelected(false);
       }
     }
   };
 
+  const startEditingSelected = () => {
+    setIsEditingSelected(true);
+  };
+
+  const saveEditedSelected = () => {
+    setSelectedText(editedSelectedText);
+    setIsEditingSelected(false);
+    toast({
+      title: '텍스트 수정됨',
+      description: '선택된 텍스트가 수정되었습니다.'
+    });
+  };
+
+  const cancelEditingSelected = () => {
+    setEditedSelectedText(selectedText);
+    setIsEditingSelected(false);
+  };
+
   const addToField = (target: 'question' | 'wrongAnswer' | 'correctAnswer') => {
-    if (selectedText.trim()) {
-      onTextExtracted(selectedText, target);
+    const textToAdd = isEditingSelected ? editedSelectedText : selectedText;
+    if (textToAdd.trim()) {
+      onTextExtracted(textToAdd, target);
       toast({
         title: '텍스트 추가됨',
         description: `선택한 텍스트가 ${target === 'question' ? '문제' : target === 'wrongAnswer' ? '오답' : '정답'}란에 추가되었습니다.`
@@ -141,6 +167,8 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     setPreview(null);
     setExtractedText('');
     setSelectedText('');
+    setIsEditingSelected(false);
+    setEditedSelectedText('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -167,8 +195,12 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
             <Upload className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="font-medium">파일을 드래그하거나 클릭하여 선택</p>
-              <p className="text-sm text-muted-foreground">PNG, JPG, GIF, WebP, PDF 지원 (고해상도 권장)</p>
-              <p className="text-xs text-muted-foreground mt-1">Ctrl+V로 클립보드 이미지 붙여넣기 가능</p>
+              <p className="text-sm text-muted-foreground">PNG, JPG, GIF, WebP, PDF 지원</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                <Badge variant="secondary" className="mr-1">TIP</Badge>
+                고해상도 이미지일수록 정확도가 높아집니다
+              </p>
+              <p className="text-xs text-muted-foreground">Ctrl+V로 클립보드 이미지 붙여넣기 가능</p>
             </div>
             <Input
               ref={fileInputRef}
@@ -230,9 +262,19 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="kor">한국어 (권장)</SelectItem>
+              <SelectItem value="kor">
+                <div className="flex items-center gap-2">
+                  <span>한국어</span>
+                  <Badge variant="default" className="text-xs">권장</Badge>
+                </div>
+              </SelectItem>
               <SelectItem value="eng">English</SelectItem>
-              <SelectItem value="kor+eng">한국어 + English (느림)</SelectItem>
+              <SelectItem value="kor+eng">
+                <div className="flex items-center gap-2">
+                  <span>한국어 + English</span>
+                  <Badge variant="outline" className="text-xs">느림</Badge>
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -262,7 +304,12 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
           <>
             <Separator />
             <div className="space-y-3">
-              <Label className="text-base font-semibold">추출된 텍스트</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">추출된 텍스트</Label>
+                <Badge variant="outline" className="text-xs">
+                  {extractedText.length} 문자
+                </Badge>
+              </div>
               <p className="text-sm text-muted-foreground">
                 추가할 텍스트를 마우스로 드래그하여 선택하세요
               </p>
@@ -282,10 +329,59 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
         {selectedText && (
           <>
             <div className="space-y-3">
-              <Label className="text-base font-semibold">선택된 텍스트</Label>
-              <div className="bg-muted p-3 rounded-lg border">
-                <p className="text-sm">{selectedText}</p>
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">선택된 텍스트</Label>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {selectedText.length} 문자
+                  </Badge>
+                  {!isEditingSelected && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={startEditingSelected}
+                      className="h-6 px-2"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
               </div>
+              
+              {isEditingSelected ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editedSelectedText}
+                    onChange={(e) => setEditedSelectedText(e.target.value)}
+                    className="min-h-[100px] font-mono text-sm"
+                    placeholder="텍스트를 수정하세요..."
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={cancelEditingSelected}
+                      className="h-8"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      취소
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={saveEditedSelected}
+                      className="h-8"
+                    >
+                      <Check className="h-4 w-4 mr-1" />
+                      저장
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-muted p-3 rounded-lg border">
+                  <p className="text-sm whitespace-pre-wrap">{selectedText}</p>
+                </div>
+              )}
               
               <div className="flex items-center gap-2">
                 <ArrowDown className="h-4 w-4 text-muted-foreground" />
@@ -298,6 +394,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
                   size="sm"
                   onClick={() => addToField('question')}
                   className="w-full"
+                  disabled={isEditingSelected}
                 >
                   문제에 추가
                 </Button>
@@ -306,6 +403,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
                   size="sm"
                   onClick={() => addToField('wrongAnswer')}
                   className="w-full"
+                  disabled={isEditingSelected}
                 >
                   오답에 추가
                 </Button>
@@ -314,6 +412,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
                   size="sm"
                   onClick={() => addToField('correctAnswer')}
                   className="w-full"
+                  disabled={isEditingSelected}
                 >
                   정답에 추가
                 </Button>
