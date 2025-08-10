@@ -231,19 +231,19 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="kor">
-                  <div className="flex items-center gap-2">
-                    <span>한국어</span>
-                    <Badge variant="default" className="text-xs">권장</Badge>
-                  </div>
-                </SelectItem>
-                <SelectItem value="eng">English</SelectItem>
-                <SelectItem value="kor+eng">
-                  <div className="flex items-center gap-2">
-                    <span>한국어 + English</span>
-                    <Badge variant="outline" className="text-xs">느림</Badge>
-                  </div>
-                </SelectItem>
+              <SelectItem value="kor">
+                <div className="flex items-center gap-2">
+                  <span>한국어</span>
+                  <Badge variant="default" className="text-xs">권장</Badge>
+                </div>
+              </SelectItem>
+              <SelectItem value="kor+eng">
+                <div className="flex items-center gap-2">
+                  <span>한국어 + English</span>
+                  <Badge variant="outline" className="text-xs">혼합 텍스트</Badge>
+                </div>
+              </SelectItem>
+              <SelectItem value="eng">English</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -278,6 +278,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
               <span>{Math.round(progress.progress * 100)}%</span>
             </div>
             <Progress value={progress.progress * 100} />
+            <p className="text-xs text-muted-foreground">모바일 캡처 최적화 적용 중</p>
           </div>
         )}
 
@@ -287,7 +288,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
           disabled={!file || isProcessing}
           className="w-full"
         >
-          {isProcessing ? '처리 중...' : 'OCR 실행'}
+          {isProcessing ? '최적화 + OCR 중...' : 'OCR 실행'}
         </Button>
 
         {/* Extracted Text Display */}
