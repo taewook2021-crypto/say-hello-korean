@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { createWorker, PSM } from "tesseract.js";
 import { cn } from "@/lib/utils";
 import { useOcr } from "@/hooks/useOcr";
@@ -192,7 +192,7 @@ const scaleModal = useMemo(() => {
   // Center vertically inside container
   const oy = (imgEl.clientHeight - imgNatural.h * s) / 2 || 0;
   return { s, ox: 0, oy: Math.max(0, oy) };
-}, [imgNatural, imageUrl, open]);
+}, [imgNatural, imageUrl, open, modalImgRef.current?.clientWidth, modalImgRef.current?.clientHeight]);
 
   const toggle = (id: string, multi: boolean) => {
     setSelected(prev => {
@@ -314,8 +314,12 @@ const scaleModal = useMemo(() => {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[95vw] h-[90vh] p-0">
-          <div className="relative w-full h-full">
+        <DialogContent className="sm:max-w-[95vw] w-[95vw] h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-4 py-3 border-b">
+            <DialogTitle>전체 화면 미리보기</DialogTitle>
+            <DialogDescription>이미지를 클릭해 줄을 선택하세요 (Shift+클릭으로 여러 줄)</DialogDescription>
+          </DialogHeader>
+          <div className="relative flex-1 min-h-0">
             <img ref={modalImgRef} src={imageUrl} alt="이미지 전체 화면 미리보기" className="block w-full h-full object-contain select-none" />
             {!!lines.length && imgNatural && (
               <div className="absolute inset-0">
