@@ -31,27 +31,31 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
     const img = new Image();
     imgRef.current = img;
     img.onload = () => {
-      fitToWidth();
+      fitToContain();
       draw();
     };
     img.src = imageUrl;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageUrl]);
 
-  // 컨테이너 폭에 맞춰 배율 계산
-  const fitToWidth = () => {
+  // 컨테이너 폭/높이에 맞춰 배율 계산 (contain)
+  const fitToContain = () => {
     const img = imgRef.current;
     const cvs = canvasRef.current;
     const wrap = wrapRef.current;
     if (!img || !cvs || !wrap) return;
-    const maxW = wrap.clientWidth || 720;
-    const s = Math.min(1, maxW / img.naturalWidth);
+    const wrapW = wrap.clientWidth || 720;
+    // 모달 헤더/패딩 여유를 고려해 뷰포트 기준 가용 높이 계산
+    const viewportH = window.innerHeight || 800;
+    const availableH = Math.max(320, viewportH - 200);
+    const scaleW = wrapW / img.naturalWidth;
+    const scaleH = availableH / img.naturalHeight;
+    const s = Math.min(1, scaleW, scaleH);
     setScale(s);
     cvs.width = Math.round(img.naturalWidth * s);
     cvs.height = Math.round(img.naturalHeight * s);
     draw();
   };
-
   // 캔버스 그리기
   const draw = () => {
     const img = imgRef.current;
@@ -148,12 +152,12 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
 
   // 컨테이너/윈도우 리사이즈 시 재계산
   useEffect(() => {
-    const onResize = () => fitToWidth();
+    const onResize = () => fitToContain();
     window.addEventListener("resize", onResize);
     const wrap = wrapRef.current;
     let ro: ResizeObserver | null = null;
     if (wrap && typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => fitToWidth());
+      ro = new ResizeObserver(() => fitToContain());
       ro.observe(wrap);
     }
     return () => {
@@ -240,10 +244,10 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
         </div>
       </div>
 
-      <div ref={wrapRef} className="w-full">
+      <div ref={wrapRef} className="w-full max-h-[calc(100vh-12rem)] overflow-auto">
         <canvas
           ref={canvasRef}
-          className="w-full rounded-md border"
+          className="max-w-full h-auto rounded-md border mx-auto block"
           style={{ touchAction: "none", userSelect: "none" }}
         />
       </div>
