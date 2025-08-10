@@ -1,218 +1,231 @@
-import { useEffect, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/components/ui/use-toast';
-import { Upload, FileText, Loader2, Settings } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { useOcr, PSM } from '@/hooks/useOcr';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { useOcr, OcrOptions } from "@/hooks/useOcr";
+import { Upload, ClipboardPaste, FileText, Settings2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
-interface OCRUploaderProps {
+ type Props = {
   onTextExtracted: (text: string) => void;
-}
+};
 
-export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [extractedText, setExtractedText] = useState<string>('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [ocrOptions, setOcrOptions] = useState({
-    preprocessImage: true,
-    koreanOnly: false,
-    mathMode: false,
-  });
+const ACCEPTS = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "application/pdf",
+];
+
+export function OCRUploader({ onTextExtracted }: Props) {
   const { toast } = useToast();
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [options, setOptions] = useState<OcrOptions>({
+    languages: "kor+eng",
+    pageSegMode: 3,
+    dpi: 180,
+    mathMode: false,
+    tableMode: false,
+    cleanup: true,
+  });
 
-  // Hook-based OCR (supports Image & PDF)
-  const { recognize, busy, progress: ocrProgress } = useOcr();
+  const { recognize, busy, progress, terminate } = useOcr(options);
+  const dropRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setIsProcessing(busy);
-  }, [busy]);
-
-  useEffect(() => {
-    if (ocrProgress) {
-      setProgress(Math.round(ocrProgress.progress * 100));
-    }
-  }, [ocrProgress]);
-
-  // 간단 전처리 (흑백화 + 대비 개선)
-  const preprocessImage = (canvas: HTMLCanvasElement): Promise<string> => {
-    return new Promise((resolve) => {
-      const ctx = canvas.getContext('2d')!;
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-        const enhanced = gray > 127 ? 255 : 0;
-        data[i] = enhanced;
-        data[i + 1] = enhanced;
-        data[i + 2] = enhanced;
-      }
-      ctx.putImageData(imageData, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    });
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!(isImage || isPdf)) {
-      toast({ title: '오류', description: '이미지 또는 PDF 파일만 업로드 가능합니다.', variant: 'destructive' });
+  const handleFiles = useCallback((f: File) => {
+    if (!ACCEPTS.includes(f.type)) {
+      toast({
+        title: "지원하지 않는 파일",
+        description: "PNG/JPG/GIF/SVG/PDF만 지원합니다.",
+        variant: "destructive",
+      });
       return;
     }
+    setFile(f);
+    setPreviewUrl(f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
+  }, [toast]);
 
-    setIsProcessing(true);
-    setProgress(0);
-    setExtractedText('');
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if (f) handleFiles(f);
+  }, [handleFiles]);
 
-    try {
-      const opts = {
-        languages: ocrOptions.koreanOnly ? 'kor' : 'kor+eng',
-        pageSegMode: ocrOptions.mathMode ? PSM.SINGLE_BLOCK : PSM.AUTO,
-        dpi: 180,
-        mathMode: ocrOptions.mathMode,
-        cleanup: true,
-      } as const;
-
-      let finalText = '';
-      if (isPdf) {
-        finalText = await recognize(file, opts);
-      } else {
-        let inputForOcr: any = file;
-        if (ocrOptions.preprocessImage) {
-          const img = new Image();
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d')!;
-          await new Promise((resolve) => {
-            (img.onload as any) = resolve;
-            img.src = URL.createObjectURL(file);
-          });
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-          inputForOcr = await preprocessImage(canvas);
-          URL.revokeObjectURL(img.src);
+  const onPaste = useCallback(async (e: ClipboardEvent) => {
+    if (!e.clipboardData) return;
+    for (const it of Array.from(e.clipboardData.items)) {
+      if (it.type.startsWith("image/")) {
+        const blob = it.getAsFile();
+        if (blob) {
+          handleFiles(new File([blob], "pasted.png", { type: blob.type }));
+          break;
         }
-        finalText = await recognize(inputForOcr, opts);
       }
+    }
+  }, [handleFiles]);
 
-      if (finalText && finalText.trim()) {
-        setExtractedText(finalText.trim());
-        onTextExtracted(finalText.trim());
-        toast({ title: '성공', description: '텍스트 추출이 완료되었습니다.' });
-      } else {
-        toast({ title: '경고', description: '인식된 텍스트가 없습니다. 더 선명한 파일을 시도해보세요.', variant: 'destructive' });
+  useEffect(() => {
+    const dom = dropRef.current;
+    if (!dom) return;
+    const prevent = (e: Event) => e.preventDefault();
+    dom.addEventListener("dragover", prevent);
+    dom.addEventListener("drop", prevent);
+    document.addEventListener("paste", onPaste as any);
+    return () => {
+      dom.removeEventListener("dragover", prevent);
+      dom.removeEventListener("drop", prevent);
+      document.removeEventListener("paste", onPaste as any);
+      terminate();
+    };
+  }, [onPaste, terminate]);
+
+  const runOcr = async () => {
+    if (!file) return;
+    try {
+      const text = await recognize(file, options);
+      if (!text) {
+        toast({ title: "추출 실패", description: "텍스트를 추출하지 못했습니다.", variant: "destructive" });
+        return;
       }
-    } catch (error) {
-      console.error('OCR Error:', error);
-      toast({ title: '오류', description: '텍스트 추출 중 오류가 발생했습니다.', variant: 'destructive' });
-    } finally {
-      setIsProcessing(false);
-      setProgress(0);
+      onTextExtracted(text);
+      toast({ title: "OCR 완료", description: "텍스트를 입력란에 붙였습니다." });
+    } catch (e: any) {
+      toast({ title: "OCR 오류", description: e?.message || "예기치 못한 오류", variant: "destructive" });
     }
   };
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              <span className="font-medium">이미지/PDF에서 텍스트 추출</span>
-            </div>
-
-            <div className="w-full">
-              <Input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={handleFileUpload}
-                disabled={isProcessing}
-                className="hidden"
-                id="ocr-upload"
-              />
-              <label htmlFor="ocr-upload">
-                <Button variant="outline" className="w-full cursor-pointer" disabled={isProcessing} asChild>
-                  <div className="flex items-center gap-2">
-                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                    {isProcessing ? '처리 중...' : '파일 업로드'}
-                  </div>
-                </Button>
-              </label>
-            </div>
-
-            {/* 고급 설정 */}
-            <div className="w-full">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-2"
-              >
-                <Settings className="h-4 w-4" />
-                고급 설정 {showAdvanced ? '숨기기' : '보기'}
-              </Button>
-
-              {showAdvanced && (
-                <div className="mt-3 space-y-3 p-3 border rounded-md bg-muted/50">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="preprocess"
-                      checked={ocrOptions.preprocessImage}
-                      onCheckedChange={(checked) => setOcrOptions((p) => ({ ...p, preprocessImage: checked as boolean }))}
-                    />
-                    <Label htmlFor="preprocess" className="text-sm">
-                      이미지 전처리 (대비 개선, 노이즈 제거)
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="korean-only"
-                      checked={ocrOptions.koreanOnly}
-                      onCheckedChange={(checked) => setOcrOptions((p) => ({ ...p, koreanOnly: checked as boolean }))}
-                    />
-                    <Label htmlFor="korean-only" className="text-sm">
-                      한국어만 인식 (한글 문제에 최적화)
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="math-mode"
-                      checked={ocrOptions.mathMode}
-                      onCheckedChange={(checked) => setOcrOptions((p) => ({ ...p, mathMode: checked as boolean }))}
-                    />
-                    <Label htmlFor="math-mode" className="text-sm">
-                      수학 문제 모드 (수식 인식 개선)
-                    </Label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {isProcessing && (
-              <div className="w-full space-y-2">
-                <Progress value={progress} className="w-full" />
-                <p className="text-sm text-muted-foreground text-center">텍스트 인식 중... {progress}%</p>
-              </div>
-            )}
-
-            {extractedText && (
-              <div className="w-full">
-                <h4 className="text-sm font-medium mb-2">추출된 텍스트:</h4>
-                <div className="bg-muted p-3 rounded-md text-sm max-h-32 overflow-y-auto">{extractedText}</div>
-              </div>
-            )}
+    <Card>
+      <CardContent className="space-y-4 pt-6">
+        <div
+          ref={dropRef}
+          onDrop={onDrop}
+          className="border-2 border-dashed rounded-xl p-6 text-center hover:bg-muted/40 transition"
+        >
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Upload className="h-5 w-5" />
+            <span className="font-medium">이미지/PDF를 드래그앤드롭하거나 선택하세요</span>
           </div>
+          <Input
+            type="file"
+            accept={ACCEPTS.join(",")}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFiles(f);
+            }}
+          />
+          <div className="text-sm text-muted-foreground mt-2 flex items-center justify-center gap-2">
+            <ClipboardPaste className="h-4 w-4" />
+            클립보드에서 이미지를 붙여넣어도 됩니다 (Ctrl/Cmd + V)
+          </div>
+
+          {previewUrl && (
+            <div className="mt-4">
+              <img src={previewUrl} alt="preview" className="mx-auto max-h-64 rounded-md border" />
+            </div>
+          )}
+
+          {file && file.type === "application/pdf" && (
+            <div className="mt-4 text-sm flex items-center justify-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span>{file.name} (PDF)</span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div>
+            <Label className="text-xs">언어</Label>
+            <select
+              className="w-full border rounded-md px-2 py-1 text-sm"
+              value={options.languages}
+              onChange={(e) => setOptions((o) => ({ ...o, languages: e.target.value }))}
+            >
+              <option value="kor+eng">Korean + English</option>
+              <option value="kor">Korean</option>
+              <option value="eng">English</option>
+              <option value="jpn+kor">Japanese + Korean</option>
+            </select>
+          </div>
+
+          <div>
+            <Label className="text-xs">페이지 세그먼트(PSM)</Label>
+            <select
+              className="w-full border rounded-md px-2 py-1 text-sm"
+              value={options.pageSegMode}
+              onChange={(e) => setOptions((o) => ({ ...o, pageSegMode: Number(e.target.value) }))}
+            >
+              <option value={3}>Auto</option>
+              <option value={6}>Single Block</option>
+              <option value={4}>Single Column</option>
+              <option value={7}>Single Line</option>
+            </select>
+          </div>
+
+          <div>
+            <Label className="text-xs">PDF DPI</Label>
+            <Input
+              type="number"
+              value={options.dpi}
+              onChange={(e) => setOptions((o) => ({ ...o, dpi: Number(e.target.value || 180) }))}
+            />
+          </div>
+
+          <div className="flex items-end gap-2">
+            <div className="flex items-center gap-2">
+              <input
+                id="mathMode"
+                type="checkbox"
+                checked={!!options.mathMode}
+                onChange={(e) => setOptions((o) => ({ ...o, mathMode: e.target.checked }))}
+              />
+              <Label htmlFor="mathMode" className="text-xs">수식 모드</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="tableMode"
+                type="checkbox"
+                checked={!!options.tableMode}
+                onChange={(e) => setOptions((o) => ({ ...o, tableMode: e.target.checked }))}
+              />
+              <Label htmlFor="tableMode" className="text-xs">표 모드</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="cleanup"
+                type="checkbox"
+                checked={!!options.cleanup}
+                onChange={(e) => setOptions((o) => ({ ...o, cleanup: e.target.checked }))}
+              />
+              <Label htmlFor="cleanup" className="text-xs">후처리</Label>
+            </div>
+          </div>
+        </div>
+
+        {busy && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <Settings2 className="h-4 w-4 animate-spin" />
+              <span>{progress?.status || "처리 중..."}</span>
+              <span className="ml-auto">{Math.round((progress?.progress || 0) * 100)}%</span>
+            </div>
+            <Progress value={(progress?.progress || 0) * 100} />
+          </div>
+        )}
+
+        <div className="flex gap-2 justify-end">
+          <Button onClick={runOcr} disabled={!file || busy}>OCR 실행</Button>
+          <Button variant="outline" onClick={() => { setFile(null); setPreviewUrl(null); }} disabled={busy}>
+            초기화
+          </Button>
         </div>
       </CardContent>
     </Card>
   );
-};
+}

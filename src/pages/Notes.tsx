@@ -62,11 +62,15 @@ const Index = () => {
     correctAnswer: ""
   });
 
+  const [ocrTarget, setOcrTarget] = useState<"question" | "wrongAnswer" | "correctAnswer">("question");
+
   const handleOCRTextExtracted = (text: string) => {
-    setNewNote(prev => ({
-      ...prev,
-      question: prev.question ? `${prev.question}\n\n${text}` : text
-    }));
+    setNewNote(prev => {
+      const next: any = { ...prev };
+      const prevVal = next[ocrTarget] as string;
+      next[ocrTarget] = prevVal ? `${prevVal}\n\n${text}` : text;
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -639,7 +643,21 @@ const Index = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* OCR 업로더 */}
-              <div className="border-b pb-4">
+              <div className="border-b pb-4 space-y-3">
+                <div className="flex items-center gap-4">
+                  <Label className="text-sm">OCR 대상:</Label>
+                  {(["question","wrongAnswer","correctAnswer"] as const).map(k => (
+                    <label key={k} className="flex items-center gap-1 text-sm">
+                      <input
+                        type="radio"
+                        name="ocrTarget"
+                        checked={ocrTarget === k}
+                        onChange={() => setOcrTarget(k)}
+                      />
+                      {k === "question" ? "문제" : k === "wrongAnswer" ? "내 답" : "정답"}
+                    </label>
+                  ))}
+                </div>
                 <OCRUploader onTextExtracted={handleOCRTextExtracted} />
               </div>
 

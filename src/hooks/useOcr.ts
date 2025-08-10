@@ -8,7 +8,7 @@ import * as pdfjsLib from "pdfjs-dist";
 
 export type OcrOptions = {
   languages?: string;        // "kor+eng" 추천
-  pageSegMode?: PSM;         // Tesseract PSM, 기본 AUTO
+  pageSegMode?: number;      // Tesseract PSM (숫자)
   dpi?: number;              // PDF 렌더링 DPI (150~220 권장)
   mathMode?: boolean;        // 수식 위주 후처리
   tableMode?: boolean;       // 표 가독성 후처리
@@ -25,7 +25,7 @@ export function useOcr(defaultOptions?: OcrOptions) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<OcrProgress | null>(null);
 
-  const ensureWorker = useCallback(async (languages: string, psm: PSM) => {
+  const ensureWorker = useCallback(async (languages: string, psm: number) => {
     if (workerRef.current) return workerRef.current;
     const worker: any = await (createWorker as any)({
       logger: (m: any) => {
@@ -89,7 +89,7 @@ export function useOcr(defaultOptions?: OcrOptions) {
     async (input: File | HTMLCanvasElement | HTMLImageElement | string, opts?: OcrOptions) => {
       const options: OcrOptions = {
         languages: "kor+eng",
-        pageSegMode: PSM.AUTO,
+        pageSegMode: 3,
         dpi: 180,
         mathMode: false,
         tableMode: false,
