@@ -27,7 +27,7 @@ export function OCRUploader({ onTextExtracted }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [options, setOptions] = useState<OcrOptions>({
-    languages: "kor",
+    languages: "kor", // 한국어만 사용해서 다운로드 속도 개선
     pageSegMode: 4,
     dpi: 150,
     mathMode: false,
@@ -164,10 +164,9 @@ export function OCRUploader({ onTextExtracted }: Props) {
               value={options.languages}
               onChange={(e) => setOptions((o) => ({ ...o, languages: e.target.value }))}
             >
-              <option value="kor+eng">Korean + English</option>
-              <option value="kor">Korean</option>
+              <option value="kor">Korean (권장 - 빠름)</option>
               <option value="eng">English</option>
-              <option value="jpn+kor">Japanese + Korean</option>
+              <option value="kor+eng">Korean + English (느림)</option>
             </select>
           </div>
 

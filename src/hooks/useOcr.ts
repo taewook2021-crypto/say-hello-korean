@@ -41,7 +41,8 @@ export function useOcr(defaultOptions?: OcrOptions) {
     // CDN 경로 명시 (SIMD 우선, 실패 시 일반 wasm)
     const coreBase = "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.2";
     const tesseractBase = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist";
-    const langBase = "https://tessdata.projectnaptha.com/4.0.0"; // kor.traineddata 등
+    // 더 빠른 CDN 사용 (jsdelivr > projectnaptha)
+    const langBase = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/lang-data";
 
     _workerPromise = (async () => {
       try {
