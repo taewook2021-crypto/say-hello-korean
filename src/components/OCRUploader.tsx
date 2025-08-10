@@ -32,7 +32,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [language, setLanguage] = useState('kor');
   const [extractedText, setExtractedText] = useState('');
-  const [selectedText, setSelectedText] = useState('');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -48,7 +48,6 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
 
     setFile(selectedFile);
     setExtractedText('');
-    setSelectedText('');
     
     // Create preview for images
     if (selectedFile.type.startsWith('image/')) {
@@ -110,30 +109,25 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     }
   };
 
-  const handleTextSelection = () => {
+  const addToField = (target: 'question' | 'wrongAnswer' | 'correctAnswer') => {
     if (textareaRef.current) {
       const start = textareaRef.current.selectionStart;
       const end = textareaRef.current.selectionEnd;
       const selected = extractedText.substring(start, end);
+      
       if (selected.trim()) {
-        setSelectedText(selected.trim());
+        onTextExtracted(selected.trim(), target);
+        toast({
+          title: '텍스트 추가됨',
+          description: `선택한 텍스트가 ${target === 'question' ? '문제' : target === 'wrongAnswer' ? '오답' : '정답'}란에 추가되었습니다.`
+        });
+      } else {
+        toast({
+          title: '텍스트를 선택하세요',
+          description: '추가할 텍스트를 먼저 선택해주세요.',
+          variant: 'destructive'
+        });
       }
-    }
-  };
-
-  const addToField = (target: 'question' | 'wrongAnswer' | 'correctAnswer') => {
-    if (selectedText.trim()) {
-      onTextExtracted(selectedText, target);
-      toast({
-        title: '텍스트 추가됨',
-        description: `선택한 텍스트가 ${target === 'question' ? '문제' : target === 'wrongAnswer' ? '오답' : '정답'}란에 추가되었습니다.`
-      });
-    } else {
-      toast({
-        title: '텍스트를 선택하세요',
-        description: '추가할 텍스트를 먼저 선택해주세요.',
-        variant: 'destructive'
-      });
     }
   };
 
@@ -141,7 +135,6 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     setFile(null);
     setPreview(null);
     setExtractedText('');
-    setSelectedText('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -284,66 +277,44 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                추가할 텍스트를 마우스로 드래그하여 선택하세요
+                추가할 텍스트를 마우스로 드래그하여 선택한 후 버튼을 클릭하세요
               </p>
               <Textarea
                 ref={textareaRef}
                 value={extractedText}
                 onChange={(e) => setExtractedText(e.target.value)}
-                onSelect={handleTextSelection}
                 className="min-h-[200px] font-mono text-sm"
                 placeholder="OCR로 추출된 텍스트가 여기에 표시됩니다..."
               />
+              
+              <div className="grid grid-cols-3 gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => addToField('question')}
+                  className="w-full"
+                >
+                  문제에 추가
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => addToField('wrongAnswer')}
+                  className="w-full"
+                >
+                  오답에 추가
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => addToField('correctAnswer')}
+                  className="w-full"
+                >
+                  정답에 추가
+                </Button>
+              </div>
             </div>
           </>
-        )}
-
-        {/* Action Buttons for Selected Text */}
-        {selectedText && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-base font-semibold">선택된 텍스트</Label>
-              <Badge variant="secondary" className="text-xs">
-                {selectedText.length} 문자
-              </Badge>
-            </div>
-            
-            <div className="bg-muted p-3 rounded-lg border">
-              <p className="text-sm whitespace-pre-wrap">{selectedText}</p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <ArrowDown className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">어디에 추가할까요?</span>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => addToField('question')}
-                className="w-full"
-              >
-                문제에 추가
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => addToField('wrongAnswer')}
-                className="w-full"
-              >
-                오답에 추가
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => addToField('correctAnswer')}
-                className="w-full"
-              >
-                정답에 추가
-              </Button>
-            </div>
-          </div>
         )}
       </CardContent>
     </Card>
