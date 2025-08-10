@@ -6,6 +6,10 @@ import * as pdfjsLib from "pdfjs-dist";
 (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
   `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.worker.min.js`;
 
+// 전역 싱글톤 워커 (초기화 중복/재다운로드 방지)
+let _workerPromise: Promise<any> | null = null;
+let _worker: any | null = null;
+
 export type OcrOptions = {
   languages?: string;        // "kor+eng" 추천
   pageSegMode?: number;      // Tesseract PSM (숫자)
@@ -26,29 +30,82 @@ export function useOcr(defaultOptions?: OcrOptions) {
   const [progress, setProgress] = useState<OcrProgress | null>(null);
 
   const ensureWorker = useCallback(async (languages: string, psm: number) => {
-    if (workerRef.current) return workerRef.current;
-    const worker: any = await (createWorker as any)({
-      logger: (m: any) => {
-        if (m.status && typeof m.progress === "number") {
-          setProgress({ status: m.status, progress: m.progress });
-        }
-      },
-    });
-    await worker.loadLanguage(languages);
-    await worker.initialize(languages);
-    await worker.setParameters({ tessedit_pageseg_mode: String(psm) });
-    workerRef.current = worker;
-    return worker;
+    // 이미 준비된 전역 워커가 있으면 재사용
+    if (_worker) {
+      workerRef.current = _worker;
+      return _worker;
+    }
+    if (_workerPromise) return _workerPromise;
+
+    // CDN 경로 명시 (SIMD 우선, 실패 시 일반 wasm)
+    const coreBase = "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.2";
+    const tesseractBase = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist";
+    const langBase = "https://tessdata.projectnaptha.com/4.0.0"; // kor.traineddata 등
+
+    _workerPromise = (async () => {
+      try {
+        const w: any = await (createWorker as any)({
+          corePath: `${coreBase}/tesseract-core-simd.wasm.js`,
+          workerPath: `${tesseractBase}/worker.min.js`,
+          langPath: langBase,
+          logger: (m: any) => {
+            if (m.status && typeof m.progress === "number") {
+              setProgress({ status: m.status, progress: m.progress });
+            }
+          },
+        });
+        await w.loadLanguage(languages);
+        await w.initialize(languages);
+        await w.setParameters({ tessedit_pageseg_mode: String(psm) });
+        _worker = w;
+        workerRef.current = w;
+        return w;
+      } catch (err) {
+        const w: any = await (createWorker as any)({
+          corePath: `${coreBase}/tesseract-core.wasm.js`,
+          workerPath: `${tesseractBase}/worker.min.js`,
+          langPath: langBase,
+          logger: (m: any) => {
+            if (m.status && typeof m.progress === "number") {
+              setProgress({ status: m.status, progress: m.progress });
+            }
+          },
+        });
+        await w.loadLanguage(languages);
+        await w.initialize(languages);
+        await w.setParameters({ tessedit_pageseg_mode: String(psm) });
+        _worker = w;
+        workerRef.current = w;
+        return w;
+      } finally {
+        _workerPromise = null;
+      }
+    })();
+
+    return _workerPromise;
   }, []);
 
   const terminate = useCallback(async () => {
-    if (workerRef.current) {
-      await workerRef.current.terminate();
+    if (_worker) {
+      await _worker.terminate();
+      _worker = null;
       workerRef.current = null;
     }
   }, []);
 
-  const renderPdfToImages = useCallback(async (file: File, dpi = 180) => {
+  // 대형 이미지/캔버스 다운스케일링 유틸 (속도 ↑)
+  const downscaleCanvas = (input: HTMLCanvasElement, maxW = 2200) => {
+    if (input.width <= maxW) return input;
+    const scale = maxW / input.width;
+    const c = document.createElement("canvas");
+    c.width = Math.round(input.width * scale);
+    c.height = Math.round(input.height * scale);
+    const cx = c.getContext("2d")!;
+    cx.drawImage(input, 0, 0, c.width, c.height);
+    return c;
+  };
+
+  const renderPdfToImages = useCallback(async (file: File, dpi = 150) => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await (pdfjsLib as any).getDocument({ data: arrayBuffer }).promise;
     const images: HTMLCanvasElement[] = [];
@@ -60,8 +117,8 @@ export function useOcr(defaultOptions?: OcrOptions) {
       const ctx = canvas.getContext("2d")!;
       canvas.width = viewport.width;
       canvas.height = viewport.height;
-      await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-      images.push(canvas);
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      images.push(downscaleCanvas(canvas, 2200));
     }
     return images;
   }, []);
@@ -115,6 +172,14 @@ export function useOcr(defaultOptions?: OcrOptions) {
         }
 
         const worker = await ensureWorker(options.languages!, options.pageSegMode!);
+
+        // 캔버스 입력 시 다운스케일 적용
+        if (typeof (input as any)?.getContext === "function") {
+          const scaled = downscaleCanvas(input as HTMLCanvasElement, 2200);
+          const { data: { text } } = await worker.recognize(scaled as any);
+          return postprocess(text, options);
+        }
+
         const { data: { text } } = await worker.recognize(input as any);
         return postprocess(text, options);
       } finally {
@@ -126,6 +191,43 @@ export function useOcr(defaultOptions?: OcrOptions) {
   );
 
   return { recognize, busy, progress, terminate };
+}
+
+// 사전 워밍업 API (페이지 진입/모달 오픈 시 호출 추천)
+export async function prewarmOcr(languages = "kor", psm = 3) {
+  if (_worker || _workerPromise) return;
+
+  const coreBase = "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.2";
+  const tesseractBase = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist";
+  const langBase = "https://tessdata.projectnaptha.com/4.0.0";
+
+  _workerPromise = (async () => {
+    try {
+      const w: any = await (createWorker as any)({
+        corePath: `${coreBase}/tesseract-core-simd.wasm.js`,
+        workerPath: `${tesseractBase}/worker.min.js`,
+        langPath: langBase,
+      });
+      await w.loadLanguage(languages);
+      await w.initialize(languages);
+      await w.setParameters({ tessedit_pageseg_mode: String(psm) });
+      _worker = w;
+    } catch {
+      const w: any = await (createWorker as any)({
+        corePath: `${coreBase}/tesseract-core.wasm.js`,
+        workerPath: `${tesseractBase}/worker.min.js`,
+        langPath: langBase,
+      });
+      await w.loadLanguage(languages);
+      await w.initialize(languages);
+      await w.setParameters({ tessedit_pageseg_mode: String(psm) });
+      _worker = w;
+    } finally {
+      _workerPromise = null;
+    }
+  })();
+
+  return _workerPromise;
 }
 
 export { PSM };

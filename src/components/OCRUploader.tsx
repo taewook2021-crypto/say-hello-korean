@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { useOcr, OcrOptions } from "@/hooks/useOcr";
+import { useOcr, OcrOptions, PSM, prewarmOcr } from "@/hooks/useOcr";
 import { Upload, ClipboardPaste, FileText, Settings2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,9 +27,9 @@ export function OCRUploader({ onTextExtracted }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [options, setOptions] = useState<OcrOptions>({
-    languages: "kor+eng",
-    pageSegMode: 3,
-    dpi: 180,
+    languages: "kor",
+    pageSegMode: 4,
+    dpi: 150,
     mathMode: false,
     tableMode: false,
     cleanup: true,
@@ -84,6 +84,11 @@ export function OCRUploader({ onTextExtracted }: Props) {
       terminate();
     };
   }, [onPaste, terminate]);
+
+  useEffect(() => {
+    // 페이지 진입 시 OCR 워커 예열 (최초 대기시간 단축)
+    prewarmOcr("kor", 3);
+  }, []);
 
   const runOcr = async () => {
     if (!file) return;
@@ -173,7 +178,7 @@ export function OCRUploader({ onTextExtracted }: Props) {
             <Input
               type="number"
               value={options.dpi}
-              onChange={(e) => setOptions((o) => ({ ...o, dpi: Number(e.target.value || 180) }))}
+              onChange={(e) => setOptions((o) => ({ ...o, dpi: Number(e.target.value || 150) }))}
             />
           </div>
 
@@ -216,6 +221,14 @@ export function OCRUploader({ onTextExtracted }: Props) {
               <span className="ml-auto">{Math.round((progress?.progress || 0) * 100)}%</span>
             </div>
             <Progress value={(progress?.progress || 0) * 100} />
+            <p className="text-xs text-muted-foreground">
+              처음 한 번은 언어 데이터(수 MB)를 내려받아 조금 오래 걸릴 수 있어요. 이후엔 빨라집니다.
+            </p>
+            <div className="flex justify-end">
+              <Button variant="ghost" size="sm" onClick={() => terminate()}>
+                취소
+              </Button>
+            </div>
           </div>
         )}
 
