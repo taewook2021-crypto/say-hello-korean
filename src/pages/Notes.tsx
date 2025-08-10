@@ -20,6 +20,7 @@ import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { ReviewScheduler } from "@/components/study/ReviewScheduler";
+import { OCRUploader } from "@/components/OCRUploader";
 
 interface WrongNote {
   id: string;
@@ -60,6 +61,13 @@ const Index = () => {
     wrongAnswer: "",
     correctAnswer: ""
   });
+
+  const handleOCRTextExtracted = (text: string) => {
+    setNewNote(prev => ({
+      ...prev,
+      question: prev.question ? `${prev.question}\n\n${text}` : text
+    }));
+  };
 
   useEffect(() => {
     if (subject && book && chapter) {
@@ -630,6 +638,11 @@ const Index = () => {
               <CardTitle>새로운 오답 추가</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* OCR 업로더 */}
+              <div className="border-b pb-4">
+                <OCRUploader onTextExtracted={handleOCRTextExtracted} />
+              </div>
+
               <div>
                 <Label htmlFor="question">문제</Label>
                 <Textarea
