@@ -24,6 +24,12 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
   const [scale, setScale] = useState(1);
   const [busyLocal, setBusyLocal] = useState(false);
 
+  // 최신 배율을 이벤트 리스너에서 참조하기 위한 ref
+  const scaleRef = useRef(1);
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
   const { processFile, isProcessing: busy, progress } = useOcr();
 
   // 이미지 로드 및 초기 배율
@@ -95,7 +101,7 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
     }
   };
 
-  // 포인터 이벤트로 드래그 선택 (이미지 원본 좌표로 저장)
+  // 포인터 이벤트로 드래그 선택 (이미지 원본 좌표로 저장) - 리스너 1회만 등록
   useEffect(() => {
     const cvs = canvasRef.current;
     if (!cvs) return;
@@ -103,6 +109,7 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
     let startXImg = 0,
       startYImg = 0,
       dragging = false;
+    let latestDraft: Rect | null = null;
 
     const toLocal = (e: PointerEvent) => {
       const rect = cvs.getBoundingClientRect();
@@ -113,28 +120,35 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
       e.preventDefault();
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
       const p = toLocal(e);
-      startXImg = p.x / scale;
-      startYImg = p.y / scale;
+      const s = scaleRef.current;
+      startXImg = p.x / s;
+      startYImg = p.y / s;
       dragging = true;
-      setDraft({ x: startXImg, y: startYImg, w: 0, h: 0 });
+      latestDraft = { x: startXImg, y: startYImg, w: 0, h: 0 };
+      setDraft(latestDraft);
     };
     const move = (e: PointerEvent) => {
       if (!dragging) return;
       const p = toLocal(e);
-      const currXImg = p.x / scale;
-      const currYImg = p.y / scale;
+      const s = scaleRef.current;
+      const currXImg = p.x / s;
+      const currYImg = p.y / s;
       const x = Math.min(startXImg, currXImg);
       const y = Math.min(startYImg, currYImg);
       const w = Math.abs(currXImg - startXImg);
       const h = Math.abs(currYImg - startYImg);
-      setDraft({ x, y, w, h });
+      latestDraft = { x, y, w, h };
+      setDraft(latestDraft);
       requestAnimationFrame(draw);
     };
     const up = (_e: PointerEvent) => {
+      if (!dragging) return;
       dragging = false;
-      if (draft && draft.w * scale > 10 && draft.h * scale > 10) {
-        setRects((prev) => [...prev, draft]);
+      const s = scaleRef.current;
+      if (latestDraft && latestDraft.w * s > 10 && latestDraft.h * s > 10) {
+        setRects((prev) => [...prev, latestDraft as Rect]);
       }
+      latestDraft = null;
       setDraft(null);
       requestAnimationFrame(draw);
     };
@@ -147,8 +161,7 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
       cvs.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, rects, scale]);
+  }, []);
 
   // 컨테이너/윈도우 리사이즈 시 재계산
   useEffect(() => {
