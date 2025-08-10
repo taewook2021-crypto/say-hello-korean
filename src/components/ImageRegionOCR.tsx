@@ -63,32 +63,41 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
     ctx.imageSmoothingQuality = "high" as any;
     ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
 
-    // 기존 사각형
+    // 기존 사각형 (이미지 좌표 -> 화면 좌표로 변환하여 그림)
     ctx.strokeStyle = "rgba(59,130,246,1)"; // primary-ish
     ctx.fillStyle = "rgba(59,130,246,0.12)";
+    const s = scale;
     rects.forEach((r) => {
-      ctx.fillRect(r.x, r.y, r.w, r.h);
+      const x = Math.round(r.x * s);
+      const y = Math.round(r.y * s);
+      const w = Math.round(r.w * s);
+      const h = Math.round(r.h * s);
+      ctx.fillRect(x, y, w, h);
       ctx.lineWidth = 2;
-      ctx.strokeRect(r.x, r.y, r.w, r.h);
+      ctx.strokeRect(x, y, w, h);
     });
 
     // 드래프트
     if (draft) {
+      const x = Math.round(draft.x * s);
+      const y = Math.round(draft.y * s);
+      const w = Math.round(draft.w * s);
+      const h = Math.round(draft.h * s);
       ctx.fillStyle = "rgba(234,88,12,0.14)"; // amber-ish
       ctx.strokeStyle = "rgba(234,88,12,1)";
       ctx.lineWidth = 2;
-      ctx.fillRect(draft.x, draft.y, draft.w, draft.h);
-      ctx.strokeRect(draft.x, draft.y, draft.w, draft.h);
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
     }
   };
 
-  // 포인터 이벤트로 드래그 선택
+  // 포인터 이벤트로 드래그 선택 (이미지 원본 좌표로 저장)
   useEffect(() => {
     const cvs = canvasRef.current;
     if (!cvs) return;
 
-    let startX = 0,
-      startY = 0,
+    let startXImg = 0,
+      startYImg = 0,
       dragging = false;
 
     const toLocal = (e: PointerEvent) => {
@@ -100,24 +109,26 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
       e.preventDefault();
       (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
       const p = toLocal(e);
-      startX = p.x;
-      startY = p.y;
+      startXImg = p.x / scale;
+      startYImg = p.y / scale;
       dragging = true;
-      setDraft({ x: p.x, y: p.y, w: 0, h: 0 });
+      setDraft({ x: startXImg, y: startYImg, w: 0, h: 0 });
     };
     const move = (e: PointerEvent) => {
       if (!dragging) return;
       const p = toLocal(e);
-      const x = Math.min(startX, p.x);
-      const y = Math.min(startY, p.y);
-      const w = Math.abs(p.x - startX);
-      const h = Math.abs(p.y - startY);
+      const currXImg = p.x / scale;
+      const currYImg = p.y / scale;
+      const x = Math.min(startXImg, currXImg);
+      const y = Math.min(startYImg, currYImg);
+      const w = Math.abs(currXImg - startXImg);
+      const h = Math.abs(currYImg - startYImg);
       setDraft({ x, y, w, h });
       requestAnimationFrame(draw);
     };
     const up = (_e: PointerEvent) => {
       dragging = false;
-      if (draft && draft.w > 10 && draft.h > 10) {
+      if (draft && draft.w * scale > 10 && draft.h * scale > 10) {
         setRects((prev) => [...prev, draft]);
       }
       setDraft(null);
@@ -133,16 +144,24 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
       window.removeEventListener("pointerup", up);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, rects]);
+  }, [draft, rects, scale]);
 
-  // 윈도우 리사이즈 시 재계산
+  // 컨테이너/윈도우 리사이즈 시 재계산
   useEffect(() => {
     const onResize = () => fitToWidth();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const wrap = wrapRef.current;
+    let ro: ResizeObserver | null = null;
+    if (wrap && typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => fitToWidth());
+      ro.observe(wrap);
+    }
+    return () => {
+      window.removeEventListener("resize", onResize);
+      ro?.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   // 줌 제어
   const zoom = (factor: number) => {
     const img = imgRef.current;
@@ -167,10 +186,10 @@ export function ImageRegionOCR({ imageUrl, options, onDone, onClose }: Props) {
     try {
       const results: string[] = [];
       for (const r of rects) {
-        const sx = Math.round(r.x / scale);
-        const sy = Math.round(r.y / scale);
-        const sw = Math.round(r.w / scale);
-        const sh = Math.round(r.h / scale);
+        const sx = Math.round(r.x);
+        const sy = Math.round(r.y);
+        const sw = Math.round(r.w);
+        const sh = Math.round(r.h);
 
         const crop = document.createElement("canvas");
         crop.width = sw;
