@@ -614,6 +614,9 @@ const Index = () => {
                 </div>
               </DialogContent>
             </Dialog>
+            <Link to="/ocr-demo">
+              <Button variant="secondary" size="sm" className="flex items-center gap-2">웹 OCR 데모</Button>
+            </Link>
             <Button 
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-2"

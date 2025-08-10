@@ -736,7 +736,11 @@ const Home = () => {
                 <BookOpen className="h-5 w-5" />
                 과목 선택
               </CardTitle>
-              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <div className="flex items-center gap-2">
+                <Link to="/ocr-demo">
+                  <Button variant="secondary" size="sm">웹 OCR 데모</Button>
+                </Link>
+                <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Plus className="h-4 w-4 mr-2" />
