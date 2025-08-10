@@ -36,6 +36,8 @@ export function OCRUploader({ onTextExtracted }: Props) {
     stripAnswers: true,
   });
 
+  const [warming, setWarming] = useState(false);
+  const [warmedWith, setWarmedWith] = useState<{ languages: string; psm: number } | null>(null);
   const { recognize, busy, progress, terminate } = useOcr(options);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -86,11 +88,20 @@ export function OCRUploader({ onTextExtracted }: Props) {
     };
   }, [onPaste, terminate]);
 
-  useEffect(() => {
-    // 페이지 진입 시 OCR 워커 예열 (최초 대기시간 단축)
-    prewarmOcr("kor", 3);
-  }, []);
+  const ready = !!(warmedWith && warmedWith.languages === (options.languages || "kor") && warmedWith.psm === (options.pageSegMode || 3));
 
+  const handlePrewarm = async () => {
+    try {
+      setWarming(true);
+      await prewarmOcr(options.languages || "kor", (options.pageSegMode as number) || 3);
+      setWarmedWith({ languages: options.languages || "kor", psm: (options.pageSegMode as number) || 3 });
+      toast({ title: "언어 데이터 준비 완료", description: "이제 OCR 실행이 빨라집니다." });
+    } catch (e: any) {
+      toast({ title: "다운로드 오류", description: e?.message || "언어 데이터 준비 중 오류가 발생했습니다.", variant: "destructive" });
+    } finally {
+      setWarming(false);
+    }
+  };
   const runOcr = async () => {
     if (!file) return;
     try {
@@ -214,6 +225,26 @@ export function OCRUploader({ onTextExtracted }: Props) {
           </div>
         </div>
 
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div className="text-sm">
+            <div className="font-medium">언어 데이터 준비</div>
+            <div className="text-muted-foreground text-xs">
+              선택한 언어/PSM에 맞게 미리 내려받아 첫 실행을 빠르게 합니다.
+              {warmedWith && (
+                <span className="ml-1">현재: {warmedWith.languages} / PSM {warmedWith.psm}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {ready ? (
+              <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">준비됨</span>
+            ) : null}
+            <Button size="sm" variant={ready ? "secondary" : "default"} onClick={handlePrewarm} disabled={warming}>
+              {warming ? "내려받는 중..." : warmedWith && !ready ? "재다운로드" : "언어 데이터 내려받기"}
+            </Button>
+          </div>
+        </div>
+
         {busy && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
@@ -234,7 +265,7 @@ export function OCRUploader({ onTextExtracted }: Props) {
         )}
 
         <div className="flex gap-2 justify-end">
-          <Button onClick={runOcr} disabled={!file || busy}>OCR 실행</Button>
+          <Button onClick={runOcr} disabled={!file || busy || !ready}>OCR 실행</Button>
           <Button variant="outline" onClick={() => { setFile(null); setPreviewUrl(null); }} disabled={busy}>
             초기화
           </Button>
