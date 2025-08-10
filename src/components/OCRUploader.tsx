@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Image, ArrowDown, Edit, Check, X } from 'lucide-react';
+import { Upload, FileText, Image, ArrowDown, Edit, Check, X, Crop } from 'lucide-react';
 import { useOcr } from '@/hooks/useOcr';
 import { useToast } from '@/hooks/use-toast';
 import { OCRImageSelector } from '@/components/ocr/OCRImageSelector';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ImageRegionOCR } from "@/components/ImageRegionOCR";
 
 interface OCRUploaderProps {
   onTextExtracted: (text: string, target: 'question' | 'wrongAnswer' | 'correctAnswer') => void;
@@ -34,6 +36,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
   const [language, setLanguage] = useState('kor');
   const [enhance, setEnhance] = useState(true);
   const [extractedText, setExtractedText] = useState('');
+  const [showRegion, setShowRegion] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -212,15 +215,51 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
             </div>
             
             {preview && file?.type.startsWith('image/') && (
-              <OCRImageSelector
-                file={file}
-                language={language}
-                enhance={enhance}
-                onExtract={(text) => {
-                  setExtractedText((prev) => (prev ? prev + '\n' + text : text));
-                  toast({ title: '선택 영역 OCR 완료', description: '선택한 문장을 추가했습니다.' });
-                }}
-              />
+              <>
+                <OCRImageSelector
+                  file={file}
+                  language={language}
+                  enhance={enhance}
+                  onExtract={(text) => {
+                    setExtractedText((prev) => (prev ? prev + '\n' + text : text));
+                    toast({ title: '선택 영역 OCR 완료', description: '선택한 문장을 추가했습니다.' });
+                  }}
+                />
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowRegion(true)}
+                    disabled={!preview || isProcessing}
+                    className="flex items-center gap-2"
+                    aria-label="영역 선택해서 OCR"
+                  >
+                    <Crop className="h-4 w-4" />
+                    영역 선택해서 OCR
+                  </Button>
+                </div>
+                <Dialog open={showRegion} onOpenChange={setShowRegion}>
+                  <DialogContent className="sm:max-w-[90vw] w-[90vw] max-w-4xl h-[90vh] p-0">
+                    <DialogHeader className="px-4 py-3 border-b">
+                      <DialogTitle>영역 선택 OCR</DialogTitle>
+                      <DialogDescription>이미지 위를 드래그해 여러 영역을 선택한 뒤 OCR을 실행하세요.</DialogDescription>
+                    </DialogHeader>
+                    {preview && (
+                      <div className="p-4">
+                        <ImageRegionOCR
+                          imageUrl={preview}
+                          options={{ language, dpi: 220, enhance }}
+                          onDone={(txt) => {
+                            setExtractedText(prev => (prev ? prev + '\n\n' + txt : txt));
+                            setShowRegion(false);
+                            toast({ title: 'OCR 완료', description: '선택 영역 텍스트를 추가했습니다.' });
+                          }}
+                          onClose={() => setShowRegion(false)}
+                        />
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
 
           </div>
