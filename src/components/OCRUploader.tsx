@@ -4,7 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/components/ui/use-toast';
-import { Upload, FileText, Loader2 } from 'lucide-react';
+import { Upload, FileText, Loader2, Settings } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import Tesseract from 'tesseract.js';
 
 interface OCRUploaderProps {
@@ -15,7 +17,39 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [extractedText, setExtractedText] = useState<string>('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [ocrOptions, setOcrOptions] = useState({
+    preprocessImage: true,
+    koreanOnly: false,
+    mathMode: false
+  });
   const { toast } = useToast();
+
+  // 이미지 전처리 함수
+  const preprocessImage = (canvas: HTMLCanvasElement): Promise<string> => {
+    return new Promise((resolve) => {
+      const ctx = canvas.getContext('2d')!;
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // 대비 개선 및 노이즈 제거
+      for (let i = 0; i < data.length; i += 4) {
+        // 그레이스케일 변환
+        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+        
+        // 대비 개선 (0.7보다 작으면 검정, 큰 것은 흰색으로)
+        const enhanced = gray > 127 ? 255 : 0;
+        
+        data[i] = enhanced;     // R
+        data[i + 1] = enhanced; // G
+        data[i + 2] = enhanced; // B
+        // A는 그대로 유지
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    });
+  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -36,16 +70,58 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
     setExtractedText('');
 
     try {
+      let imageToProcess: string | File = file;
+
+      // 이미지 전처리 옵션이 켜져있으면 전처리 수행
+      if (ocrOptions.preprocessImage) {
+        const img = new Image();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+
+        await new Promise((resolve) => {
+          img.onload = resolve;
+          img.src = URL.createObjectURL(file);
+        });
+
+        // 캔버스 크기를 이미지 크기로 설정
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // 이미지를 캔버스에 그리기
+        ctx.drawImage(img, 0, 0);
+        
+        // 전처리 수행
+        imageToProcess = await preprocessImage(canvas);
+        URL.revokeObjectURL(img.src);
+      }
+
+      // 언어 설정
+      let language = 'kor+eng';
+      if (ocrOptions.koreanOnly) {
+        language = 'kor';
+      }
+
+      // Tesseract 설정
+      const tesseractOptions: any = {
+        logger: (m: any) => {
+          if (m.status === 'recognizing text') {
+            setProgress(Math.round(m.progress * 100));
+          }
+        },
+      };
+
+      // 수학 모드일 때 PSM 설정
+      if (ocrOptions.mathMode) {
+        tesseractOptions.tessedit_pageseg_mode = Tesseract.PSM.SINGLE_BLOCK;
+        tesseractOptions.tessedit_char_whitelist = '0123456789+-×÷=()[]{}.,ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz가-힣';
+      } else {
+        tesseractOptions.tessedit_pageseg_mode = Tesseract.PSM.AUTO;
+      }
+
       const result = await Tesseract.recognize(
-        file,
-        'kor+eng', // 한국어와 영어 인식
-        {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              setProgress(Math.round(m.progress * 100));
-            }
-          },
-        }
+        imageToProcess,
+        language,
+        tesseractOptions
       );
 
       const text = result.data.text.trim();
@@ -54,7 +130,7 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
         onTextExtracted(text);
         toast({
           title: "성공",
-          description: "텍스트 추출이 완료되었습니다.",
+          description: `텍스트 추출이 완료되었습니다. (신뢰도: ${Math.round(result.data.confidence)}%)`,
         });
       } else {
         toast({
@@ -112,6 +188,62 @@ export const OCRUploader = ({ onTextExtracted }: OCRUploaderProps) => {
                   </div>
                 </Button>
               </label>
+            </div>
+
+            {/* 고급 설정 */}
+            <div className="w-full">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                고급 설정 {showAdvanced ? '숨기기' : '보기'}
+              </Button>
+
+              {showAdvanced && (
+                <div className="mt-3 space-y-3 p-3 border rounded-md bg-muted/50">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="preprocess"
+                      checked={ocrOptions.preprocessImage}
+                      onCheckedChange={(checked) => 
+                        setOcrOptions(prev => ({ ...prev, preprocessImage: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="preprocess" className="text-sm">
+                      이미지 전처리 (대비 개선, 노이즈 제거)
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="korean-only"
+                      checked={ocrOptions.koreanOnly}
+                      onCheckedChange={(checked) => 
+                        setOcrOptions(prev => ({ ...prev, koreanOnly: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="korean-only" className="text-sm">
+                      한국어만 인식 (한글 문제에 최적화)
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="math-mode"
+                      checked={ocrOptions.mathMode}
+                      onCheckedChange={(checked) => 
+                        setOcrOptions(prev => ({ ...prev, mathMode: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="math-mode" className="text-sm">
+                      수학 문제 모드 (수식 인식 개선)
+                    </Label>
+                  </div>
+                </div>
+              )}
             </div>
 
             {isProcessing && (
