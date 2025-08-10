@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { createWorker, PSM } from "tesseract.js";
 import { cn } from "@/lib/utils";
 import { useOcr } from "@/hooks/useOcr";
@@ -36,6 +37,8 @@ export function OCRImageSelector({ file, language, enhance = true, onExtract }: 
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const modalImgRef = useRef<HTMLImageElement>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const url = URL.createObjectURL(file);
@@ -182,6 +185,15 @@ export function OCRImageSelector({ file, language, enhance = true, onExtract }: 
     return { s, ox: 0, oy: Math.max(0, oy) };
   }, [imgNatural, imageUrl, imgRef.current?.clientWidth, imgRef.current?.clientHeight]);
 
+const scaleModal = useMemo(() => {
+  const imgEl = modalImgRef.current;
+  if (!imgEl || !imgNatural) return { s: 1, ox: 0, oy: 0 };
+  const s = imgEl.clientWidth / imgNatural.w;
+  // Center vertically inside container
+  const oy = (imgEl.clientHeight - imgNatural.h * s) / 2 || 0;
+  return { s, ox: 0, oy: Math.max(0, oy) };
+}, [imgNatural, imageUrl, open]);
+
   const toggle = (id: string, multi: boolean) => {
     setSelected(prev => {
       const next = new Set(multi ? prev : []);
@@ -262,6 +274,7 @@ export function OCRImageSelector({ file, language, enhance = true, onExtract }: 
           )}
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>전체 화면</Button>
           <Button variant="outline" size="sm" onClick={selectAll} disabled={loadingDetect}>전체 선택</Button>
           <Button variant="ghost" size="sm" onClick={clearSel}>선택 해제</Button>
         </div>
@@ -299,6 +312,42 @@ export function OCRImageSelector({ file, language, enhance = true, onExtract }: 
           </div>
         )}
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-[95vw] h-[90vh] p-0">
+          <div className="relative w-full h-full">
+            <img ref={modalImgRef} src={imageUrl} alt="이미지 전체 화면 미리보기" className="block w-full h-full object-contain select-none" />
+            {!!lines.length && imgNatural && (
+              <div className="absolute inset-0">
+                {lines.map((ln) => {
+                  const left = ln.x * scaleModal.s + scaleModal.ox;
+                  const top = ln.y * scaleModal.s + scaleModal.oy;
+                  const width = ln.w * scaleModal.s;
+                  const height = ln.h * scaleModal.s;
+                  const isSel = selected.has(ln.id);
+                  return (
+                    <div
+                      key={ln.id}
+                      style={{ left, top, width, height }}
+                      className={cn(
+                        'absolute rounded-sm border transition-colors',
+                        isSel ? 'border-primary bg-primary/10' : 'border-muted-foreground/30'
+                      )}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggle(ln.id, e.shiftKey);
+                      }}
+                      role="button"
+                      aria-label="텍스트 라인"
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex gap-2">
         <Button className="w-full" onClick={handleExtract} disabled={loadingDetect || isExtracting || selected.size === 0}>
