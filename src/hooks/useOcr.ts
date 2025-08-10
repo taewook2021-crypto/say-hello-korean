@@ -25,7 +25,7 @@ export function useOcr() {
     file: File, 
     options: OcrOptions = {}
   ): Promise<string> => {
-    const { language = 'kor', pageSegMode = PSM.SINGLE_BLOCK, dpi = 150 } = options;
+    const { language = 'kor', pageSegMode = PSM.AUTO, dpi = 300 } = options;
     
     setIsProcessing(true);
     setProgress({ status: 'Initializing...', progress: 0 });
@@ -42,6 +42,8 @@ export function useOcr() {
 
       await worker.setParameters({
         tessedit_pageseg_mode: pageSegMode,
+        tessedit_char_whitelist: '',
+        tessedit_ocr_engine_mode: 1, // LSTM OCR Engine
       });
 
       let text = '';
@@ -74,10 +76,12 @@ export function useOcr() {
 
       await worker.terminate();
       
-      // Clean up text
+      // Clean up text - 더 정확한 후처리
       text = text
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\s+/g, ' ') // 다중 공백을 단일 공백으로
+        .replace(/([.!?])\s*\n\s*/g, '$1\n') // 문장 끝 줄바꿈 정리
+        .replace(/\n{3,}/g, '\n\n') // 과도한 줄바꿈 제거
+        .replace(/^\s+|\s+$/gm, '') // 각 줄의 앞뒤 공백 제거
         .trim();
 
       return text;

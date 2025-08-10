@@ -2,15 +2,17 @@ import { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Upload, FileText, Image } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Upload, FileText, Image, ArrowDown } from 'lucide-react';
 import { useOcr } from '@/hooks/useOcr';
 import { useToast } from '@/hooks/use-toast';
 
 interface OCRUploaderProps {
-  onTextExtracted: (text: string) => void;
+  onTextExtracted: (text: string, target: 'question' | 'wrongAnswer' | 'correctAnswer') => void;
 }
 
 const SUPPORTED_FILES = [
@@ -28,7 +30,10 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [language, setLanguage] = useState('kor');
+  const [extractedText, setExtractedText] = useState('');
+  const [selectedText, setSelectedText] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleFileSelect = useCallback((selectedFile: File) => {
     if (!SUPPORTED_FILES.includes(selectedFile.type)) {
@@ -41,6 +46,8 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     }
 
     setFile(selectedFile);
+    setExtractedText('');
+    setSelectedText('');
     
     // Create preview for images
     if (selectedFile.type.startsWith('image/')) {
@@ -77,14 +84,14 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     try {
       const text = await processFile(file, { 
         language,
-        dpi: 150 
+        dpi: 300 
       });
       
       if (text.trim()) {
-        onTextExtracted(text);
+        setExtractedText(text);
         toast({
           title: 'OCR 완료',
-          description: '텍스트가 성공적으로 추출되었습니다.'
+          description: '텍스트가 추출되었습니다. 원하는 부분을 선택하세요.'
         });
       } else {
         toast({
@@ -102,9 +109,38 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
     }
   };
 
+  const handleTextSelection = () => {
+    if (textareaRef.current) {
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      const selected = extractedText.substring(start, end);
+      if (selected.trim()) {
+        setSelectedText(selected.trim());
+      }
+    }
+  };
+
+  const addToField = (target: 'question' | 'wrongAnswer' | 'correctAnswer') => {
+    if (selectedText.trim()) {
+      onTextExtracted(selectedText, target);
+      toast({
+        title: '텍스트 추가됨',
+        description: `선택한 텍스트가 ${target === 'question' ? '문제' : target === 'wrongAnswer' ? '오답' : '정답'}란에 추가되었습니다.`
+      });
+    } else {
+      toast({
+        title: '텍스트를 선택하세요',
+        description: '추가할 텍스트를 먼저 선택해주세요.',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const clearFile = () => {
     setFile(null);
     setPreview(null);
+    setExtractedText('');
+    setSelectedText('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -131,7 +167,7 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
             <Upload className="h-8 w-8 text-muted-foreground" />
             <div>
               <p className="font-medium">파일을 드래그하거나 클릭하여 선택</p>
-              <p className="text-sm text-muted-foreground">PNG, JPG, GIF, WebP, PDF 지원</p>
+              <p className="text-sm text-muted-foreground">PNG, JPG, GIF, WebP, PDF 지원 (고해상도 권장)</p>
               <p className="text-xs text-muted-foreground mt-1">Ctrl+V로 클립보드 이미지 붙여넣기 가능</p>
             </div>
             <Input
@@ -194,9 +230,9 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="kor">한국어</SelectItem>
+              <SelectItem value="kor">한국어 (권장)</SelectItem>
               <SelectItem value="eng">English</SelectItem>
-              <SelectItem value="kor+eng">한국어 + English</SelectItem>
+              <SelectItem value="kor+eng">한국어 + English (느림)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -212,16 +248,79 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-          <Button 
-            onClick={processOCR} 
-            disabled={!file || isProcessing}
-            className="flex-1"
-          >
-            {isProcessing ? '처리 중...' : 'OCR 실행'}
-          </Button>
-        </div>
+        {/* OCR Button */}
+        <Button 
+          onClick={processOCR} 
+          disabled={!file || isProcessing}
+          className="w-full"
+        >
+          {isProcessing ? '처리 중...' : 'OCR 실행'}
+        </Button>
+
+        {/* Extracted Text Display */}
+        {extractedText && (
+          <>
+            <Separator />
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">추출된 텍스트</Label>
+              <p className="text-sm text-muted-foreground">
+                추가할 텍스트를 마우스로 드래그하여 선택하세요
+              </p>
+              <Textarea
+                ref={textareaRef}
+                value={extractedText}
+                onChange={(e) => setExtractedText(e.target.value)}
+                onSelect={handleTextSelection}
+                className="min-h-[200px] font-mono text-sm"
+                placeholder="OCR로 추출된 텍스트가 여기에 표시됩니다..."
+              />
+            </div>
+          </>
+        )}
+
+        {/* Selected Text and Action Buttons */}
+        {selectedText && (
+          <>
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">선택된 텍스트</Label>
+              <div className="bg-muted p-3 rounded-lg border">
+                <p className="text-sm">{selectedText}</p>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">어디에 추가할까요?</span>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => addToField('question')}
+                  className="w-full"
+                >
+                  문제에 추가
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => addToField('wrongAnswer')}
+                  className="w-full"
+                >
+                  오답에 추가
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => addToField('correctAnswer')}
+                  className="w-full"
+                >
+                  정답에 추가
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

@@ -64,11 +64,11 @@ const Index = () => {
 
   const [ocrTarget, setOcrTarget] = useState<"question" | "wrongAnswer" | "correctAnswer">("question");
 
-  const handleOCRTextExtracted = (text: string) => {
+  const handleOCRTextExtracted = (text: string, target: "question" | "wrongAnswer" | "correctAnswer") => {
     setNewNote(prev => {
       const next: any = { ...prev };
-      const prevVal = next[ocrTarget] as string;
-      next[ocrTarget] = prevVal ? `${prevVal}\n\n${text}` : text;
+      const prevVal = next[target] as string;
+      next[target] = prevVal ? `${prevVal}\n\n${text}` : text;
       return next;
     });
   };
