@@ -165,10 +165,10 @@ export function OCRUploader({ onTextExtracted }: OCRUploaderProps) {
             <div>
               <p className="font-medium">파일을 드래그하거나 클릭하여 선택</p>
               <p className="text-sm text-muted-foreground">PNG, JPG, GIF, WebP, PDF 지원</p>
-              <p className="text-xs text-muted-foreground mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 <Badge variant="secondary" className="mr-1">TIP</Badge>
                 고해상도 이미지일수록 정확도가 높아집니다
-              </p>
+              </div>
               <p className="text-xs text-muted-foreground">Ctrl+V로 클립보드 이미지 붙여넣기 가능</p>
             </div>
             <Input

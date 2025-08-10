@@ -64,14 +64,31 @@ export function OCRImageSelector({ file, language, enhance = true, onExtract }: 
         await worker.setParameters({
           tessedit_pageseg_mode: PSM.AUTO, // detect lines
           preserve_interword_spaces: '1',
-          user_defined_dpi: '180', // faster but enough to get boxes
+          user_defined_dpi: '200',
         });
-        const { data } = await worker.recognize(imageUrl);
+
+        // Draw image to canvas (avoids blob URL/CORS issues)
+        const baseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = reject;
+          i.src = imageUrl;
+        });
+        const cnv = document.createElement('canvas');
+        cnv.width = baseImg.naturalWidth;
+        cnv.height = baseImg.naturalHeight;
+        const cctx = cnv.getContext('2d')!;
+        cctx.drawImage(baseImg, 0, 0);
+
+        const { data } = await worker.recognize(cnv);
         await worker.terminate();
 
-        const linesArr = ((data as any).lines || []);
-        const detected = linesArr.map((ln: any, idx: number) => {
-          const { x0, y0, x1, y1 } = ln.bbox || {};
+        const rawLines = (data as any).lines as any[] | undefined;
+        const words = (data as any).words as any[] | undefined;
+
+        const detected = (rawLines && rawLines.length ? rawLines : groupWordsIntoLines(words, cnv.height)).map((ln: any, idx: number) => {
+          const bbox = ln.bbox || ln;
+          const { x0, y0, x1, y1 } = bbox;
           const x = x0 ?? 0;
           const y = y0 ?? 0;
           const w = Math.max(1, (x1 ?? 0) - x);
@@ -90,6 +107,39 @@ export function OCRImageSelector({ file, language, enhance = true, onExtract }: 
       }
     })();
   }, [imageUrl, imgNatural, language, toast]);
+
+  // Group words into line-like boxes if data.lines is missing
+  function groupWordsIntoLines(words: any[] | undefined, imgH: number): Array<{ bbox: { x0: number; y0: number; x1: number; y1: number }, text?: string }> {
+    if (!words || !words.length) return [];
+    const items = words.map(w => ({
+      x0: w.bbox?.x0 ?? 0,
+      y0: w.bbox?.y0 ?? 0,
+      x1: w.bbox?.x1 ?? 0,
+      y1: w.bbox?.y1 ?? 0,
+      text: w.text ?? ''
+    }));
+    // cluster by y center
+    const lines: Array<{ y: number; x0: number; y0: number; x1: number; y1: number; texts: string[] }> = [];
+    const tol = Math.max(6, Math.round(imgH * 0.01));
+    for (const it of items) {
+      const yCenter = (it.y0 + it.y1) / 2;
+      let target = lines.find(l => Math.abs(l.y - yCenter) <= tol);
+      if (!target) {
+        target = { y: yCenter, x0: it.x0, y0: it.y0, x1: it.x1, y1: it.y1, texts: [it.text] };
+        lines.push(target);
+      } else {
+        target.y = (target.y + yCenter) / 2;
+        target.x0 = Math.min(target.x0, it.x0);
+        target.y0 = Math.min(target.y0, it.y0);
+        target.x1 = Math.max(target.x1, it.x1);
+        target.y1 = Math.max(target.y1, it.y1);
+        target.texts.push(it.text);
+      }
+    }
+    // sort by top then left
+    lines.sort((a, b) => (a.y0 - b.y0) || (a.x0 - b.x0));
+    return lines.map(l => ({ bbox: { x0: l.x0, y0: l.y0, x1: l.x1, y1: l.y1 }, text: l.texts.join(' ') }));
+  }
 
   const scale = useMemo(() => {
     const imgEl = imgRef.current;
