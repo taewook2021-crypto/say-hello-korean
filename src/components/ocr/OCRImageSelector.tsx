@@ -61,30 +61,62 @@ export function OCRImageSelector({ file, language, enhance = true, onExtract }: 
       setLines([]);
       try {
         const worker = await createWorker(language);
+        // 1차: 빠른 희소 텍스트 감지로 단어/라인을 최대한 얻기
         await worker.setParameters({
-          tessedit_pageseg_mode: PSM.AUTO, // detect lines
+          tessedit_pageseg_mode: PSM.SPARSE_TEXT,
           preserve_interword_spaces: '1',
-          user_defined_dpi: '200',
+          user_defined_dpi: '260',
         });
 
-        // Draw image to canvas (avoids blob URL/CORS issues)
+        // Draw image to canvas (avoids blob URL/CORS issues) + lightweight preprocessing
         const baseImg = await new Promise<HTMLImageElement>((resolve, reject) => {
           const i = new Image();
           i.onload = () => resolve(i);
           i.onerror = reject;
           i.src = imageUrl;
         });
-        const cnv = document.createElement('canvas');
-        cnv.width = baseImg.naturalWidth;
-        cnv.height = baseImg.naturalHeight;
-        const cctx = cnv.getContext('2d')!;
-        cctx.drawImage(baseImg, 0, 0);
 
-        const { data } = await worker.recognize(cnv);
+        // upscale small images for better OCR stability
+        const targetW = Math.min(2400, Math.max(baseImg.naturalWidth, 1600));
+        const scaleUp = targetW / baseImg.naturalWidth;
+        const targetH = Math.round(baseImg.naturalHeight * scaleUp);
+
+        const cnv = document.createElement('canvas');
+        cnv.width = targetW;
+        cnv.height = targetH;
+        const cctx = cnv.getContext('2d')!;
+        cctx.imageSmoothingEnabled = true;
+        cctx.imageSmoothingQuality = 'high';
+        // simple pre-processing: grayscale + contrast boost + slight brightness
+        // (helps thin Korean glyphs from screenshots)
+        // Note: Canvas filter is widely supported and fast
+        // If not supported, it is just ignored by the browser
+        // and Tesseract will still work on the drawn image.
+        // @ts-ignore - filter exists in modern browsers
+        cctx.filter = 'grayscale(100%) contrast(135%) brightness(110%)';
+        cctx.drawImage(baseImg, 0, 0, targetW, targetH);
+
+        // First pass
+        let result = await worker.recognize(cnv);
+        let data: any = result.data;
+        let rawLines: any[] | undefined = (data as any).lines as any[] | undefined;
+        let words: any[] | undefined = (data as any).words as any[] | undefined;
+
+        // Fallback pass with AUTO if nothing found in SPARSE_TEXT
+        if ((!rawLines || rawLines.length === 0) && (!words || words.length === 0)) {
+          await worker.setParameters({
+            tessedit_pageseg_mode: PSM.AUTO,
+            preserve_interword_spaces: '1',
+            user_defined_dpi: '300',
+          });
+          result = await worker.recognize(cnv);
+          data = result.data;
+          rawLines = (data as any).lines as any[] | undefined;
+          words = (data as any).words as any[] | undefined;
+        }
+
         await worker.terminate();
 
-        const rawLines = (data as any).lines as any[] | undefined;
-        const words = (data as any).words as any[] | undefined;
 
         const detected = (rawLines && rawLines.length ? rawLines : groupWordsIntoLines(words, cnv.height)).map((ln: any, idx: number) => {
           const bbox = ln.bbox || ln;
