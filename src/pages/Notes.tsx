@@ -304,6 +304,15 @@ const Index = () => {
 
   const handleTemplateSelect = (coverTemplate: PdfTemplate, paperTemplate: PdfTemplate) => {
     setSelectedPdfTemplates({ cover: coverTemplate, paper: paperTemplate });
+    setShowPdfTemplateSelector(false);
+    // 템플릿 선택 후 바로 다운로드 실행
+    setTimeout(() => {
+      const updatedOptions = {
+        ...pdfOptions,
+        paperTemplate: paperTemplate.id
+      };
+      proceedWithDownload(updatedOptions);
+    }, 100);
   };
 
   const handleDownloadPDF = async (options = pdfOptions) => {
@@ -937,18 +946,7 @@ const Index = () => {
             </DialogHeader>
             <div className="mt-6">
               <PdfTemplateSelector
-                onSelect={(coverTemplate, paperTemplate) => {
-                  handleTemplateSelect(coverTemplate, paperTemplate);
-                  setShowPdfTemplateSelector(false);
-                  // 템플릿 선택 후 PDF 다운로드 실행 (새로 선택된 템플릿 사용)
-                  setTimeout(() => {
-                    const updatedOptions = {
-                      ...pdfOptions,
-                      paperTemplate: paperTemplate.id
-                    };
-                    proceedWithDownload(updatedOptions);
-                  }, 100);
-                }}
+                onSelect={handleTemplateSelect}
                 selectedCover={selectedPdfTemplates.cover}
                 selectedPaper={selectedPdfTemplates.paper}
               />
