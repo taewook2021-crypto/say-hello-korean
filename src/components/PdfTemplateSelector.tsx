@@ -62,33 +62,11 @@ const templates: PdfTemplate[] = [
     description: '기본 줄무늬 노트 형식'
   },
   {
-    id: 'grid-paper',
-    name: '모눈 종이',
+    id: 'excel-paper',
+    name: 'Excel',
     category: 'paper',
-    preview: 'bg-white border-2 border-gray-200',
-    description: '격자 무늬 노트 형식'
-  },
-  {
-    id: 'dotted-paper',
-    name: '점선 종이',
-    category: 'paper',
-    preview: 'bg-white border-2 border-gray-300',
-    description: '점선 격자 노트 형식'
-  },
-  {
-    id: 'blank-paper',
-    name: '백지',
-    category: 'paper',
-    preview: 'bg-white border-2 border-gray-100',
-    description: '깔끔한 무지 노트 형식'
-  },
-  {
-    id: 'cornell-paper',
-    name: '코넬 노트',
-    category: 'paper',
-    preview: 'bg-white border-2 border-red-200',
-    description: '코넬 노트 시스템 형식',
-    isPremium: true
+    preview: 'bg-white border-2 border-green-200',
+    description: 'Excel 스타일 표 형식'
   }
 ];
 
@@ -137,28 +115,11 @@ export function PdfTemplateSelector({ onSelect, selectedCover, selectedPaper }: 
                   ))}
                 </div>
               )}
-              {template.id === 'grid-paper' && (
-                <div className="grid grid-cols-6 grid-rows-4 gap-1">
-                  {[...Array(24)].map((_, i) => (
-                    <div key={i} className="border border-gray-300/30" />
+              {template.id === 'excel-paper' && (
+                <div className="grid grid-cols-4 grid-rows-3 gap-0.5">
+                  {[...Array(12)].map((_, i) => (
+                    <div key={i} className="border border-green-300/60 bg-green-50/30 h-3" />
                   ))}
-                </div>
-              )}
-              {template.id === 'dotted-paper' && (
-                <div className="grid grid-cols-8 grid-rows-6 gap-1">
-                  {[...Array(48)].map((_, i) => (
-                    <div key={i} className="w-1 h-1 bg-gray-400/40 rounded-full" />
-                  ))}
-                </div>
-              )}
-              {template.id === 'cornell-paper' && (
-                <div className="flex h-full">
-                  <div className="w-1/3 border-r border-red-300/50"></div>
-                  <div className="flex-1 space-y-1 pl-2">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="h-0.5 bg-red-300/30" />
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
