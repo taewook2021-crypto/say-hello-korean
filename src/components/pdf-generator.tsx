@@ -47,105 +47,126 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
   ctx.lineWidth = 6;
   ctx.strokeRect(contentX, contentYStart, contentWidth, contentHeight);
   
-  // 25개 가로줄 그리기 및 위치 계산
+  // 25개 가로줄 그리기 및 줄 사이 중간 위치 계산
   const linesCount = 25;
-  const linePositions: number[] = [];
+  const lineSpacing = contentHeight / linesCount;
+  const textPositions: number[] = [];
   
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 2;
   
+  // 가로줄 그리기
   for (let i = 1; i < linesCount; i++) {
-    const y = contentYStart + (contentHeight / linesCount) * i;
-    linePositions.push(y);
+    const y = contentYStart + lineSpacing * i;
     ctx.beginPath();
     ctx.moveTo(contentX, y);
     ctx.lineTo(contentX + contentWidth, y);
     ctx.stroke();
   }
   
-  // 첫 번째 줄 위치도 추가 (맨 위)
-  linePositions.unshift(contentYStart + (contentHeight / linesCount) * 0.5);
+  // 각 줄 사이의 정확한 중간 위치 계산
+  for (let i = 0; i < linesCount; i++) {
+    const lineTopY = contentYStart + lineSpacing * i;
+    const lineBottomY = contentYStart + lineSpacing * (i + 1);
+    const middleY = (lineTopY + lineBottomY) / 2;
+    textPositions.push(middleY);
+  }
   
-  // 텍스트를 한 줄에 맞게 자르는 함수
-  const fitTextToLine = (text: string, maxWidth: number, fontSize: number): string => {
+  // 텍스트를 여러 줄로 분할하는 함수 (자르지 않고 다음 줄로)
+  const splitTextToMultipleLines = (text: string, maxWidth: number, fontSize: number): string[] => {
     ctx.font = `${fontSize}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
+    const lines: string[] = [];
+    let currentLine = '';
     
-    if (ctx.measureText(text).width <= maxWidth) {
-      return text;
-    }
-    
-    // 텍스트가 너무 길면 자르기
-    let fittedText = '';
     for (let i = 0; i < text.length; i++) {
-      const testText = text.substring(0, i + 1);
-      if (ctx.measureText(testText).width > maxWidth) {
-        break;
+      const char = text[i];
+      const testLine = currentLine + char;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width <= maxWidth) {
+        currentLine = testLine;
+      } else {
+        // 현재 줄을 완성하고 다음 줄로
+        if (currentLine) {
+          lines.push(currentLine);
+          currentLine = char;
+        } else {
+          // 단일 문자도 너무 크면 강제로 추가
+          lines.push(char);
+        }
       }
-      fittedText = testText;
     }
     
-    return fittedText + (fittedText.length < text.length ? '...' : '');
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    
+    return lines;
   };
   
   // 모든 텍스트 라인을 준비
-  const allTextLines: Array<{text: string, color: string, prefix: string}> = [];
+  const allTextLines: Array<{text: string, color: string}> = [];
+  
+  const fontSize = 48;
+  const maxTextWidth = contentWidth - (20 * dpi) / 25.4; // 양쪽 여백
   
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i];
     
-    // 문제 추가
-    allTextLines.push({
-      text: note.question,
-      color: '#000000',
-      prefix: `<Q${i + 1}>`
+    // 문제 처리
+    const questionText = `<Q${i + 1}> ${note.question}`;
+    const questionLines = splitTextToMultipleLines(questionText, maxTextWidth, fontSize);
+    questionLines.forEach(line => {
+      allTextLines.push({
+        text: line,
+        color: '#000000'
+      });
     });
     
-    // 오답 추가 (옵션에 따라)
+    // 오답 처리 (옵션에 따라)
     if (options.includeWrongAnswers) {
-      allTextLines.push({
-        text: note.wrongAnswer,
-        color: '#dc2626',
-        prefix: '<X>'
+      const wrongText = `<X> ${note.wrongAnswer}`;
+      const wrongLines = splitTextToMultipleLines(wrongText, maxTextWidth, fontSize);
+      wrongLines.forEach(line => {
+        allTextLines.push({
+          text: line,
+          color: '#dc2626'
+        });
       });
     }
     
-    // 정답 추가
-    allTextLines.push({
-      text: note.correctAnswer,
-      color: '#2563eb',
-      prefix: '<정답>'
+    // 정답 처리
+    const correctText = `<정답> ${note.correctAnswer}`;
+    const correctLines = splitTextToMultipleLines(correctText, maxTextWidth, fontSize);
+    correctLines.forEach(line => {
+      allTextLines.push({
+        text: line,
+        color: '#2563eb'
+      });
     });
     
     // 문제 간 빈 줄 (마지막 문제 제외)
     if (i < notes.length - 1) {
       allTextLines.push({
         text: '',
-        color: '#000000',
-        prefix: ''
+        color: '#000000'
       });
     }
   }
   
-  // 각 줄에 텍스트 배치 (가로줄 위 0.2mm)
-  const fontSize = 48;
-  const textOffsetAboveLine = (0.2 * dpi) / 25.4; // 0.2mm를 픽셀로 변환
-  const maxTextWidth = contentWidth - (20 * dpi) / 25.4; // 양쪽 여백
+  // 각 줄에 텍스트 배치 (줄과 줄 사이 정확한 중간)
+  ctx.textBaseline = 'middle'; // 텍스트 기준점을 중간으로
   
-  ctx.textBaseline = 'bottom'; // 텍스트 기준점을 아래쪽으로
-  
-  for (let i = 0; i < Math.min(allTextLines.length, linePositions.length); i++) {
+  for (let i = 0; i < Math.min(allTextLines.length, textPositions.length); i++) {
     const textData = allTextLines[i];
-    const lineY = linePositions[i];
+    const textY = textPositions[i];
     
-    if (textData.text || textData.prefix) {
+    if (textData.text) {
       ctx.fillStyle = textData.color;
       ctx.font = `${fontSize}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
       
-      const fullText = textData.prefix ? `${textData.prefix} ${textData.text}` : textData.text;
-      const fittedText = fitTextToLine(fullText, maxTextWidth, fontSize);
-      
-      // 가로줄 위 0.2mm에 텍스트 배치
-      ctx.fillText(fittedText, contentX + 30, lineY - textOffsetAboveLine);
+      // 줄과 줄 사이 정확한 중간에 텍스트 배치
+      ctx.fillText(textData.text, contentX + 30, textY);
     }
   }
   
