@@ -118,7 +118,10 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
 };
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
+  console.log('PDF 생성 시작 - 선택된 템플릿:', options.paperTemplate);
+  
   if (options.paperTemplate === 'excel-paper') {
+    console.log('Excel 템플릿으로 PDF 생성');
     return generateExcelPDF(notes, subject, book, chapter, options);
   }
   console.log('PDF 생성 시작 - 문제 단위 페이지 분할:', { notes: notes.length, subject, book, chapter, options });
