@@ -125,14 +125,14 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       
       // Question 텍스트를 가이드 라인에 맞춰 배치
       ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom'; // 텍스트가 라인 위에 앉도록
       ctx.fillStyle = '#000000';
       const wrappedQuestion = wrapText(ctx, note.question, questionMaxWidth);
       
       wrappedQuestion.forEach((line, lineIndex) => {
         const guideLineY = rowY + (rowHeight * 0.1) + (lineSpacing * (lineIndex + 1));
-        const textY = guideLineY - (1 * dpi) / 25.4; // 라인 위에 텍스트 배치
-        if (textY < nextRowY - (rowHeight * 0.1)) {
-          ctx.fillText(line, questionX, textY);
+        if (guideLineY < nextRowY - (rowHeight * 0.1)) {
+          ctx.fillText(line, questionX, guideLineY); // 가이드 라인 바로 위에 텍스트 배치
         }
       });
       
@@ -154,13 +154,13 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       }
       
       // Answer 텍스트를 가이드 라인에 맞춰 배치
+      ctx.textBaseline = 'bottom'; // 텍스트가 라인 위에 앉도록
       const wrappedAnswer = wrapText(ctx, note.correctAnswer, answerMaxWidth);
       
       wrappedAnswer.forEach((line, lineIndex) => {
         const guideLineY = rowY + (rowHeight * 0.1) + (lineSpacing * (lineIndex + 1));
-        const textY = guideLineY - (1 * dpi) / 25.4; // 라인 위에 텍스트 배치
-        if (textY < nextRowY - (rowHeight * 0.1)) {
-          ctx.fillText(line, answerX, textY);
+        if (guideLineY < nextRowY - (rowHeight * 0.1)) {
+          ctx.fillText(line, answerX, guideLineY); // 가이드 라인 바로 위에 텍스트 배치
         }
       });
       
