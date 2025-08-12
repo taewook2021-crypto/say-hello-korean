@@ -85,11 +85,12 @@ export function PdfTemplateSelector({ onSelect, selectedCover, selectedPaper }: 
 
   const handleCoverSelect = (template: PdfTemplate) => {
     setActiveCover(template);
-    onSelect(template, activePaper);
+    // 표지 선택 시에는 onSelect 호출하지 않음
   };
 
   const handlePaperSelect = (template: PdfTemplate) => {
     setActivePaper(template);
+    // 종이 템플릿 선택 시에만 다운로드 실행
     onSelect(activeCover, template);
   };
 
