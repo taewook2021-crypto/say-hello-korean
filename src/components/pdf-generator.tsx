@@ -102,7 +102,9 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       
       // No. 열
       ctx.textAlign = 'center';
-      ctx.fillText(`${startIndex + index + 1}`, margin + noWidth / 2, rowY + (rowHeight * 0.1));
+      ctx.textBaseline = 'middle';
+      ctx.font = `200 ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 얇은 글씨체로 고정
+      ctx.fillText(`${startIndex + index + 1}`, margin + noWidth / 2, rowY + rowHeight / 2); // 칸의 정 가운데
       
       // Question 열에 가이드 라인 추가
       const questionX = margin + noWidth + (2 * dpi) / 25.4;
