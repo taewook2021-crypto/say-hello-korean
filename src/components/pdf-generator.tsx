@@ -74,7 +74,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     
     // 헤더 텍스트 (크기 줄이고 얇게)
     ctx.fillStyle = '#000000';
-    ctx.font = `300 ${(7 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 300은 얇은 폰트 weight
+    ctx.font = `100 ${(5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 100은 가장 얇은 폰트 weight
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
@@ -83,10 +83,10 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     ctx.fillText('Question', margin + noWidth + questionWidth / 2, headerY);
     ctx.fillText('Answer', margin + noWidth + questionWidth + answerWidth / 2, headerY);
     
-    // 콘텐츠 영역
+    // 콘텐츠 영역 (6-7문제용)
     const contentHeight = tableHeight - headerHeight;
-    const rowsPerPage = Math.min(pageNotes.length + 1, 25); // +1 for spacing, max 25 rows
-    const rowHeight = contentHeight / rowsPerPage;
+    const rowsPerPage = Math.min(pageNotes.length, 7); // 최대 7문제
+    const rowHeight = contentHeight / 7; // 7개 행으로 고정하여 여유 공간 확보
     
     // 데이터 행 렌더링
     pageNotes.forEach((note, index) => {
@@ -94,8 +94,8 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       const rowY = margin + headerHeight + rowHeight * rowIndex;
       const nextRowY = margin + headerHeight + rowHeight * (rowIndex + 1);
       
-      // 텍스트 설정
-      ctx.font = `400 ${(6 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
+      // 텍스트 설정 (더 작고 얇게)
+      ctx.font = `200 ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 더 작고 얇게
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#000000';
@@ -164,8 +164,8 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     return lines;
   };
   
-  // 페이지별로 노트 분할 (페이지당 최대 20개 문제)
-  const notesPerPage = 20;
+  // 페이지별로 노트 분할 (페이지당 최대 6개 문제)
+  const notesPerPage = 6;
   const totalPages = Math.ceil(notes.length / notesPerPage);
   
   for (let page = 0; page < totalPages; page++) {
