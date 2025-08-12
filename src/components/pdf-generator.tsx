@@ -74,7 +74,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     
     // 헤더 텍스트 (크기 줄이고 얇게)
     ctx.fillStyle = '#000000';
-    ctx.font = `100 ${(5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 100은 가장 얇은 폰트 weight
+    ctx.font = `lighter ${(5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", "Apple SD Gothic Neo", Arial, sans-serif`; // lighter로 더 얇게
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
@@ -95,7 +95,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       const nextRowY = margin + headerHeight + rowHeight * (rowIndex + 1);
       
       // 텍스트 설정 (더 작고 얇게)
-      ctx.font = `200 ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 더 작고 얇게
+      ctx.font = `lighter ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", "Apple SD Gothic Neo", Arial, sans-serif`; // lighter로 더 얇게
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#000000';
@@ -103,7 +103,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       // No. 열
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = `200 ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 얇은 글씨체로 고정
+      ctx.font = `lighter ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", "Apple SD Gothic Neo", Arial, sans-serif`; // lighter로 더 얇게
       ctx.fillText(`${startIndex + index + 1}`, margin + noWidth / 2, rowY + rowHeight / 2); // 칸의 정 가운데
       
       // Question 열에 가이드 라인 추가
@@ -129,7 +129,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       ctx.textAlign = 'left';
       ctx.textBaseline = 'bottom'; // 텍스트가 라인 위에 앉도록
       ctx.fillStyle = '#000000';
-      ctx.font = `200 ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 얇은 글씨체로 고정
+      ctx.font = `lighter ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", "Apple SD Gothic Neo", Arial, sans-serif`; // lighter로 더 얇게
       const wrappedQuestion = wrapText(ctx, note.question, questionMaxWidth);
       
       wrappedQuestion.forEach((line, lineIndex) => {
