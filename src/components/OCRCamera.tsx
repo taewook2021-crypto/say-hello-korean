@@ -116,7 +116,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
         logger: m => console.log(m)
       });
 
-      // OCR 정확도를 높이기 위한 설정
+      // OCR 정확도를 높이기 위한 설정 (문서/책 텍스트에 최적화)
       await worker.setParameters({
         tessedit_char_whitelist: '',
         preserve_interword_spaces: '1',
@@ -458,6 +458,9 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       }
     });
     
+    // 구조화된 문서를 위한 더 관대한 여유 공간
+    const margin = 8; // 문서 텍스트의 행간과 들여쓰기를 고려한 여유
+    
     // 선택 영역과 겹치는 텍스트 블록 찾기
     const foundTexts = textBlocks
       .filter(block => {
@@ -468,24 +471,37 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
         const blockBottom = block.bbox.y1;
         
         // 블록과 선택 영역이 겹치는지 확인 (AABB 충돌 검사)
-        const horizontalOverlap = blockRight >= adjustedMinX && blockLeft <= adjustedMaxX;
-        const verticalOverlap = blockBottom >= adjustedMinY && blockTop <= adjustedMaxY;
+        const horizontalOverlap = blockRight >= (adjustedMinX - margin) && 
+                                 blockLeft <= (adjustedMaxX + margin);
+        const verticalOverlap = blockBottom >= (adjustedMinY - margin) && 
+                               blockTop <= (adjustedMaxY + margin);
         const overlaps = horizontalOverlap && verticalOverlap;
         
         // 블록의 중심점이 선택 영역 내에 있는지도 확인
         const centerX = (blockLeft + blockRight) / 2;
         const centerY = (blockTop + blockBottom) / 2;
-        const centerInside = centerX >= adjustedMinX && centerX <= adjustedMaxX && 
-                            centerY >= adjustedMinY && centerY <= adjustedMaxY;
+        const centerInside = centerX >= (adjustedMinX - margin) && 
+                            centerX <= (adjustedMaxX + margin) && 
+                            centerY >= (adjustedMinY - margin) && 
+                            centerY <= (adjustedMaxY + margin);
         
-        const isSelected = overlaps || centerInside;
+        // 블록의 일부분이라도 선택 영역과 겹치는지 확인 (더 관대한 방식)
+        const partialOverlap = !(
+          blockRight < (adjustedMinX - margin) ||
+          blockLeft > (adjustedMaxX + margin) ||
+          blockBottom < (adjustedMinY - margin) ||
+          blockTop > (adjustedMaxY + margin)
+        );
+        
+        const isSelected = overlaps || centerInside || partialOverlap;
         
         if (isSelected) {
           console.log(`✓ Selected: "${block.text}"`, {
             bbox: block.bbox,
             center: { x: centerX, y: centerY },
             overlaps,
-            centerInside
+            centerInside,
+            partialOverlap
           });
         }
         
