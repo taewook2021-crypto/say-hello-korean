@@ -190,16 +190,13 @@ export function PdfTemplateSelector({ onSelect, selectedCover, selectedPaper }: 
       </Tabs>
       
       <div className="mt-6 p-4 bg-muted/30 rounded-lg">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-center">
           <div>
-            <p className="text-sm font-medium">선택한 템플릿</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-medium text-center">선택한 템플릿</p>
+            <p className="text-xs text-muted-foreground text-center">
               표지: {activeCover.name} | 종이: {activePaper.name}
             </p>
           </div>
-          <Button size="sm" onClick={() => onSelect(activeCover, activePaper)}>
-            적용
-          </Button>
         </div>
       </div>
     </div>
