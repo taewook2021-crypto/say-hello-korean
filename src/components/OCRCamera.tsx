@@ -673,7 +673,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                     
                     const { scale, offsetX, offsetY } = imageCoords;
                     
-                    // OCR 좌표를 브라우저 좌표로 변환
+                    // OCR 좌표를 브라우저 좌표로 변환 (Y축 오프셋 수정)
                     const left = (block.bbox.x0 * scale) + offsetX;
                     const top = (block.bbox.y0 * scale) + offsetY;
                     const width = (block.bbox.x1 - block.bbox.x0) * scale;
@@ -682,19 +682,15 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                     return (
                       <div
                         key={index}
-                        className="absolute border border-red-300 bg-red-100/30 text-xs text-red-600 pointer-events-none overflow-hidden"
+                        className="absolute border border-red-300 bg-red-100/20 pointer-events-none"
                         style={{
                           left: left,
                           top: top,
                           width: width,
                           height: height,
-                          fontSize: '8px',
-                          lineHeight: '10px'
                         }}
                         title={block.text}
-                      >
-                        {block.text.length > 8 ? block.text.substring(0, 8) + '...' : block.text}
-                      </div>
+                      />
                     );
                   })}
                 </>
