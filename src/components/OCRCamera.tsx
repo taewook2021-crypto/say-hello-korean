@@ -224,11 +224,24 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
 
       setTextBlocks(blocks);
       
-      // 이미지 스케일 계산
+      // 이미지 스케일 계산 (더 정확하게)
       if (imageRef.current) {
         const naturalWidth = imageRef.current.naturalWidth;
+        const naturalHeight = imageRef.current.naturalHeight;
         const displayWidth = imageRef.current.clientWidth;
-        setImageScale(displayWidth / naturalWidth);
+        const displayHeight = imageRef.current.clientHeight;
+        
+        // 실제 표시되는 이미지의 크기를 고려한 스케일 계산
+        const scaleX = displayWidth / naturalWidth;
+        const scaleY = displayHeight / naturalHeight;
+        const scale = Math.min(scaleX, scaleY); // object-fit: contain과 같은 방식
+        
+        setImageScale(scale);
+        console.log('Image scale calculation:', {
+          naturalWidth, naturalHeight,
+          displayWidth, displayHeight,
+          scaleX, scaleY, finalScale: scale
+        });
       }
 
       await worker.terminate();
@@ -249,52 +262,105 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     }
   };
 
-  // 선택 영역 내의 텍스트 찾기 (useCallback으로 최적화)
+  // 선택 영역 내의 텍스트 찾기 (개선된 좌표 변환)
   const getTextsInSelection = useCallback((selection: SelectionBox) => {
-    if (!selection || textBlocks.length === 0) {
-      console.log('No selection or text blocks');
+    if (!selection || textBlocks.length === 0 || !imageRef.current) {
+      console.log('No selection, text blocks, or image ref');
       return [];
     }
     
-    const minX = Math.min(selection.startX, selection.endX) / imageScale;
-    const maxX = Math.max(selection.startX, selection.endX) / imageScale;
-    const minY = Math.min(selection.startY, selection.endY) / imageScale;
-    const maxY = Math.max(selection.startY, selection.endY) / imageScale;
+    // 이미지의 실제 표시 영역 계산 (object-fit: contain 고려)
+    const img = imageRef.current;
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    const displayWidth = img.clientWidth;
+    const displayHeight = img.clientHeight;
     
-    console.log('Selection area:', { minX, maxX, minY, maxY });
-    console.log('Image scale:', imageScale);
-    console.log('Text blocks to check:', textBlocks);
+    // 실제 이미지가 표시되는 영역의 크기와 위치 계산
+    const scaleX = displayWidth / naturalWidth;
+    const scaleY = displayHeight / naturalHeight;
+    const scale = Math.min(scaleX, scaleY);
     
-    // 윗쪽은 한 줄 정도 더 여유있게 (약 35px), 다른 방향은 일반 마진
-    const topMargin = 35; // 한 줄 정도 여유
-    const sideMargin = 5;  // 기본 여유
+    const actualImageWidth = naturalWidth * scale;
+    const actualImageHeight = naturalHeight * scale;
+    const offsetX = (displayWidth - actualImageWidth) / 2;
+    const offsetY = (displayHeight - actualImageHeight) / 2;
+    
+    console.log('Image positioning:', {
+      naturalWidth, naturalHeight,
+      displayWidth, displayHeight,
+      scale, actualImageWidth, actualImageHeight,
+      offsetX, offsetY
+    });
+    
+    // 선택 좌표를 이미지 좌표계로 변환
+    const adjustedMinX = (Math.min(selection.startX, selection.endX) - offsetX) / scale;
+    const adjustedMaxX = (Math.max(selection.startX, selection.endX) - offsetX) / scale;
+    const adjustedMinY = (Math.min(selection.startY, selection.endY) - offsetY) / scale;
+    const adjustedMaxY = (Math.max(selection.startY, selection.endY) - offsetY) / scale;
+    
+    console.log('Original selection:', {
+      startX: selection.startX, startY: selection.startY,
+      endX: selection.endX, endY: selection.endY
+    });
+    console.log('Adjusted selection in image coordinates:', {
+      minX: adjustedMinX, maxX: adjustedMaxX,
+      minY: adjustedMinY, maxY: adjustedMaxY
+    });
+    
+    // 더 정확한 겹침 검사를 위한 여유 공간
+    const margin = 3; // 픽셀 단위 여유
     
     const foundTexts = textBlocks
       .filter(block => {
-        // 윗쪽에 더 많은 여유를 둔 겹침 검사
+        // 텍스트 블록의 중심점이 선택 영역 안에 있는지 확인
+        const blockCenterX = (block.bbox.x0 + block.bbox.x1) / 2;
+        const blockCenterY = (block.bbox.y0 + block.bbox.y1) / 2;
+        
+        const centerInSelection = 
+          blockCenterX >= adjustedMinX - margin &&
+          blockCenterX <= adjustedMaxX + margin &&
+          blockCenterY >= adjustedMinY - margin &&
+          blockCenterY <= adjustedMaxY + margin;
+        
+        // 또는 블록과 선택 영역이 겹치는지 확인 (더 관대한 방식)
         const overlaps = !(
-          block.bbox.x1 < minX - sideMargin ||
-          block.bbox.x0 > maxX + sideMargin ||
-          block.bbox.y1 < minY - topMargin ||  // 윗쪽에 더 많은 여유
-          block.bbox.y0 > maxY + sideMargin
+          block.bbox.x1 < adjustedMinX - margin ||
+          block.bbox.x0 > adjustedMaxX + margin ||
+          block.bbox.y1 < adjustedMinY - margin ||
+          block.bbox.y0 > adjustedMaxY + margin
         );
-        console.log(`Block "${block.text}" overlaps:`, overlaps, block.bbox);
-        return overlaps;
+        
+        const isSelected = centerInSelection || overlaps;
+        
+        if (isSelected) {
+          console.log(`✓ Block "${block.text}" selected:`, {
+            bbox: block.bbox,
+            center: { x: blockCenterX, y: blockCenterY },
+            centerInSelection,
+            overlaps
+          });
+        }
+        
+        return isSelected;
       })
       .map(block => block.text.trim())
       .filter(text => text.length > 0);
       
-    console.log('Found texts in selection (with extra top margin):', foundTexts);
+    console.log('Found texts in selection:', foundTexts);
     return foundTexts;
-  }, [textBlocks, imageScale]);
+  }, [textBlocks]);
 
-  // 드래그 이벤트 핸들러들
+  // 드래그 이벤트 핸들러들 (개선된 좌표 계산)
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!containerRef.current || !imageRef.current) return;
     
-    const rect = containerRef.current.getBoundingClientRect();
+    // 컨테이너 기준 좌표가 아닌 이미지 기준 좌표 계산
+    const rect = imageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    console.log('Mouse down at image coordinates:', { x, y });
     
     setIsSelecting(true);
     setCurrentSelection({
@@ -306,9 +372,9 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isSelecting || !containerRef.current || !currentSelection) return;
+    if (!isSelecting || !imageRef.current) return;
     
-    const rect = containerRef.current.getBoundingClientRect();
+    const rect = imageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
@@ -317,7 +383,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       endX: x,
       endY: y
     } : null);
-  }, [isSelecting, currentSelection]);
+  }, [isSelecting]);
 
   const handleMouseUp = useCallback(() => {
     if (!currentSelection || !isSelecting) return;
