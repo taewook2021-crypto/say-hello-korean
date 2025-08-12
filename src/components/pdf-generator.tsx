@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface WrongNote {
   id: string;
@@ -26,492 +25,233 @@ const getTemplateClass = (templateId: string) => {
   }
 };
 
-// HTML 기반으로 정확한 답안지 양식 생성
-const createAnswerSheetHTML = (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }): string => {
-  const linesPerPage = 25;
-  let allLines: string[] = [];
-  
-  // 모든 노트를 줄 단위로 변환
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i];
-    
-        // 문제 텍스트를 60자씩 정확히 분할
-        const maxCharsPerLine = 60;
-    const questionParts = [];
-    let remainingQuestion = note.question;
-    
-    while (remainingQuestion.length > 0) {
-      if (remainingQuestion.length <= maxCharsPerLine) {
-        questionParts.push(remainingQuestion);
-        break;
-      }
-      
-      // 정확히 60자씩 분할
-      questionParts.push(remainingQuestion.substring(0, maxCharsPerLine));
-      remainingQuestion = remainingQuestion.substring(maxCharsPerLine);
-    }
-    
-    // 첫 번째 줄: <Q>와 문제 번호, 문제 첫 부분
-    allLines.push(`
-      <div class="answer-line">
-        <div class="content-area">
-          <span class="q-marker">&lt;Q${i + 1}&gt;</span>
-          <span class="question">${questionParts[0] || ''}</span>
-        </div>
-      </div>
-    `);
-    
-    // 문제의 나머지 부분들
-    for (let j = 1; j < questionParts.length; j++) {
-      allLines.push(`
-        <div class="answer-line">
-          <div class="content-area">
-            <span class="question" style="margin-left: 12mm;">${questionParts[j]}</span>
-          </div>
-        </div>
-      `);
-    }
-    
-    // 오답을 60자씩 분할 (옵션에 따라 포함/제외)
-    if (options.includeWrongAnswers) {
-      const wrongAnswerParts = [];
-      let remainingWrongAnswer = note.wrongAnswer;
-      
-      while (remainingWrongAnswer.length > 0) {
-        if (remainingWrongAnswer.length <= maxCharsPerLine) {
-          wrongAnswerParts.push(remainingWrongAnswer);
-          break;
-        }
-        
-        wrongAnswerParts.push(remainingWrongAnswer.substring(0, maxCharsPerLine));
-        remainingWrongAnswer = remainingWrongAnswer.substring(maxCharsPerLine);
-      }
-      
-      // 첫 번째 오답 줄
-      allLines.push(`
-        <div class="answer-line">
-          <div class="content-area">
-            <span class="x-marker">&lt;X&gt;</span>
-            <span class="wrong-answer">${wrongAnswerParts[0] || ''}</span>
-          </div>
-        </div>
-      `);
-      
-      // 오답의 나머지 부분들
-      for (let j = 1; j < wrongAnswerParts.length; j++) {
-        allLines.push(`
-          <div class="answer-line">
-            <div class="content-area">
-              <span class="wrong-answer" style="margin-left: 12mm;">${wrongAnswerParts[j]}</span>
-            </div>
-          </div>
-        `);
-      }
-    }
-    
-    // 정답을 60자씩 분할
-    const correctAnswerParts = [];
-    let remainingCorrectAnswer = note.correctAnswer;
-    
-    while (remainingCorrectAnswer.length > 0) {
-      if (remainingCorrectAnswer.length <= maxCharsPerLine) {
-        correctAnswerParts.push(remainingCorrectAnswer);
-        break;
-      }
-      
-      correctAnswerParts.push(remainingCorrectAnswer.substring(0, maxCharsPerLine));
-      remainingCorrectAnswer = remainingCorrectAnswer.substring(maxCharsPerLine);
-    }
-    
-    // 첫 번째 정답 줄
-    allLines.push(`
-      <div class="answer-line">
-        <div class="content-area">
-          <span class="o-marker">&lt;정답&gt;</span>
-          <span class="correct-answer">${correctAnswerParts[0] || ''}</span>
-        </div>
-      </div>
-    `);
-    
-    // 정답의 나머지 부분들
-    for (let j = 1; j < correctAnswerParts.length; j++) {
-      allLines.push(`
-        <div class="answer-line">
-          <div class="content-area">
-            <span class="correct-answer" style="margin-left: 12mm;">${correctAnswerParts[j]}</span>
-          </div>
-        </div>
-      `);
-    }
-  }
-  
-  const totalPages = Math.ceil(allLines.length / linesPerPage) || 1;
-  let pagesHTML = '';
-  
-  for (let pageNum = 0; pageNum < totalPages; pageNum++) {
-    const startIndex = pageNum * linesPerPage;
-    const endIndex = Math.min(startIndex + linesPerPage, allLines.length);
-    const pageLines = allLines.slice(startIndex, endIndex);
-    
-    // 페이지를 정확히 25줄로 채우기 (빈 줄 추가)
-    while (pageLines.length < linesPerPage) {
-      pageLines.push(`
-        <div class="answer-line">
-          <div class="content-area"></div>
-        </div>
-      `);
-    }
-    
-    pagesHTML += `
-      <div class="page" ${pageNum > 0 ? 'style="page-break-before: always;"' : ''}>
-        <div class="header">
-          <div class="header-left">
-            <img src="/lovable-uploads/31dc997d-3a5f-4938-919f-95d8b73f16b2.png" alt="로고" class="logo" />
-          </div>
-          <div class="header-right">(${pageNum + 1}쪽)</div>
-        </div>
-        
-        <div class="answer-sheet ${getTemplateClass(options.paperTemplate || 'lined-paper')}">
-          ${pageLines.join('')}
-        </div>
-        
-        <div class="footer">
-          <div class="footer-left">오답노트</div>
-          <div class="footer-center">${subject || ''}-${book || ''}</div>
-          <div class="footer-right">학습자료</div>
-        </div>
-      </div>
-    `;
-  }
+// jsPDF 직접 텍스트 배치를 위한 유틸리티 함수들
+const splitTextToFitWidth = (text: string, pdf: jsPDF, maxWidth: number, fontSize: number = 12): string[] => {
+  pdf.setFontSize(fontSize);
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
 
-  return `
-    <!DOCTYPE html>
-    <html lang="ko">
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
-        
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        
-        body {
-          font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          background: white;
-          color: #000;
-          font-size: 14px;
-          line-height: 1.4;
-        }
-        
-        .page {
-          width: 210mm;
-          height: 297mm;
-          margin: 0 auto;
-          padding: 20mm;
-          position: relative;
-          background: white;
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15mm;
-          font-size: 11px;
-          font-weight: 400;
-        }
-        
-        .header-left {
-          display: flex;
-          align-items: center;
-        }
-        
-        .logo {
-          height: 20mm;
-          width: auto;
-          object-fit: contain;
-        }
-        
-        .answer-sheet {
-          border: 2px solid #000;
-          flex: 1;
-          padding: 5mm;
-          display: flex;
-          flex-direction: column;
-          position: relative;
-        }
-        
-        /* 템플릿 스타일 */
-        .lined-template {
-          background-image: repeating-linear-gradient(
-            transparent,
-            transparent calc((100% - 0px) / 25 - 1px),
-            #000 calc((100% - 0px) / 25 - 1px),
-            #000 calc((100% - 0px) / 25)
-          );
-        }
-        
-        .dotted-template {
-          background-image: 
-            radial-gradient(circle at 2px 2px, #666 1px, transparent 1px);
-          background-size: 15px 15px;
-        }
-        
-        .grid-template {
-          background-image: 
-            linear-gradient(to right, #e5e7eb 1px, transparent 1px),
-            linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
-          background-size: 15px 15px;
-        }
-        
-        .cornell-template {
-          background: 
-            linear-gradient(to bottom, transparent 40px, #dc2626 40px, #dc2626 42px, transparent 42px), 
-            repeating-linear-gradient(
-              transparent,
-              transparent calc((100% - 42px) / 24 - 1px),
-              rgba(220, 38, 38, 0.3) calc((100% - 42px) / 24 - 1px),
-              rgba(220, 38, 38, 0.3) calc((100% - 42px) / 24)
-            );
-          background-size: 100% 100%, 100% calc(100% - 42px);
-          background-position: 0 0, 0 42px;
-        }
-        
-        .cornell-template::before {
-          content: '';
-          position: absolute;
-          left: 50mm;
-          top: 0;
-          bottom: 0;
-          width: 2px;
-          background-color: #dc2626;
-          z-index: 1;
-        }
-        
-        .cornell-template::after {
-          content: '';
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 25mm;
-          height: 2px;
-          background-color: #dc2626;
-          z-index: 1;
-        }
-        
-        .answer-line {
-          display: flex;
-          align-items: flex-end;
-          height: calc((100% - 0px) / 25);
-          border-bottom: 1px solid #000;
-          position: relative;
-          padding: 0 0 3px 0;
-        }
-        
-        .answer-line:last-child {
-          border-bottom: none;
-        }
-        
-        .line-number {
-          width: 8mm;
-          text-align: center;
-          font-size: 9px;
-          color: #666;
-          margin-right: 3mm;
-          flex-shrink: 0;
-        }
-        
-        .content-area {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 3mm;
-          font-size: 13px;
-          padding: 1mm 0;
-          overflow: hidden;
-          line-height: 1.2;
-        }
-        
-        .q-marker {
-          color: #000;
-          font-weight: bold;
-          flex-shrink: 0;
-        }
-        
-        .question {
-          flex: 1;
-          color: #000;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-        }
-        
-        .x-marker {
-          color: #dc2626;
-          font-weight: bold;
-          flex-shrink: 0;
-        }
-        
-        .wrong-answer {
-          color: #dc2626;
-          flex: 1;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-        }
-        
-        .o-marker {
-          color: #2563eb;
-          font-weight: bold;
-          flex-shrink: 0;
-        }
-        
-        .correct-answer {
-          color: #2563eb;
-          font-weight: 500;
-          flex: 1;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-        }
-        
-        .footer {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-top: 5mm;
-          padding: 3mm 5mm;
-          background: #f0f0f0;
-          border: 1px solid #000;
-          font-size: 10px;
-          font-weight: 500;
-        }
-        
-        @media print {
-          body { margin: 0; }
-          .page { 
-            margin: 0; 
-            padding: 20mm;
-            page-break-after: always;
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testWidth = pdf.getTextWidth(testLine);
+    
+    if (testWidth <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        // 단어가 너무 길면 강제로 자르기
+        let remainingWord = word;
+        while (remainingWord.length > 0) {
+          let fitLength = remainingWord.length;
+          while (fitLength > 0 && pdf.getTextWidth(remainingWord.substring(0, fitLength)) > maxWidth) {
+            fitLength--;
           }
-          .page:last-child {
-            page-break-after: avoid;
-          }
+          if (fitLength === 0) fitLength = 1; // 최소 1글자는 넣기
+          lines.push(remainingWord.substring(0, fitLength));
+          remainingWord = remainingWord.substring(fitLength);
         }
-      </style>
-    </head>
-    <body>
-      ${pagesHTML}
-    </body>
-    </html>
-  `;
+      }
+    }
+  }
+  
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  
+  return lines;
+};
+
+const drawTemplateBackground = (pdf: jsPDF, paperTemplate: string) => {
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 20;
+  const contentX = margin;
+  const contentY = margin + 15; // 헤더 공간
+  const contentWidth = pageWidth - (margin * 2);
+  const contentHeight = pageHeight - margin - contentY - 10; // 푸터 공간
+  
+  // 테두리 그리기
+  pdf.setDrawColor(0, 0, 0);
+  pdf.setLineWidth(0.5);
+  pdf.rect(contentX, contentY, contentWidth, contentHeight);
+  
+  switch (paperTemplate) {
+    case 'lined-paper':
+      // 가로줄 25개 그리기
+      pdf.setDrawColor(0, 0, 0);
+      pdf.setLineWidth(0.2);
+      for (let i = 1; i < 25; i++) {
+        const y = contentY + (contentHeight / 25) * i;
+        pdf.line(contentX, y, contentX + contentWidth, y);
+      }
+      break;
+      
+    case 'dotted-paper':
+      // 점선 패턴
+      pdf.setDrawColor(102, 102, 102);
+      const dotSpacing = 5;
+      for (let x = contentX + dotSpacing; x < contentX + contentWidth; x += dotSpacing) {
+        for (let y = contentY + dotSpacing; y < contentY + contentHeight; y += dotSpacing) {
+          pdf.circle(x, y, 0.2, 'F');
+        }
+      }
+      break;
+      
+    case 'grid-paper':
+      // 격자 패턴
+      pdf.setDrawColor(229, 231, 235);
+      pdf.setLineWidth(0.1);
+      const gridSpacing = 5;
+      for (let x = contentX + gridSpacing; x < contentX + contentWidth; x += gridSpacing) {
+        pdf.line(x, contentY, x, contentY + contentHeight);
+      }
+      for (let y = contentY + gridSpacing; y < contentY + contentHeight; y += gridSpacing) {
+        pdf.line(contentX, y, contentX + contentWidth, y);
+      }
+      break;
+      
+    case 'cornell-paper':
+      // 코넬 노트 스타일
+      pdf.setDrawColor(220, 38, 38);
+      pdf.setLineWidth(0.3);
+      
+      // 상단 여백선
+      pdf.line(contentX, contentY + 15, contentX + contentWidth, contentY + 15);
+      
+      // 왼쪽 여백선 (노트 구역 분리)
+      const leftMargin = contentX + 50;
+      pdf.line(leftMargin, contentY, leftMargin, contentY + contentHeight - 25);
+      
+      // 하단 요약 구역 분리선
+      const summaryY = contentY + contentHeight - 25;
+      pdf.line(contentX, summaryY, contentX + contentWidth, summaryY);
+      
+      // 가로줄들 (연한 색상)
+      pdf.setDrawColor(220, 38, 38, 0.3);
+      pdf.setLineWidth(0.1);
+      for (let i = 1; i < 24; i++) {
+        const y = contentY + 15 + ((contentHeight - 40) / 24) * i;
+        pdf.line(contentX, y, contentX + contentWidth, y);
+      }
+      break;
+  }
 };
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
   console.log('PDF 생성 시작:', { notes: notes.length, subject, book, chapter, options });
   
-  // HTML 템플릿 생성
-  const htmlContent = createAnswerSheetHTML(notes, subject, book, chapter, options);
+  const pdf = new jsPDF('p', 'mm', 'a4');
   
-  // 임시 iframe 생성 (더 안정적)
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'absolute';
-  iframe.style.left = '-9999px';
-  iframe.style.top = '-9999px';
-  iframe.style.width = '210mm';
-  iframe.style.height = '297mm';
+  // 페이지 설정
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 20;
+  const contentX = margin;
+  const contentY = margin + 15; // 헤더 여백
+  const contentWidth = pageWidth - (margin * 2);
+  const lineHeight = 8; // 줄 간격
+  const linesPerPage = 25; // 페이지당 줄 수
   
-  document.body.appendChild(iframe);
-
-  try {
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!iframeDoc) throw new Error('iframe document not accessible');
+  let currentPage = 1;
+  let currentLine = 1;
+  let yPosition = contentY + 5; // 첫 번째 줄 위치
+  
+  // 첫 페이지 초기화
+  const initializePage = (pageNum: number) => {
+    // 템플릿 배경 그리기
+    drawTemplateBackground(pdf, options.paperTemplate || 'lined-paper');
     
-    iframeDoc.open();
-    iframeDoc.write(htmlContent);
-    iframeDoc.close();
+    // 헤더 그리기
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('로고', contentX, margin + 10);
+    pdf.text(`(${pageNum}쪽)`, contentX + contentWidth - 20, margin + 10);
     
-    // 폰트 로딩 대기
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // HTML을 Canvas로 변환 (더 안정적인 설정)
-    const canvas = await html2canvas(iframeDoc.body, {
-      scale: 1.5,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      width: 794, // A4 width
-      height: 1123, // A4 height
-      scrollX: 0,
-      scrollY: 0,
-      windowWidth: 794,
-      windowHeight: 1123,
-      onclone: (clonedDoc) => {
-        // 클론된 문서에서 스타일 강제 적용
-        const style = clonedDoc.createElement('style');
-        style.textContent = `
-          * { font-family: 'Noto Sans KR', sans-serif !important; }
-          .q-marker { color: #000 !important; }
-          .x-marker { color: #dc2626 !important; }
-          .o-marker { color: #2563eb !important; }
-          .wrong-answer { color: #dc2626 !important; }
-          .correct-answer { color: #2563eb !important; }
-        `;
-        clonedDoc.head.appendChild(style);
-      }
-    });
-
-    // PDF 생성
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 210;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    // 페이지 단위로 분할하여 추가
-    let yPosition = 0;
-    const pageHeight = 297;
-    let pageNum = 0;
-
-    while (yPosition < imgHeight) {
-      if (pageNum > 0) {
-        pdf.addPage();
-      }
-      
-      const remainingHeight = imgHeight - yPosition;
-      const currentPageHeight = Math.min(pageHeight, remainingHeight);
-      
-      // 해당 페이지 영역만 추출
-      const pageCanvas = document.createElement('canvas');
-      pageCanvas.width = canvas.width;
-      pageCanvas.height = (currentPageHeight * canvas.width) / imgWidth;
-      
-      const ctx = pageCanvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-        
-        const sourceY = (yPosition * canvas.width) / imgWidth;
-        ctx.drawImage(
-          canvas,
-          0, sourceY, canvas.width, pageCanvas.height,
-          0, 0, pageCanvas.width, pageCanvas.height
-        );
-      }
-      
-      const pageImageData = pageCanvas.toDataURL('image/jpeg', 0.95);
-      pdf.addImage(pageImageData, 'JPEG', 0, 0, imgWidth, currentPageHeight);
-      
-      yPosition += pageHeight;
-      pageNum++;
+    // 푸터 그리기  
+    const footerY = pageHeight - margin + 5;
+    pdf.setFontSize(9);
+    pdf.text('오답노트', contentX, footerY);
+    pdf.text(`${subject || ''}-${book || ''}`, contentX + contentWidth/2 - 20, footerY);
+    pdf.text('학습자료', contentX + contentWidth - 20, footerY);
+  };
+  
+  const addNewPageIfNeeded = () => {
+    if (currentLine > linesPerPage) {
+      pdf.addPage();
+      currentPage++;
+      currentLine = 1;
+      yPosition = contentY + 5;
+      initializePage(currentPage);
     }
-
-    console.log('PDF 생성 완료');
-    return pdf;
+  };
+  
+  const writeTextOnLine = (text: string, color: [number, number, number] = [0, 0, 0], fontSize: number = 12, prefix: string = '') => {
+    addNewPageIfNeeded();
     
-  } finally {
-    document.body.removeChild(iframe);
+    pdf.setFontSize(fontSize);
+    pdf.setTextColor(color[0], color[1], color[2]);
+    
+    const fullText = prefix ? `${prefix} ${text}` : text;
+    const maxWidth = contentWidth - 10; // 여백 고려
+    
+    // 텍스트가 한 줄에 들어가는지 확인
+    const textWidth = pdf.getTextWidth(fullText);
+    
+    if (textWidth <= maxWidth) {
+      // 한 줄에 들어감
+      pdf.text(fullText, contentX + 5, yPosition);
+      currentLine++;
+      yPosition += lineHeight;
+    } else {
+      // 여러 줄로 분할 필요
+      const lines = splitTextToFitWidth(fullText, pdf, maxWidth, fontSize);
+      
+      for (const line of lines) {
+        addNewPageIfNeeded();
+        pdf.text(line, contentX + 5, yPosition);
+        currentLine++;
+        yPosition += lineHeight;
+      }
+    }
+  };
+  
+  // 첫 페이지 초기화
+  initializePage(currentPage);
+  
+  // 각 노트 처리
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    
+    // 문제 출력
+    writeTextOnLine(note.question, [0, 0, 0], 12, `<Q${i + 1}>`);
+    
+    // 오답 출력 (옵션에 따라)
+    if (options.includeWrongAnswers) {
+      writeTextOnLine(note.wrongAnswer, [220, 38, 38], 12, '<X>');
+    }
+    
+    // 정답 출력
+    writeTextOnLine(note.correctAnswer, [37, 99, 235], 12, '<정답>');
+    
+    // 문제 간 여백 (빈 줄 하나 추가)
+    if (i < notes.length - 1) {
+      currentLine++;
+      yPosition += lineHeight;
+    }
   }
+  
+  // 남은 공간을 빈 줄로 채우기
+  while (currentLine <= linesPerPage) {
+    currentLine++;
+    yPosition += lineHeight;
+  }
+  
+  console.log('PDF 생성 완료');
+  return pdf;
 };
 
 export const downloadPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
