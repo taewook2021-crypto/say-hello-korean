@@ -127,6 +127,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       ctx.textAlign = 'left';
       ctx.textBaseline = 'bottom'; // 텍스트가 라인 위에 앉도록
       ctx.fillStyle = '#000000';
+      ctx.font = `200 ${(4.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 얇은 글씨체로 고정
       const wrappedQuestion = wrapText(ctx, note.question, questionMaxWidth);
       
       wrappedQuestion.forEach((line, lineIndex) => {
