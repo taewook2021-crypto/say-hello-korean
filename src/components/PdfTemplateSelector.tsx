@@ -90,7 +90,9 @@ export function PdfTemplateSelector({ onSelect, selectedCover, selectedPaper }: 
 
   const handlePaperSelect = (template: PdfTemplate) => {
     setActivePaper(template);
-    // 종이 템플릿 선택 시에만 다운로드 실행
+    console.log('Paper template selected:', template.id);
+    console.log('Current active cover:', activeCover.id);
+    // 종이 템플릿 선택 시에만 다운로드 실행 - 현재 선택된 cover와 새로 선택한 paper 사용
     onSelect(activeCover, template);
   };
 
