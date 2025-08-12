@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
 import { createWorker } from 'tesseract.js';
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,13 @@ interface OCRCameraProps {
   onTextExtracted: (text: string) => void;
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface SelectionBox {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
 }
 
 interface TextBlock {
@@ -29,8 +36,11 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
   const [textBlocks, setTextBlocks] = useState<TextBlock[]>([]);
   const [selectedTexts, setSelectedTexts] = useState<string[]>([]);
   const [imageScale, setImageScale] = useState(1);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
+  const [currentSelection, setCurrentSelection] = useState<SelectionBox | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const takePicture = async () => {
@@ -88,20 +98,36 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
 
       const ret = await worker.recognize(photo.dataUrl);
 
-      // 전체 텍스트를 문장 단위로 분할
+      // OCR 결과에서 단어/줄 정보 추출
       const fullText = ret.data.text || '';
-      const sentences = fullText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+      const blocks: TextBlock[] = [];
       
-      // 간단한 텍스트 블록 생성 (실제 위치는 추정)
-      const blocks: TextBlock[] = sentences.map((sentence, index) => ({
-        text: sentence.trim(),
-        bbox: {
-          x0: 10,
-          y0: 50 + (index * 30),
-          x1: 400,
-          y1: 70 + (index * 30)
-        }
-      }));
+      // Tesseract.js 결과에서 실제 bounding box 정보 추출 시도
+      try {
+        const symbols = (ret.data as any).symbols || [];
+        symbols.forEach((symbol: any) => {
+          if (symbol.text && symbol.text.trim() && symbol.bbox) {
+            blocks.push({
+              text: symbol.text,
+              bbox: symbol.bbox
+            });
+          }
+        });
+      } catch (error) {
+        // 만약 symbols가 없다면 전체 텍스트를 단순 분할
+        const sentences = fullText.split(/[.!?\n]+/).filter(s => s.trim().length > 0);
+        sentences.forEach((sentence, index) => {
+          blocks.push({
+            text: sentence.trim(),
+            bbox: {
+              x0: 10,
+              y0: 50 + (index * 30),
+              x1: 400,
+              y1: 70 + (index * 30)
+            }
+          });
+        });
+      }
 
       setTextBlocks(blocks);
       
@@ -128,6 +154,72 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // 드래그 이벤트 핸들러들
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!containerRef.current || !imageRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setIsSelecting(true);
+    setCurrentSelection({
+      startX: x,
+      startY: y,
+      endX: x,
+      endY: y
+    });
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isSelecting || !containerRef.current || !currentSelection) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setCurrentSelection(prev => prev ? {
+      ...prev,
+      endX: x,
+      endY: y
+    } : null);
+  }, [isSelecting, currentSelection]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!currentSelection || !isSelecting) return;
+    
+    setIsSelecting(false);
+    setSelectionBox(currentSelection);
+    
+    // 선택된 영역 내의 텍스트 찾기
+    const selectedTextsInArea = getTextsInSelection(currentSelection);
+    setSelectedTexts(selectedTextsInArea);
+    
+  }, [currentSelection, isSelecting]);
+
+  // 선택 영역 내의 텍스트 찾기
+  const getTextsInSelection = (selection: SelectionBox) => {
+    if (!selection || textBlocks.length === 0) return [];
+    
+    const minX = Math.min(selection.startX, selection.endX) / imageScale;
+    const maxX = Math.max(selection.startX, selection.endX) / imageScale;
+    const minY = Math.min(selection.startY, selection.endY) / imageScale;
+    const maxY = Math.max(selection.startY, selection.endY) / imageScale;
+    
+    return textBlocks
+      .filter(block => {
+        // 텍스트 블록이 선택 영역과 겹치는지 확인
+        return !(
+          block.bbox.x1 < minX ||
+          block.bbox.x0 > maxX ||
+          block.bbox.y1 < minY ||
+          block.bbox.y0 > maxY
+        );
+      })
+      .map(block => block.text.trim())
+      .filter(text => text.length > 0);
   };
 
   const handleTextClick = (textBlock: TextBlock) => {
@@ -164,6 +256,9 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     setTextBlocks([]);
     setSelectedTexts([]);
     setIsProcessing(false);
+    setSelectionBox(null);
+    setCurrentSelection(null);
+    setIsSelecting(false);
   };
 
   const handleClose = () => {
@@ -196,12 +291,19 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="relative">
+            <div 
+              ref={containerRef}
+              className="relative cursor-crosshair select-none"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
               <img
                 ref={imageRef}
                 src={photo.dataUrl}
                 alt="Selected"
                 className="max-w-full h-auto rounded-lg border"
+                draggable={false}
                 onLoad={() => {
                   if (imageRef.current) {
                     const naturalWidth = imageRef.current.naturalWidth;
@@ -211,8 +313,34 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                 }}
               />
               
-              {/* 텍스트 블록 오버레이 */}
-              {textBlocks.length > 0 && (
+              {/* 현재 드래그 중인 선택 영역 */}
+              {isSelecting && currentSelection && (
+                <div
+                  className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
+                  style={{
+                    left: Math.min(currentSelection.startX, currentSelection.endX),
+                    top: Math.min(currentSelection.startY, currentSelection.endY),
+                    width: Math.abs(currentSelection.endX - currentSelection.startX),
+                    height: Math.abs(currentSelection.endY - currentSelection.startY),
+                  }}
+                />
+              )}
+              
+              {/* 확정된 선택 영역 */}
+              {!isSelecting && selectionBox && (
+                <div
+                  className="absolute border-2 border-green-500 bg-green-500/20 pointer-events-none"
+                  style={{
+                    left: Math.min(selectionBox.startX, selectionBox.endX),
+                    top: Math.min(selectionBox.startY, selectionBox.endY),
+                    width: Math.abs(selectionBox.endX - selectionBox.startX),
+                    height: Math.abs(selectionBox.endY - selectionBox.startY),
+                  }}
+                />
+              )}
+              
+              {/* 텍스트 블록 오버레이 (클릭용) */}
+              {textBlocks.length > 0 && !isSelecting && (
                 <div className="absolute inset-0">
                   {textBlocks.map((block, index) => {
                     const isSelected = selectedTexts.includes(block.text.trim());
@@ -237,6 +365,10 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                   })}
                 </div>
               )}
+            </div>
+
+            <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
+              💡 <strong>사용법:</strong> 마우스로 드래그하여 텍스트 영역을 선택하거나, 개별 텍스트를 클릭하세요
             </div>
 
             {textBlocks.length === 0 ? (
@@ -280,6 +412,15 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                     className="flex-1"
                   >
                     선택 완료
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setSelectionBox(null);
+                      setSelectedTexts([]);
+                    }}
+                  >
+                    선택 초기화
                   </Button>
                   <Button variant="outline" onClick={processOCR}>
                     다시 인식
