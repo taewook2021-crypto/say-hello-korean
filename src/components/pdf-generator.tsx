@@ -13,7 +13,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
   const pdf = new jsPDF('p', 'mm', 'a4');
   
   // HTML을 캔버스로 렌더링하는 함수
-  const createExcelPage = () => {
+  const createExcelPage = (pageNotes: WrongNote[], startIndex: number) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
     
@@ -39,7 +39,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     ctx.strokeRect(margin, margin, tableWidth, tableHeight);
     
     // 헤더 배경
-    const headerHeight = (10 * dpi) / 25.4;
+    const headerHeight = (8 * dpi) / 25.4; // 줄임
     ctx.fillStyle = '#F3F4F6';
     ctx.fillRect(margin, margin, tableWidth, headerHeight);
     
@@ -72,9 +72,9 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     ctx.lineTo(margin + noWidth + questionWidth, margin + tableHeight);
     ctx.stroke();
     
-    // 헤더 텍스트
+    // 헤더 텍스트 (크기 줄이고 얇게)
     ctx.fillStyle = '#000000';
-    ctx.font = `${(9.5 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
+    ctx.font = `300 ${(7 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`; // 300은 얇은 폰트 weight
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
@@ -83,36 +83,104 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     ctx.fillText('Question', margin + noWidth + questionWidth / 2, headerY);
     ctx.fillText('Answer', margin + noWidth + questionWidth + answerWidth / 2, headerY);
     
-    // 52개 행의 가로선 그리기
+    // 콘텐츠 영역
     const contentHeight = tableHeight - headerHeight;
-    const rowHeight = contentHeight / 52;
+    const rowsPerPage = Math.min(pageNotes.length + 1, 25); // +1 for spacing, max 25 rows
+    const rowHeight = contentHeight / rowsPerPage;
     
-    ctx.strokeStyle = '#E8EBEF';
-    ctx.lineWidth = 1;
-    
-    for (let i = 1; i <= 52; i++) {
-      const y = margin + headerHeight + rowHeight * i;
-      ctx.beginPath();
-      ctx.moveTo(margin, y);
-      ctx.lineTo(margin + tableWidth, y);
-      ctx.stroke();
-    }
-    
-    // 마지막 행 아래 굵은 선
-    ctx.strokeStyle = '#4B5563';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(margin, margin + tableHeight);
-    ctx.lineTo(margin + tableWidth, margin + tableHeight);
-    ctx.stroke();
+    // 데이터 행 렌더링
+    pageNotes.forEach((note, index) => {
+      const rowIndex = index;
+      const rowY = margin + headerHeight + rowHeight * rowIndex;
+      const nextRowY = margin + headerHeight + rowHeight * (rowIndex + 1);
+      
+      // 텍스트 설정
+      ctx.font = `400 ${(6 * dpi) / 25.4}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#000000';
+      
+      // No. 열
+      ctx.textAlign = 'center';
+      ctx.fillText(`${startIndex + index + 1}`, margin + noWidth / 2, rowY + (rowHeight * 0.1));
+      
+      // Question 열 (텍스트 래핑)
+      ctx.textAlign = 'left';
+      const questionX = margin + noWidth + (2 * dpi) / 25.4;
+      const questionMaxWidth = questionWidth - (4 * dpi) / 25.4;
+      const wrappedQuestion = wrapText(ctx, note.question, questionMaxWidth);
+      
+      wrappedQuestion.forEach((line, lineIndex) => {
+        const lineY = rowY + (rowHeight * 0.1) + (lineIndex * (5 * dpi) / 25.4);
+        if (lineY < nextRowY - (2 * dpi) / 25.4) {
+          ctx.fillText(line, questionX, lineY);
+        }
+      });
+      
+      // Answer 열 (텍스트 래핑)
+      const answerX = margin + noWidth + questionWidth + (2 * dpi) / 25.4;
+      const answerMaxWidth = answerWidth - (4 * dpi) / 25.4;
+      const wrappedAnswer = wrapText(ctx, note.correctAnswer, answerMaxWidth);
+      
+      wrappedAnswer.forEach((line, lineIndex) => {
+        const lineY = rowY + (rowHeight * 0.1) + (lineIndex * (5 * dpi) / 25.4);
+        if (lineY < nextRowY - (2 * dpi) / 25.4) {
+          ctx.fillText(line, answerX, lineY);
+        }
+      });
+      
+      // 문제 간 구분선 (검은색)
+      if (index < pageNotes.length - 1) {
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(margin, nextRowY);
+        ctx.lineTo(margin + tableWidth, nextRowY);
+        ctx.stroke();
+      }
+    });
     
     return canvas;
   };
   
-  // 페이지 생성 및 PDF에 추가
-  const canvas = createExcelPage();
-  const imgData = canvas.toDataURL('image/jpeg', 0.95);
-  pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+  // 텍스트 래핑 함수
+  const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = words[0];
+    
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i];
+      const width = ctx.measureText(currentLine + ' ' + word).width;
+      if (width < maxWidth) {
+        currentLine += ' ' + word;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    lines.push(currentLine);
+    
+    return lines;
+  };
+  
+  // 페이지별로 노트 분할 (페이지당 최대 20개 문제)
+  const notesPerPage = 20;
+  const totalPages = Math.ceil(notes.length / notesPerPage);
+  
+  for (let page = 0; page < totalPages; page++) {
+    const startIndex = page * notesPerPage;
+    const endIndex = Math.min(startIndex + notesPerPage, notes.length);
+    const pageNotes = notes.slice(startIndex, endIndex);
+    
+    if (page > 0) {
+      pdf.addPage();
+    }
+    
+    const canvas = createExcelPage(pageNotes, startIndex);
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+  }
   
   return pdf;
 };
