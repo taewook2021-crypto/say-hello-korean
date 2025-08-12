@@ -702,6 +702,17 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                     const width = (block.bbox.x1 - block.bbox.x0) * scale;
                     const height = (block.bbox.y1 - block.bbox.y0) * scale;
                     
+                    // 디버깅 정보 출력 (첫 번째 블록만)
+                    if (index === 0) {
+                      console.log('First block debug:', {
+                        ocrBox: block.bbox,
+                        scale,
+                        offsetX, offsetY,
+                        convertedBox: { left, top, width, height },
+                        imageSize: { naturalWidth, naturalHeight, displayWidth, displayHeight }
+                      });
+                    }
+                    
                     return (
                       <div
                         key={index}
