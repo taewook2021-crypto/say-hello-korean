@@ -10,7 +10,7 @@ interface WrongNote {
 }
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
-  console.log('PDF 생성 시작 - Canvas 방식으로 변경:', { notes: notes.length, subject, book, chapter, options });
+  console.log('PDF 생성 시작 - 정확한 줄 배치:', { notes: notes.length, subject, book, chapter, options });
   
   // Canvas를 사용해서 PDF 생성
   const canvas = document.createElement('canvas');
@@ -28,126 +28,132 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // 폰트 설정 (브라우저에서 지원하는 한글 폰트)
-  ctx.font = '48px "Noto Sans KR", "맑은 고딕", Arial, sans-serif';
-  ctx.textBaseline = 'top';
-  
   const margin = (20 * dpi) / 25.4; // 20mm margin
-  const lineHeight = (8 * dpi) / 25.4; // 8mm line height
   const contentX = margin;
-  let yPosition = margin + (15 * dpi) / 25.4; // 헤더 여백
+  const headerHeight = (15 * dpi) / 25.4; // 헤더 여백
+  const contentYStart = margin + headerHeight;
+  const contentWidth = canvas.width - (margin * 2);
+  const contentHeight = canvas.height - contentYStart - margin - (10 * dpi) / 25.4;
   
   // 헤더 그리기
   ctx.fillStyle = '#000000';
   ctx.font = '36px "Noto Sans KR", "맑은 고딕", Arial, sans-serif';
+  ctx.textBaseline = 'top';
   ctx.fillText('로고', contentX, margin);
   ctx.fillText('(1쪽)', canvas.width - margin - 150, margin);
   
   // 컨텐츠 영역 테두리
-  const contentWidth = canvas.width - (margin * 2);
-  const contentHeight = canvas.height - yPosition - margin - (10 * dpi) / 25.4;
-  
   ctx.strokeStyle = '#000000';
   ctx.lineWidth = 6;
-  ctx.strokeRect(contentX, yPosition, contentWidth, contentHeight);
+  ctx.strokeRect(contentX, contentYStart, contentWidth, contentHeight);
   
-  // 가로줄 그리기 (lined-paper)
-  if (options.paperTemplate === 'lined-paper') {
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    const linesCount = 25;
-    for (let i = 1; i < linesCount; i++) {
-      const y = yPosition + (contentHeight / linesCount) * i;
-      ctx.beginPath();
-      ctx.moveTo(contentX, y);
-      ctx.lineTo(contentX + contentWidth, y);
-      ctx.stroke();
-    }
+  // 25개 가로줄 그리기 및 위치 계산
+  const linesCount = 25;
+  const linePositions: number[] = [];
+  
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2;
+  
+  for (let i = 1; i < linesCount; i++) {
+    const y = contentYStart + (contentHeight / linesCount) * i;
+    linePositions.push(y);
+    ctx.beginPath();
+    ctx.moveTo(contentX, y);
+    ctx.lineTo(contentX + contentWidth, y);
+    ctx.stroke();
   }
   
-  // 텍스트 작성 시작 위치
-  yPosition += (5 * dpi) / 25.4;
+  // 첫 번째 줄 위치도 추가 (맨 위)
+  linePositions.unshift(contentYStart + (contentHeight / linesCount) * 0.5);
   
-  // 텍스트를 줄에 맞게 분할하는 함수
-  const splitTextToLines = (text: string, maxWidth: number, fontSize: number): string[] => {
+  // 텍스트를 한 줄에 맞게 자르는 함수
+  const fitTextToLine = (text: string, maxWidth: number, fontSize: number): string => {
     ctx.font = `${fontSize}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
-    const lines: string[] = [];
-    let currentLine = '';
     
+    if (ctx.measureText(text).width <= maxWidth) {
+      return text;
+    }
+    
+    // 텍스트가 너무 길면 자르기
+    let fittedText = '';
     for (let i = 0; i < text.length; i++) {
-      const char = text[i];
-      const testLine = currentLine + char;
-      const metrics = ctx.measureText(testLine);
-      
-      if (metrics.width <= maxWidth) {
-        currentLine = testLine;
-      } else {
-        if (currentLine) {
-          lines.push(currentLine);
-          currentLine = char;
-        } else {
-          lines.push(char);
-        }
+      const testText = text.substring(0, i + 1);
+      if (ctx.measureText(testText).width > maxWidth) {
+        break;
       }
+      fittedText = testText;
     }
     
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-    
-    return lines;
+    return fittedText + (fittedText.length < text.length ? '...' : '');
   };
   
-  // 각 노트 처리
-  const fontSize = 48;
-  const maxTextWidth = contentWidth - (20 * dpi) / 25.4; // 양쪽 여백 고려
+  // 모든 텍스트 라인을 준비
+  const allTextLines: Array<{text: string, color: string, prefix: string}> = [];
   
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i];
     
-    // 문제 출력
-    ctx.fillStyle = '#000000';
-    const questionText = `<Q${i + 1}> ${note.question}`;
-    const questionLines = splitTextToLines(questionText, maxTextWidth, fontSize);
+    // 문제 추가
+    allTextLines.push({
+      text: note.question,
+      color: '#000000',
+      prefix: `<Q${i + 1}>`
+    });
     
-    for (const line of questionLines) {
-      ctx.font = `${fontSize}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
-      ctx.fillText(line, contentX + 30, yPosition);
-      yPosition += lineHeight;
-    }
-    
-    // 오답 출력 (옵션에 따라)
+    // 오답 추가 (옵션에 따라)
     if (options.includeWrongAnswers) {
-      ctx.fillStyle = '#dc2626';
-      const wrongText = `<X> ${note.wrongAnswer}`;
-      const wrongLines = splitTextToLines(wrongText, maxTextWidth, fontSize);
-      
-      for (const line of wrongLines) {
-        ctx.font = `${fontSize}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
-        ctx.fillText(line, contentX + 30, yPosition);
-        yPosition += lineHeight;
-      }
+      allTextLines.push({
+        text: note.wrongAnswer,
+        color: '#dc2626',
+        prefix: '<X>'
+      });
     }
     
-    // 정답 출력
-    ctx.fillStyle = '#2563eb';
-    const correctText = `<정답> ${note.correctAnswer}`;
-    const correctLines = splitTextToLines(correctText, maxTextWidth, fontSize);
+    // 정답 추가
+    allTextLines.push({
+      text: note.correctAnswer,
+      color: '#2563eb',
+      prefix: '<정답>'
+    });
     
-    for (const line of correctLines) {
+    // 문제 간 빈 줄 (마지막 문제 제외)
+    if (i < notes.length - 1) {
+      allTextLines.push({
+        text: '',
+        color: '#000000',
+        prefix: ''
+      });
+    }
+  }
+  
+  // 각 줄에 텍스트 배치 (가로줄 위 0.2mm)
+  const fontSize = 48;
+  const textOffsetAboveLine = (0.2 * dpi) / 25.4; // 0.2mm를 픽셀로 변환
+  const maxTextWidth = contentWidth - (20 * dpi) / 25.4; // 양쪽 여백
+  
+  ctx.textBaseline = 'bottom'; // 텍스트 기준점을 아래쪽으로
+  
+  for (let i = 0; i < Math.min(allTextLines.length, linePositions.length); i++) {
+    const textData = allTextLines[i];
+    const lineY = linePositions[i];
+    
+    if (textData.text || textData.prefix) {
+      ctx.fillStyle = textData.color;
       ctx.font = `${fontSize}px "Noto Sans KR", "맑은 고딕", Arial, sans-serif`;
-      ctx.fillText(line, contentX + 30, yPosition);
-      yPosition += lineHeight;
+      
+      const fullText = textData.prefix ? `${textData.prefix} ${textData.text}` : textData.text;
+      const fittedText = fitTextToLine(fullText, maxTextWidth, fontSize);
+      
+      // 가로줄 위 0.2mm에 텍스트 배치
+      ctx.fillText(fittedText, contentX + 30, lineY - textOffsetAboveLine);
     }
-    
-    // 문제 간 여백
-    yPosition += lineHeight / 2;
   }
   
   // 푸터 그리기
   const footerY = canvas.height - margin + (5 * dpi) / 25.4;
   ctx.fillStyle = '#000000';
   ctx.font = '30px "Noto Sans KR", "맑은 고딕", Arial, sans-serif';
+  ctx.textBaseline = 'top';
   ctx.fillText('오답노트', contentX, footerY);
   ctx.fillText(`${subject || ''}-${book || ''}`, canvas.width / 2 - 150, footerY);
   ctx.fillText('학습자료', canvas.width - margin - 150, footerY);
