@@ -104,52 +104,63 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       ctx.textAlign = 'center';
       ctx.fillText(`${startIndex + index + 1}`, margin + noWidth / 2, rowY + (rowHeight * 0.1));
       
-      // Question 열 (텍스트 래핑)
-      ctx.textAlign = 'left';
+      // Question 열에 가이드 라인 추가
       const questionX = margin + noWidth + (2 * dpi) / 25.4;
       const questionMaxWidth = questionWidth - (4 * dpi) / 25.4;
+      const lineSpacing = (5 * dpi) / 25.4; // 줄 간격
+      const linesInCell = Math.floor((rowHeight * 0.8) / lineSpacing); // 셀 내 라인 수
+      
+      // Question 셀 내부에 희미한 가이드 라인 그리기
+      ctx.strokeStyle = '#E6EAEE'; // 희미한 회색
+      ctx.lineWidth = 0.5;
+      for (let i = 1; i <= linesInCell; i++) {
+        const guideY = rowY + (rowHeight * 0.1) + (lineSpacing * i);
+        if (guideY < nextRowY - (rowHeight * 0.1)) {
+          ctx.beginPath();
+          ctx.moveTo(questionX, guideY);
+          ctx.lineTo(questionX + questionMaxWidth, guideY);
+          ctx.stroke();
+        }
+      }
+      
+      // Question 텍스트를 가이드 라인에 맞춰 배치
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#000000';
       const wrappedQuestion = wrapText(ctx, note.question, questionMaxWidth);
       
       wrappedQuestion.forEach((line, lineIndex) => {
-        const lineY = rowY + (rowHeight * 0.15) + (lineIndex * (6 * dpi) / 25.4); // 줄 간격 증가
-        if (lineY < nextRowY - (4 * dpi) / 25.4) {
-          ctx.fillText(line, questionX, lineY);
-          
-          // 문장 사이 희미한 회색 점선 추가
-          if (lineIndex < wrappedQuestion.length - 1) {
-            ctx.setLineDash([2, 4]); // 점선 패턴
-            ctx.strokeStyle = '#D1D5DB'; // 희미한 회색
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(questionX, lineY + (3 * dpi) / 25.4);
-            ctx.lineTo(questionX + questionMaxWidth, lineY + (3 * dpi) / 25.4);
-            ctx.stroke();
-            ctx.setLineDash([]); // 점선 해제
-          }
+        const guideLineY = rowY + (rowHeight * 0.1) + (lineSpacing * (lineIndex + 1));
+        const textY = guideLineY - (1 * dpi) / 25.4; // 라인 위에 텍스트 배치
+        if (textY < nextRowY - (rowHeight * 0.1)) {
+          ctx.fillText(line, questionX, textY);
         }
       });
       
-      // Answer 열 (텍스트 래핑)
+      // Answer 열에 가이드 라인 추가
       const answerX = margin + noWidth + questionWidth + (2 * dpi) / 25.4;
       const answerMaxWidth = answerWidth - (4 * dpi) / 25.4;
+      
+      // Answer 셀 내부에 희미한 가이드 라인 그리기
+      ctx.strokeStyle = '#E6EAEE'; // 희미한 회색
+      ctx.lineWidth = 0.5;
+      for (let i = 1; i <= linesInCell; i++) {
+        const guideY = rowY + (rowHeight * 0.1) + (lineSpacing * i);
+        if (guideY < nextRowY - (rowHeight * 0.1)) {
+          ctx.beginPath();
+          ctx.moveTo(answerX, guideY);
+          ctx.lineTo(answerX + answerMaxWidth, guideY);
+          ctx.stroke();
+        }
+      }
+      
+      // Answer 텍스트를 가이드 라인에 맞춰 배치
       const wrappedAnswer = wrapText(ctx, note.correctAnswer, answerMaxWidth);
       
       wrappedAnswer.forEach((line, lineIndex) => {
-        const lineY = rowY + (rowHeight * 0.15) + (lineIndex * (6 * dpi) / 25.4); // 동일한 줄 간격 적용
-        if (lineY < nextRowY - (4 * dpi) / 25.4) {
-          ctx.fillText(line, answerX, lineY);
-          
-          // Answer 칸에도 희미한 회색 점선 추가
-          if (lineIndex < wrappedAnswer.length - 1) {
-            ctx.setLineDash([2, 4]); // 점선 패턴
-            ctx.strokeStyle = '#D1D5DB'; // 희미한 회색
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(answerX, lineY + (3 * dpi) / 25.4);
-            ctx.lineTo(answerX + answerMaxWidth, lineY + (3 * dpi) / 25.4);
-            ctx.stroke();
-            ctx.setLineDash([]); // 점선 해제
-          }
+        const guideLineY = rowY + (rowHeight * 0.1) + (lineSpacing * (lineIndex + 1));
+        const textY = guideLineY - (1 * dpi) / 25.4; // 라인 위에 텍스트 배치
+        if (textY < nextRowY - (rowHeight * 0.1)) {
+          ctx.fillText(line, answerX, textY);
         }
       });
       
