@@ -664,6 +664,42 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                 }}
               />
               
+              {/* 텍스트 블록들을 시각적으로 표시 (디버깅용) */}
+              {textBlocks.length > 0 && (
+                <>
+                  {textBlocks.map((block, index) => {
+                    const imageCoords = getImageCoordinates();
+                    if (!imageCoords) return null;
+                    
+                    const { scale, offsetX, offsetY } = imageCoords;
+                    
+                    // OCR 좌표를 브라우저 좌표로 변환
+                    const left = (block.bbox.x0 * scale) + offsetX;
+                    const top = (block.bbox.y0 * scale) + offsetY;
+                    const width = (block.bbox.x1 - block.bbox.x0) * scale;
+                    const height = (block.bbox.y1 - block.bbox.y0) * scale;
+                    
+                    return (
+                      <div
+                        key={index}
+                        className="absolute border border-red-300 bg-red-100/30 text-xs text-red-600 pointer-events-none overflow-hidden"
+                        style={{
+                          left: left,
+                          top: top,
+                          width: width,
+                          height: height,
+                          fontSize: '8px',
+                          lineHeight: '10px'
+                        }}
+                        title={block.text}
+                      >
+                        {block.text.length > 8 ? block.text.substring(0, 8) + '...' : block.text}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+              
               {/* 현재 드래그 중인 선택 영역 */}
               {isSelecting && currentSelection && (
                 <div
