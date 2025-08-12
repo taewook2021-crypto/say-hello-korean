@@ -305,14 +305,12 @@ const Index = () => {
   const handleTemplateSelect = (coverTemplate: PdfTemplate, paperTemplate: PdfTemplate) => {
     setSelectedPdfTemplates({ cover: coverTemplate, paper: paperTemplate });
     setShowPdfTemplateSelector(false);
-    // 템플릿 선택 후 바로 다운로드 실행
-    setTimeout(() => {
-      const updatedOptions = {
-        ...pdfOptions,
-        paperTemplate: paperTemplate.id
-      };
-      proceedWithDownload(updatedOptions);
-    }, 100);
+    // 템플릿 선택 후 바로 다운로드 실행 (선택된 템플릿을 직접 전달)
+    const updatedOptions = {
+      ...pdfOptions,
+      paperTemplate: paperTemplate.id
+    };
+    proceedWithDownload(updatedOptions);
   };
 
   const handleDownloadPDF = async (options = pdfOptions) => {
