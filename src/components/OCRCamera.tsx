@@ -97,37 +97,110 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       });
 
       const ret = await worker.recognize(photo.dataUrl);
-
-      // OCR 결과에서 단어/줄 정보 추출
+      console.log('OCR Result:', ret);
+      
+      // OCR 결과에서 텍스트 정보 추출
       const fullText = ret.data.text || '';
+      console.log('Full OCR Text:', fullText);
+      
       const blocks: TextBlock[] = [];
       
-      // Tesseract.js 결과에서 실제 bounding box 정보 추출 시도
+      // Tesseract.js 결과에서 정보 추출 (타입 안전하게)
       try {
-        const symbols = (ret.data as any).symbols || [];
-        symbols.forEach((symbol: any) => {
-          if (symbol.text && symbol.text.trim() && symbol.bbox) {
-            blocks.push({
-              text: symbol.text,
-              bbox: symbol.bbox
-            });
-          }
-        });
-      } catch (error) {
-        // 만약 symbols가 없다면 전체 텍스트를 단순 분할
-        const sentences = fullText.split(/[.!?\n]+/).filter(s => s.trim().length > 0);
-        sentences.forEach((sentence, index) => {
-          blocks.push({
-            text: sentence.trim(),
-            bbox: {
-              x0: 10,
-              y0: 50 + (index * 30),
-              x1: 400,
-              y1: 70 + (index * 30)
+        // ret.data를 any로 캐스팅해서 안전하게 접근
+        const data = ret.data as any;
+        
+        // words가 있는지 확인
+        if (data.words && Array.isArray(data.words) && data.words.length > 0) {
+          console.log('Using words from OCR result:', data.words.length);
+          data.words.forEach((word: any) => {
+            if (word.text && word.text.trim() && word.bbox) {
+              blocks.push({
+                text: word.text.trim(),
+                bbox: word.bbox
+              });
             }
           });
-        });
+        } 
+        // lines가 있는지 확인
+        else if (data.lines && Array.isArray(data.lines) && data.lines.length > 0) {
+          console.log('Using lines from OCR result:', data.lines.length);
+          data.lines.forEach((line: any) => {
+            if (line.words && Array.isArray(line.words) && line.words.length > 0) {
+              line.words.forEach((word: any) => {
+                if (word.text && word.text.trim() && word.bbox) {
+                  blocks.push({
+                    text: word.text.trim(),
+                    bbox: word.bbox
+                  });
+                }
+              });
+            }
+          });
+        } 
+        // paragraphs에서 words 추출 시도
+        else if (data.paragraphs && Array.isArray(data.paragraphs)) {
+          console.log('Using paragraphs from OCR result');
+          data.paragraphs.forEach((paragraph: any) => {
+            if (paragraph.lines && Array.isArray(paragraph.lines)) {
+              paragraph.lines.forEach((line: any) => {
+                if (line.words && Array.isArray(line.words)) {
+                  line.words.forEach((word: any) => {
+                    if (word.text && word.text.trim() && word.bbox) {
+                      blocks.push({
+                        text: word.text.trim(),
+                        bbox: word.bbox
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+        
+        // 아무것도 없으면 전체 텍스트를 단순 분할
+        if (blocks.length === 0 && fullText.trim()) {
+          console.log('No structured data found, using fallback method');
+          const sentences = fullText.split(/[\.\!\?\n]+/).filter(s => s.trim().length > 0);
+          sentences.forEach((sentence, index) => {
+            if (sentence.trim()) {
+              blocks.push({
+                text: sentence.trim(),
+                bbox: {
+                  x0: 10,
+                  y0: 50 + (index * 40),
+                  x1: 400,
+                  y1: 80 + (index * 40)
+                }
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error processing OCR blocks:', error);
+        
+        // 완전한 대체 방법
+        if (fullText.trim()) {
+          console.log('Using emergency fallback method');
+          const sentences = fullText.split(/[\.\!\?\n]+/).filter(s => s.trim().length > 0);
+          sentences.forEach((sentence, index) => {
+            if (sentence.trim()) {
+              blocks.push({
+                text: sentence.trim(),
+                bbox: {
+                  x0: 10,
+                  y0: 50 + (index * 40),
+                  x1: 400,
+                  y1: 80 + (index * 40)
+                }
+              });
+            }
+          });
+        }
       }
+      
+      console.log('Final text blocks:', blocks);
 
       setTextBlocks(blocks);
       
@@ -155,6 +228,41 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       setIsProcessing(false);
     }
   };
+
+  // 선택 영역 내의 텍스트 찾기 (useCallback으로 최적화)
+  const getTextsInSelection = useCallback((selection: SelectionBox) => {
+    if (!selection || textBlocks.length === 0) {
+      console.log('No selection or text blocks');
+      return [];
+    }
+    
+    const minX = Math.min(selection.startX, selection.endX) / imageScale;
+    const maxX = Math.max(selection.startX, selection.endX) / imageScale;
+    const minY = Math.min(selection.startY, selection.endY) / imageScale;
+    const maxY = Math.max(selection.startY, selection.endY) / imageScale;
+    
+    console.log('Selection area:', { minX, maxX, minY, maxY });
+    console.log('Image scale:', imageScale);
+    console.log('Text blocks to check:', textBlocks);
+    
+    const foundTexts = textBlocks
+      .filter(block => {
+        // 텍스트 블록이 선택 영역과 겹치는지 확인
+        const overlaps = !(
+          block.bbox.x1 < minX ||
+          block.bbox.x0 > maxX ||
+          block.bbox.y1 < minY ||
+          block.bbox.y0 > maxY
+        );
+        console.log(`Block "${block.text}" overlaps:`, overlaps, block.bbox);
+        return overlaps;
+      })
+      .map(block => block.text.trim())
+      .filter(text => text.length > 0);
+      
+    console.log('Found texts in selection:', foundTexts);
+    return foundTexts;
+  }, [textBlocks, imageScale]);
 
   // 드래그 이벤트 핸들러들
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -190,53 +298,38 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
   const handleMouseUp = useCallback(() => {
     if (!currentSelection || !isSelecting) return;
     
+    console.log('Mouse up with selection:', currentSelection);
+    console.log('Text blocks available:', textBlocks.length);
+    console.log('Image scale:', imageScale);
+    
     setIsSelecting(false);
     setSelectionBox(currentSelection);
     
     // 선택된 영역 내의 텍스트 찾기
     const selectedTextsInArea = getTextsInSelection(currentSelection);
+    console.log('Texts found in selection area:', selectedTextsInArea);
     setSelectedTexts(selectedTextsInArea);
     
-  }, [currentSelection, isSelecting]);
-
-  // 선택 영역 내의 텍스트 찾기
-  const getTextsInSelection = (selection: SelectionBox) => {
-    if (!selection || textBlocks.length === 0) return [];
-    
-    const minX = Math.min(selection.startX, selection.endX) / imageScale;
-    const maxX = Math.max(selection.startX, selection.endX) / imageScale;
-    const minY = Math.min(selection.startY, selection.endY) / imageScale;
-    const maxY = Math.max(selection.startY, selection.endY) / imageScale;
-    
-    return textBlocks
-      .filter(block => {
-        // 텍스트 블록이 선택 영역과 겹치는지 확인
-        return !(
-          block.bbox.x1 < minX ||
-          block.bbox.x0 > maxX ||
-          block.bbox.y1 < minY ||
-          block.bbox.y0 > maxY
-        );
-      })
-      .map(block => block.text.trim())
-      .filter(text => text.length > 0);
-  };
+  }, [currentSelection, isSelecting, textBlocks, imageScale, getTextsInSelection]);
 
   const handleTextClick = (textBlock: TextBlock) => {
     const text = textBlock.text.trim();
     if (!text) return;
 
+    console.log('Text clicked:', text);
     setSelectedTexts(prev => {
-      if (prev.includes(text)) {
-        return prev.filter(t => t !== text);
-      } else {
-        return [...prev, text];
-      }
+      const newSelection = prev.includes(text) 
+        ? prev.filter(t => t !== text)
+        : [...prev, text];
+      console.log('Updated selection:', newSelection);
+      return newSelection;
     });
   };
 
   const handleConfirmSelection = () => {
+    console.log('Confirming selection:', selectedTexts);
     if (selectedTexts.length === 0) {
+      console.log('No texts selected');
       toast({
         title: "알림",
         description: "선택된 텍스트가 없습니다.",
@@ -246,6 +339,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     }
 
     const combinedText = selectedTexts.join(' ');
+    console.log('Combined text to extract:', combinedText);
     onTextExtracted(combinedText);
     onClose();
     resetState();
