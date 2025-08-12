@@ -146,21 +146,38 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
           let currentWord = '';
           let currentBbox = null;
           
+          let currentConfidence = 0;
+          let symbolCount = 0;
+          
           data.symbols.forEach((symbol: any) => {
             if (symbol.text && symbol.bbox) {
+              // 신뢰도 체크 (낮은 신뢰도는 제외)
+              const confidence = symbol.confidence || 0;
+              if (confidence < 60) { // 60% 미만 신뢰도는 제외
+                return;
+              }
+              
               if (symbol.text === ' ' || symbol.text === '\n') {
                 // 공백이나 줄바꿈이면 현재 단어 저장
-                if (currentWord.trim() && currentBbox) {
-                  blocks.push({
-                    text: currentWord.trim(),
-                    bbox: currentBbox
-                  });
+                if (currentWord.trim() && currentBbox && symbolCount > 0) {
+                  const avgConfidence = currentConfidence / symbolCount;
+                  if (avgConfidence >= 60) { // 평균 신뢰도 60% 이상만 저장
+                    blocks.push({
+                      text: currentWord.trim(),
+                      bbox: currentBbox
+                    });
+                  }
                 }
                 currentWord = '';
                 currentBbox = null;
+                currentConfidence = 0;
+                symbolCount = 0;
               } else {
                 // 문자 추가
                 currentWord += symbol.text;
+                currentConfidence += confidence;
+                symbolCount++;
+                
                 if (!currentBbox) {
                   currentBbox = { ...symbol.bbox };
                 } else {
@@ -172,12 +189,15 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
             }
           });
           
-          // 마지막 단어 저장
-          if (currentWord.trim() && currentBbox) {
-            blocks.push({
-              text: currentWord.trim(),
-              bbox: currentBbox
-            });
+          // 마지막 단어 저장 (신뢰도 체크)
+          if (currentWord.trim() && currentBbox && symbolCount > 0) {
+            const avgConfidence = currentConfidence / symbolCount;
+            if (avgConfidence >= 60) {
+              blocks.push({
+                text: currentWord.trim(),
+                bbox: currentBbox
+              });
+            }
           }
         }
         // words가 있는지 확인
@@ -185,13 +205,17 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
           console.log('Using words from OCR result:', data.words.length);
           data.words.forEach((word: any) => {
             if (word.text && word.text.trim() && word.bbox) {
-              blocks.push({
-                text: word.text.trim(),
-                bbox: word.bbox
-              });
+              // 신뢰도 체크 (낮은 신뢰도는 제외)
+              const confidence = word.confidence || 0;
+              if (confidence >= 60) { // 60% 이상 신뢰도만 사용
+                blocks.push({
+                  text: word.text.trim(),
+                  bbox: word.bbox
+                });
+              }
             }
           });
-        } 
+        }
         // lines가 있는지 확인
         else if (data.lines && Array.isArray(data.lines) && data.lines.length > 0) {
           console.log('Using lines from OCR result:', data.lines.length);
