@@ -303,14 +303,57 @@ const Index = () => {
   };
 
   const handleTemplateSelect = (coverTemplate: PdfTemplate, paperTemplate: PdfTemplate) => {
+    console.log('Template selected in Notes.tsx:', paperTemplate.id);
     setSelectedPdfTemplates({ cover: coverTemplate, paper: paperTemplate });
     setShowPdfTemplateSelector(false);
-    // 템플릿 선택 후 바로 다운로드 실행 (선택된 템플릿을 직접 전달)
-    const updatedOptions = {
+    // 선택된 템플릿을 직접 사용하여 즉시 다운로드 실행
+    executeDownloadWithTemplate(paperTemplate.id);
+  };
+
+  const executeDownloadWithTemplate = async (templateId: string) => {
+    const filteredNotes = pdfOptions.unresolvedOnly 
+      ? notes.filter(note => !note.isResolved)
+      : notes;
+
+    if (filteredNotes.length === 0) {
+      toast({
+        title: "알림",
+        description: pdfOptions.unresolvedOnly 
+          ? "미해결 오답노트가 없습니다."
+          : "내보낼 오답노트가 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!subject || !book || !chapter) {
+      toast({
+        title: "오류",
+        description: "과목, 교재, 단원 정보가 필요합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const options = {
       ...pdfOptions,
-      paperTemplate: paperTemplate.id
+      paperTemplate: templateId
     };
-    proceedWithDownload(updatedOptions);
+    
+    console.log('Executing download with template:', templateId);
+    const success = await downloadPDF(filteredNotes, subject, book, chapter, options);
+    if (success) {
+      toast({
+        title: "성공",
+        description: "PDF 파일이 다운로드되었습니다.",
+      });
+    } else {
+      toast({
+        title: "오류",
+        description: "PDF 생성에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDownloadPDF = async (options = pdfOptions) => {
