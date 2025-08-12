@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { PdfTemplateSelector, PdfTemplate } from "@/components/PdfTemplateSelector";
@@ -20,6 +20,7 @@ import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { ReviewScheduler } from "@/components/study/ReviewScheduler";
+import { OCRCamera } from "@/components/OCRCamera";
 
 
 interface WrongNote {
@@ -44,6 +45,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [showStudyModal, setShowStudyModal] = useState(false);
   const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
+  const [showOCRModal, setShowOCRModal] = useState(false);
   const [pdfOptions, setPdfOptions] = useState({
     includeWrongAnswers: true,
     unresolvedOnly: false
@@ -277,6 +279,18 @@ const Index = () => {
     setEditingFields({
       ...editingFields,
       [noteId]: { ...editData, value }
+    });
+  };
+
+  const handleOCRTextExtracted = (text: string) => {
+    setNewNote(prev => ({
+      ...prev,
+      question: prev.question ? prev.question + ' ' + text : text
+    }));
+    setShowAddForm(true);
+    toast({
+      title: "텍스트 추출 완료",
+      description: "문제란에 텍스트가 추가되었습니다.",
     });
   };
 
@@ -615,6 +629,15 @@ const Index = () => {
               </DialogContent>
             </Dialog>
             <Button 
+              onClick={() => setShowOCRModal(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+              disabled={!subject || !book || !chapter}
+            >
+              <Camera className="h-4 w-4" />
+              OCR 촬영
+            </Button>
+            <Button 
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-2"
               disabled={!subject || !book || !chapter}
@@ -926,6 +949,13 @@ const Index = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* OCR 카메라 모달 */}
+        <OCRCamera 
+          isOpen={showOCRModal}
+          onClose={() => setShowOCRModal(false)}
+          onTextExtracted={handleOCRTextExtracted}
+        />
       </div>
     </div>
   );
