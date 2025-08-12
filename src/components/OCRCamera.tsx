@@ -383,21 +383,18 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     }
   };
 
-  // 선택 영역 내의 텍스트 찾기 (개선된 좌표 변환)
-  const getTextsInSelection = useCallback((selection: SelectionBox) => {
-    if (!selection || textBlocks.length === 0 || !imageRef.current) {
-      console.log('No selection, text blocks, or image ref');
-      return [];
-    }
+  // 정확한 이미지 좌표 계산을 위한 헬퍼 함수
+  const getImageCoordinates = useCallback(() => {
+    if (!imageRef.current) return null;
     
-    // 이미지의 실제 표시 영역 계산 (object-fit: contain 고려)
     const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
     const naturalWidth = img.naturalWidth;
     const naturalHeight = img.naturalHeight;
     const displayWidth = img.clientWidth;
     const displayHeight = img.clientHeight;
     
-    // 실제 이미지가 표시되는 영역의 크기와 위치 계산
+    // object-fit: contain 방식으로 실제 이미지가 표시되는 영역 계산
     const scaleX = displayWidth / naturalWidth;
     const scaleY = displayHeight / naturalHeight;
     const scale = Math.min(scaleX, scaleY);
@@ -407,59 +404,88 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     const offsetX = (displayWidth - actualImageWidth) / 2;
     const offsetY = (displayHeight - actualImageHeight) / 2;
     
-    console.log('Image positioning:', {
-      naturalWidth, naturalHeight,
-      displayWidth, displayHeight,
-      scale, actualImageWidth, actualImageHeight,
-      offsetX, offsetY
+    return {
+      naturalWidth,
+      naturalHeight,
+      displayWidth,
+      displayHeight,
+      scale,
+      actualImageWidth,
+      actualImageHeight,
+      offsetX,
+      offsetY,
+      rect
+    };
+  }, []);
+
+  // 선택 영역 내의 텍스트 찾기 (정확한 좌표 변환)
+  const getTextsInSelection = useCallback((selection: SelectionBox) => {
+    if (!selection || textBlocks.length === 0) {
+      console.log('No selection or text blocks');
+      return [];
+    }
+    
+    const imageCoords = getImageCoordinates();
+    if (!imageCoords) {
+      console.log('Could not get image coordinates');
+      return [];
+    }
+    
+    const { scale, offsetX, offsetY } = imageCoords;
+    
+    console.log('Image positioning for selection:', {
+      scale, offsetX, offsetY,
+      selectionBox: selection
     });
     
-    // 선택 좌표를 이미지 좌표계로 변환
-    const adjustedMinX = (Math.min(selection.startX, selection.endX) - offsetX) / scale;
-    const adjustedMaxX = (Math.max(selection.startX, selection.endX) - offsetX) / scale;
-    const adjustedMinY = (Math.min(selection.startY, selection.endY) - offsetY) / scale;
-    const adjustedMaxY = (Math.max(selection.startY, selection.endY) - offsetY) / scale;
+    // 브라우저 좌표를 이미지 좌표계로 정확히 변환
+    const minX = Math.min(selection.startX, selection.endX);
+    const maxX = Math.max(selection.startX, selection.endX);
+    const minY = Math.min(selection.startY, selection.endY);
+    const maxY = Math.max(selection.startY, selection.endY);
     
-    console.log('Original selection:', {
-      startX: selection.startX, startY: selection.startY,
-      endX: selection.endX, endY: selection.endY
+    // 오프셋을 제거하고 스케일로 나누어 원본 이미지 좌표로 변환
+    const adjustedMinX = (minX - offsetX) / scale;
+    const adjustedMaxX = (maxX - offsetX) / scale;
+    const adjustedMinY = (minY - offsetY) / scale;
+    const adjustedMaxY = (maxY - offsetY) / scale;
+    
+    console.log('Coordinate conversion:', {
+      browser: { minX, maxX, minY, maxY },
+      adjusted: { 
+        minX: adjustedMinX, maxX: adjustedMaxX, 
+        minY: adjustedMinY, maxY: adjustedMaxY 
+      }
     });
-    console.log('Adjusted selection in image coordinates:', {
-      minX: adjustedMinX, maxX: adjustedMaxX,
-      minY: adjustedMinY, maxY: adjustedMaxY
-    });
     
-    // 더 정확한 겹침 검사를 위한 여유 공간
-    const margin = 3; // 픽셀 단위 여유
-    
+    // 선택 영역과 겹치는 텍스트 블록 찾기
     const foundTexts = textBlocks
       .filter(block => {
-        // 텍스트 블록의 중심점이 선택 영역 안에 있는지 확인
-        const blockCenterX = (block.bbox.x0 + block.bbox.x1) / 2;
-        const blockCenterY = (block.bbox.y0 + block.bbox.y1) / 2;
+        // 블록의 경계 상자가 선택 영역과 겹치는지 확인
+        const blockLeft = block.bbox.x0;
+        const blockRight = block.bbox.x1;
+        const blockTop = block.bbox.y0;
+        const blockBottom = block.bbox.y1;
         
-        const centerInSelection = 
-          blockCenterX >= adjustedMinX - margin &&
-          blockCenterX <= adjustedMaxX + margin &&
-          blockCenterY >= adjustedMinY - margin &&
-          blockCenterY <= adjustedMaxY + margin;
+        // 블록과 선택 영역이 겹치는지 확인 (AABB 충돌 검사)
+        const horizontalOverlap = blockRight >= adjustedMinX && blockLeft <= adjustedMaxX;
+        const verticalOverlap = blockBottom >= adjustedMinY && blockTop <= adjustedMaxY;
+        const overlaps = horizontalOverlap && verticalOverlap;
         
-        // 또는 블록과 선택 영역이 겹치는지 확인 (더 관대한 방식)
-        const overlaps = !(
-          block.bbox.x1 < adjustedMinX - margin ||
-          block.bbox.x0 > adjustedMaxX + margin ||
-          block.bbox.y1 < adjustedMinY - margin ||
-          block.bbox.y0 > adjustedMaxY + margin
-        );
+        // 블록의 중심점이 선택 영역 내에 있는지도 확인
+        const centerX = (blockLeft + blockRight) / 2;
+        const centerY = (blockTop + blockBottom) / 2;
+        const centerInside = centerX >= adjustedMinX && centerX <= adjustedMaxX && 
+                            centerY >= adjustedMinY && centerY <= adjustedMaxY;
         
-        const isSelected = centerInSelection || overlaps;
+        const isSelected = overlaps || centerInside;
         
         if (isSelected) {
-          console.log(`✓ Block "${block.text}" selected:`, {
+          console.log(`✓ Selected: "${block.text}"`, {
             bbox: block.bbox,
-            center: { x: blockCenterX, y: blockCenterY },
-            centerInSelection,
-            overlaps
+            center: { x: centerX, y: centerY },
+            overlaps,
+            centerInside
           });
         }
         
@@ -470,13 +496,13 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       
     console.log('Found texts in selection:', foundTexts);
     return foundTexts;
-  }, [textBlocks]);
+  }, [textBlocks, getImageCoordinates]);
 
-  // 드래그 이벤트 핸들러들 (개선된 좌표 계산)
+  // 정확한 마우스 좌표 계산을 위한 드래그 이벤트 핸들러들
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!containerRef.current || !imageRef.current) return;
+    if (!imageRef.current) return;
     
-    // 컨테이너 기준 좌표가 아닌 이미지 기준 좌표 계산
+    // 이미지 요소 기준으로 정확한 좌표 계산
     const rect = imageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -610,11 +636,8 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                 className="max-w-full h-auto rounded-lg border"
                 draggable={false}
                 onLoad={() => {
-                  if (imageRef.current) {
-                    const naturalWidth = imageRef.current.naturalWidth;
-                    const displayWidth = imageRef.current.clientWidth;
-                    setImageScale(displayWidth / naturalWidth);
-                  }
+                  // 이미지 로드 후 좌표 계산 준비
+                  console.log('Image loaded, ready for coordinate calculations');
                 }}
               />
               
