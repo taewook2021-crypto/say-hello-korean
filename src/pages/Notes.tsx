@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { PdfTemplateSelector, PdfTemplate } from "@/components/PdfTemplateSelector";
@@ -628,23 +629,28 @@ const Index = () => {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button 
-              onClick={() => setShowOCRModal(true)}
-              variant="outline"
-              className="flex items-center gap-2"
-              disabled={!subject || !book || !chapter}
-            >
-              <Camera className="h-4 w-4" />
-              OCR 촬영
-            </Button>
-            <Button 
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-2"
-              disabled={!subject || !book || !chapter}
-            >
-              <Plus className="h-4 w-4" />
-              문제 추가
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  className="flex items-center gap-2"
+                  disabled={!subject || !book || !chapter}
+                >
+                  <Plus className="h-4 w-4" />
+                  문제 추가
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setShowAddForm(!showAddForm)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  직접 입력
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowOCRModal(true)}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  OCR 촬영
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
