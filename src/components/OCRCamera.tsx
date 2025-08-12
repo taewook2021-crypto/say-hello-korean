@@ -265,16 +265,18 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     console.log('Image scale:', imageScale);
     console.log('Text blocks to check:', textBlocks);
     
-    // 여유를 두고 겹침 검사 (경계에서 누락되는 것을 방지)
-    const margin = 5;
+    // 윗쪽은 한 줄 정도 더 여유있게 (약 35px), 다른 방향은 일반 마진
+    const topMargin = 35; // 한 줄 정도 여유
+    const sideMargin = 5;  // 기본 여유
+    
     const foundTexts = textBlocks
       .filter(block => {
-        // 여유를 둔 겹침 검사
+        // 윗쪽에 더 많은 여유를 둔 겹침 검사
         const overlaps = !(
-          block.bbox.x1 < minX - margin ||
-          block.bbox.x0 > maxX + margin ||
-          block.bbox.y1 < minY - margin ||
-          block.bbox.y0 > maxY + margin
+          block.bbox.x1 < minX - sideMargin ||
+          block.bbox.x0 > maxX + sideMargin ||
+          block.bbox.y1 < minY - topMargin ||  // 윗쪽에 더 많은 여유
+          block.bbox.y0 > maxY + sideMargin
         );
         console.log(`Block "${block.text}" overlaps:`, overlaps, block.bbox);
         return overlaps;
@@ -282,7 +284,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       .map(block => block.text.trim())
       .filter(text => text.length > 0);
       
-    console.log('Found texts in selection:', foundTexts);
+    console.log('Found texts in selection (with extra top margin):', foundTexts);
     return foundTexts;
   }, [textBlocks, imageScale]);
 
