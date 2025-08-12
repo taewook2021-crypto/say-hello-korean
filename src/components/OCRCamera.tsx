@@ -116,7 +116,17 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
         logger: m => console.log(m)
       });
 
-      const ret = await worker.recognize(imageDataUrl);
+      // OCR 정확도를 높이기 위한 설정
+      await worker.setParameters({
+        tessedit_char_whitelist: '',
+        preserve_interword_spaces: '1',
+      });
+
+      // 더 자세한 정보를 얻기 위해 TSV 출력도 요청
+      const ret = await worker.recognize(imageDataUrl, {
+        rectangle: undefined,
+      });
+
       console.log('OCR Result:', ret);
       
       // OCR 결과에서 텍스트 정보 추출
@@ -125,13 +135,53 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       
       const blocks: TextBlock[] = [];
       
-      // Tesseract.js 결과에서 정보 추출 (타입 안전하게)
+      // Tesseract.js 결과에서 정보 추출 (개선된 방법)
       try {
-        // ret.data를 any로 캐스팅해서 안전하게 접근
         const data = ret.data as any;
         
+        // 먼저 symbols부터 시작해서 더 세밀한 단위로 추출 시도
+        if (data.symbols && Array.isArray(data.symbols) && data.symbols.length > 0) {
+          console.log('Using symbols from OCR result:', data.symbols.length);
+          // 심볼들을 단어 단위로 그룹화
+          let currentWord = '';
+          let currentBbox = null;
+          
+          data.symbols.forEach((symbol: any) => {
+            if (symbol.text && symbol.bbox) {
+              if (symbol.text === ' ' || symbol.text === '\n') {
+                // 공백이나 줄바꿈이면 현재 단어 저장
+                if (currentWord.trim() && currentBbox) {
+                  blocks.push({
+                    text: currentWord.trim(),
+                    bbox: currentBbox
+                  });
+                }
+                currentWord = '';
+                currentBbox = null;
+              } else {
+                // 문자 추가
+                currentWord += symbol.text;
+                if (!currentBbox) {
+                  currentBbox = { ...symbol.bbox };
+                } else {
+                  // bbox 확장
+                  currentBbox.x1 = symbol.bbox.x1;
+                  currentBbox.y1 = Math.max(currentBbox.y1, symbol.bbox.y1);
+                }
+              }
+            }
+          });
+          
+          // 마지막 단어 저장
+          if (currentWord.trim() && currentBbox) {
+            blocks.push({
+              text: currentWord.trim(),
+              bbox: currentBbox
+            });
+          }
+        }
         // words가 있는지 확인
-        if (data.words && Array.isArray(data.words) && data.words.length > 0) {
+        else if (data.words && Array.isArray(data.words) && data.words.length > 0) {
           console.log('Using words from OCR result:', data.words.length);
           data.words.forEach((word: any) => {
             if (word.text && word.text.trim() && word.bbox) {
@@ -155,10 +205,29 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                   });
                 }
               });
+            } else if (line.text && line.text.trim() && line.bbox) {
+              // 라인 레벨에서 텍스트 분할
+              const words = line.text.trim().split(/\s+/);
+              const lineWidth = line.bbox.x1 - line.bbox.x0;
+              const wordWidth = lineWidth / words.length;
+              
+              words.forEach((word: string, index: number) => {
+                if (word.trim()) {
+                  blocks.push({
+                    text: word.trim(),
+                    bbox: {
+                      x0: line.bbox.x0 + (index * wordWidth),
+                      y0: line.bbox.y0,
+                      x1: line.bbox.x0 + ((index + 1) * wordWidth),
+                      y1: line.bbox.y1
+                    }
+                  });
+                }
+              });
             }
           });
         } 
-        // paragraphs에서 words 추출 시도
+        // paragraphs에서 추출
         else if (data.paragraphs && Array.isArray(data.paragraphs)) {
           console.log('Using paragraphs from OCR result');
           data.paragraphs.forEach((paragraph: any) => {
@@ -173,25 +242,66 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                       });
                     }
                   });
+                } else if (line.text && line.text.trim() && line.bbox) {
+                  // 라인을 단어로 분할
+                  const words = line.text.trim().split(/\s+/);
+                  const lineWidth = line.bbox.x1 - line.bbox.x0;
+                  const wordWidth = lineWidth / words.length;
+                  
+                  words.forEach((word: string, index: number) => {
+                    if (word.trim()) {
+                      blocks.push({
+                        text: word.trim(),
+                        bbox: {
+                          x0: line.bbox.x0 + (index * wordWidth),
+                          y0: line.bbox.y0,
+                          x1: line.bbox.x0 + ((index + 1) * wordWidth),
+                          y1: line.bbox.y1
+                        }
+                      });
+                    }
+                  });
                 }
               });
             }
           });
         }
         
-        // 아무것도 없으면 전체 텍스트를 단순 분할
+        // 마지막 대안: 전체 텍스트를 줄 단위로 분할하고 실제 이미지 크기 고려
         if (blocks.length === 0 && fullText.trim()) {
-          console.log('No structured data found, using fallback method');
-          const sentences = fullText.split(/[\.\!\?\n]+/).filter(s => s.trim().length > 0);
-          sentences.forEach((sentence, index) => {
-            if (sentence.trim()) {
-              blocks.push({
-                text: sentence.trim(),
-                bbox: {
-                  x0: 10,
-                  y0: 50 + (index * 40),
-                  x1: 400,
-                  y1: 80 + (index * 40)
+          console.log('No structured data found, using improved fallback method');
+          
+          // 이미지 크기 정보 가져오기
+          let imageWidth = 800; // 기본값
+          let imageHeight = 600; // 기본값
+          
+          if (imageRef.current) {
+            imageWidth = imageRef.current.naturalWidth;
+            imageHeight = imageRef.current.naturalHeight;
+          }
+          
+          const lines = fullText.split(/\n+/).filter(line => line.trim().length > 0);
+          const lineHeight = Math.max(30, imageHeight / Math.max(lines.length * 2, 10));
+          const startY = Math.max(50, imageHeight * 0.1);
+          
+          lines.forEach((line, index) => {
+            if (line.trim()) {
+              const words = line.trim().split(/\s+/);
+              const lineY = startY + (index * lineHeight);
+              const wordWidth = Math.max(imageWidth * 0.8 / words.length, 50);
+              const startX = imageWidth * 0.1;
+              
+              words.forEach((word, wordIndex) => {
+                if (word.trim()) {
+                  blocks.push({
+                    text: word.trim(),
+                    bbox: {
+                      x0: startX + (wordIndex * wordWidth),
+                      y0: lineY,
+                      x1: startX + ((wordIndex + 1) * wordWidth),
+                      y1: lineY + lineHeight * 0.8
+                    }
+                  });
                 }
               });
             }
@@ -200,19 +310,30 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       } catch (error) {
         console.error('Error processing OCR blocks:', error);
         
-        // 완전한 대체 방법
+        // 최종 대체 방법
         if (fullText.trim()) {
           console.log('Using emergency fallback method');
-          const sentences = fullText.split(/[\.\!\?\n]+/).filter(s => s.trim().length > 0);
-          sentences.forEach((sentence, index) => {
-            if (sentence.trim()) {
-              blocks.push({
-                text: sentence.trim(),
-                bbox: {
-                  x0: 10,
-                  y0: 50 + (index * 40),
-                  x1: 400,
-                  y1: 80 + (index * 40)
+          const lines = fullText.split(/\n+/).filter(line => line.trim().length > 0);
+          const lineHeight = 40;
+          const startY = 50;
+          
+          lines.forEach((line, index) => {
+            if (line.trim()) {
+              const words = line.trim().split(/\s+/);
+              const wordWidth = 100;
+              const startX = 10;
+              
+              words.forEach((word, wordIndex) => {
+                if (word.trim()) {
+                  blocks.push({
+                    text: word.trim(),
+                    bbox: {
+                      x0: startX + (wordIndex * wordWidth),
+                      y0: startY + (index * lineHeight),
+                      x1: startX + ((wordIndex + 1) * wordWidth),
+                      y1: startY + (index * lineHeight) + 30
+                    }
+                  });
                 }
               });
             }
