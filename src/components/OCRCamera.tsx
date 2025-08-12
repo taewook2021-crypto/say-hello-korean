@@ -431,10 +431,11 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       return [];
     }
     
-    const { scale, offsetX, offsetY } = imageCoords;
+    const { scale, offsetX, offsetY, actualImageWidth, actualImageHeight } = imageCoords;
     
-    console.log('Image positioning for selection:', {
+    console.log('Detailed image positioning:', {
       scale, offsetX, offsetY,
+      actualImageWidth, actualImageHeight,
       selectionBox: selection
     });
     
@@ -444,11 +445,17 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     const minY = Math.min(selection.startY, selection.endY);
     const maxY = Math.max(selection.startY, selection.endY);
     
+    // 선택 영역이 실제 이미지 영역 내에 있는지 확인하고 클램핑
+    const clampedMinX = Math.max(0, minX - offsetX);
+    const clampedMaxX = Math.min(actualImageWidth, maxX - offsetX);
+    const clampedMinY = Math.max(0, minY - offsetY);
+    const clampedMaxY = Math.min(actualImageHeight, maxY - offsetY);
+    
     // 오프셋을 제거하고 스케일로 나누어 원본 이미지 좌표로 변환
-    const adjustedMinX = (minX - offsetX) / scale;
-    const adjustedMaxX = (maxX - offsetX) / scale;
-    const adjustedMinY = (minY - offsetY) / scale;
-    const adjustedMaxY = (maxY - offsetY) / scale;
+    const adjustedMinX = clampedMinX / scale;
+    const adjustedMaxX = clampedMaxX / scale;
+    const adjustedMinY = clampedMinY / scale;
+    const adjustedMaxY = clampedMaxY / scale;
     
     console.log('Coordinate conversion:', {
       browser: { minX, maxX, minY, maxY },
