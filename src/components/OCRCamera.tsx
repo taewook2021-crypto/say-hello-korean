@@ -383,12 +383,11 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     }
   };
 
-  // 정확한 이미지 좌표 계산을 위한 헬퍼 함수
+  // 정확한 이미지 좌표 계산을 위한 헬퍼 함수 (수정됨)
   const getImageCoordinates = useCallback(() => {
     if (!imageRef.current) return null;
     
     const img = imageRef.current;
-    const rect = img.getBoundingClientRect();
     const naturalWidth = img.naturalWidth;
     const naturalHeight = img.naturalHeight;
     const displayWidth = img.clientWidth;
@@ -413,29 +412,39 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       actualImageWidth,
       actualImageHeight,
       offsetX,
-      offsetY,
-      rect
+      offsetY
     };
   }, []);
 
   // 선택 영역 내의 텍스트 찾기 (정확한 좌표 변환)
   const getTextsInSelection = useCallback((selection: SelectionBox) => {
-    if (!selection || textBlocks.length === 0) {
-      console.log('No selection or text blocks');
+    if (!selection || textBlocks.length === 0 || !imageRef.current) {
+      console.log('No selection, text blocks, or image ref');
       return [];
     }
     
-    const imageCoords = getImageCoordinates();
-    if (!imageCoords) {
-      console.log('Could not get image coordinates');
-      return [];
-    }
+    const img = imageRef.current;
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    const displayWidth = img.clientWidth;
+    const displayHeight = img.clientHeight;
     
-    const { scale, offsetX, offsetY, actualImageWidth, actualImageHeight } = imageCoords;
+    // 정확한 스케일 계산
+    const scaleX = displayWidth / naturalWidth;
+    const scaleY = displayHeight / naturalHeight;
+    const scale = Math.min(scaleX, scaleY);
+    
+    // 실제 이미지 표시 영역 계산
+    const actualImageWidth = naturalWidth * scale;
+    const actualImageHeight = naturalHeight * scale;
+    const offsetX = (displayWidth - actualImageWidth) / 2;
+    const offsetY = (displayHeight - actualImageHeight) / 2;
     
     console.log('Detailed image positioning:', {
-      scale, offsetX, offsetY,
-      actualImageWidth, actualImageHeight,
+      naturalWidth, naturalHeight,
+      displayWidth, displayHeight,
+      scale, actualImageWidth, actualImageHeight,
+      offsetX, offsetY,
       selectionBox: selection
     });
     
@@ -664,16 +673,30 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                 }}
               />
               
-              {/* 텍스트 블록들을 시각적으로 표시 (디버깅용) */}
+              {/* 텍스트 블록들을 시각적으로 표시 (디버깅용 - Y축 오프셋 수정) */}
               {textBlocks.length > 0 && (
                 <>
                   {textBlocks.map((block, index) => {
-                    const imageCoords = getImageCoordinates();
-                    if (!imageCoords) return null;
+                    if (!imageRef.current) return null;
                     
-                    const { scale, offsetX, offsetY } = imageCoords;
+                    const img = imageRef.current;
+                    const naturalWidth = img.naturalWidth;
+                    const naturalHeight = img.naturalHeight;
+                    const displayWidth = img.clientWidth;
+                    const displayHeight = img.clientHeight;
                     
-                    // OCR 좌표를 브라우저 좌표로 변환 (Y축 오프셋 수정)
+                    // 정확한 스케일 계산
+                    const scaleX = displayWidth / naturalWidth;
+                    const scaleY = displayHeight / naturalHeight;
+                    const scale = Math.min(scaleX, scaleY);
+                    
+                    // 실제 이미지 표시 영역 계산
+                    const actualImageWidth = naturalWidth * scale;
+                    const actualImageHeight = naturalHeight * scale;
+                    const offsetX = (displayWidth - actualImageWidth) / 2;
+                    const offsetY = (displayHeight - actualImageHeight) / 2;
+                    
+                    // OCR 좌표를 화면 좌표로 변환 (더 정확한 계산)
                     const left = (block.bbox.x0 * scale) + offsetX;
                     const top = (block.bbox.y0 * scale) + offsetY;
                     const width = (block.bbox.x1 - block.bbox.x0) * scale;
