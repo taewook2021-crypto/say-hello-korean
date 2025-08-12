@@ -151,9 +151,9 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
           
           data.symbols.forEach((symbol: any) => {
             if (symbol.text && symbol.bbox) {
-              // 신뢰도 체크 (낮은 신뢰도는 제외)
+              // 신뢰도 체크 (더 엄격한 필터링)
               const confidence = symbol.confidence || 0;
-              if (confidence < 60) { // 60% 미만 신뢰도는 제외
+              if (confidence < 75) { // 75% 미만 신뢰도는 제외
                 return;
               }
               
@@ -161,7 +161,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                 // 공백이나 줄바꿈이면 현재 단어 저장
                 if (currentWord.trim() && currentBbox && symbolCount > 0) {
                   const avgConfidence = currentConfidence / symbolCount;
-                  if (avgConfidence >= 60) { // 평균 신뢰도 60% 이상만 저장
+                  if (avgConfidence >= 75) { // 평균 신뢰도 75% 이상만 저장
                     blocks.push({
                       text: currentWord.trim(),
                       bbox: currentBbox
@@ -192,7 +192,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
           // 마지막 단어 저장 (신뢰도 체크)
           if (currentWord.trim() && currentBbox && symbolCount > 0) {
             const avgConfidence = currentConfidence / symbolCount;
-            if (avgConfidence >= 60) {
+            if (avgConfidence >= 75) {
               blocks.push({
                 text: currentWord.trim(),
                 bbox: currentBbox
@@ -205,9 +205,9 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
           console.log('Using words from OCR result:', data.words.length);
           data.words.forEach((word: any) => {
             if (word.text && word.text.trim() && word.bbox) {
-              // 신뢰도 체크 (낮은 신뢰도는 제외)
+              // 신뢰도 체크 (더 엄격한 필터링)
               const confidence = word.confidence || 0;
-              if (confidence >= 60) { // 60% 이상 신뢰도만 사용
+              if (confidence >= 75) { // 75% 이상 신뢰도만 사용
                 blocks.push({
                   text: word.text.trim(),
                   bbox: word.bbox
