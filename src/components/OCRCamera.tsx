@@ -55,6 +55,10 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       setPhoto(image);
       setTextBlocks([]);
       setSelectedTexts([]);
+      // 사진 선택 후 자동으로 OCR 실행
+      setTimeout(() => {
+        processOCRForImage(image);
+      }, 500);
     } catch (error) {
       console.error('Error taking picture:', error);
       toast({
@@ -77,6 +81,10 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
       setPhoto(image);
       setTextBlocks([]);
       setSelectedTexts([]);
+      // 갤러리 선택 후 자동으로 OCR 실행
+      setTimeout(() => {
+        processOCRForImage(image);
+      }, 500);
     } catch (error) {
       console.error('Error picking from gallery:', error);
       toast({
@@ -87,8 +95,20 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     }
   };
 
-  const processOCR = async () => {
-    if (!photo?.dataUrl) return;
+  const processOCRForImage = async (imageToProcess: Photo) => {
+    if (!imageToProcess?.dataUrl) return;
+
+    setIsProcessing(true);
+    try {
+      await processOCR(imageToProcess);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const processOCR = async (imageToProcess?: Photo) => {
+    const imageDataUrl = imageToProcess?.dataUrl || photo?.dataUrl;
+    if (!imageDataUrl) return;
 
     setIsProcessing(true);
     try {
@@ -96,7 +116,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
         logger: m => console.log(m)
       });
 
-      const ret = await worker.recognize(photo.dataUrl);
+      const ret = await worker.recognize(imageDataUrl);
       console.log('OCR Result:', ret);
       
       // OCR 결과에서 텍스트 정보 추출
@@ -245,14 +265,16 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     console.log('Image scale:', imageScale);
     console.log('Text blocks to check:', textBlocks);
     
+    // 여유를 두고 겹침 검사 (경계에서 누락되는 것을 방지)
+    const margin = 5;
     const foundTexts = textBlocks
       .filter(block => {
-        // 텍스트 블록이 선택 영역과 겹치는지 확인
+        // 여유를 둔 겹침 검사
         const overlaps = !(
-          block.bbox.x1 < minX ||
-          block.bbox.x0 > maxX ||
-          block.bbox.y1 < minY ||
-          block.bbox.y0 > maxY
+          block.bbox.x1 < minX - margin ||
+          block.bbox.x0 > maxX + margin ||
+          block.bbox.y1 < minY - margin ||
+          block.bbox.y0 > maxY + margin
         );
         console.log(`Block "${block.text}" overlaps:`, overlaps, block.bbox);
         return overlaps;
@@ -432,53 +454,17 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                   }}
                 />
               )}
-              
-              {/* 텍스트 블록 오버레이 (클릭용) */}
-              {textBlocks.length > 0 && !isSelecting && (
-                <div className="absolute inset-0">
-                  {textBlocks.map((block, index) => {
-                    const isSelected = selectedTexts.includes(block.text.trim());
-                    return (
-                      <div
-                        key={index}
-                        className={`absolute cursor-pointer transition-all ${
-                          isSelected 
-                            ? 'bg-blue-500/30 border-2 border-blue-500' 
-                            : 'bg-yellow-300/20 border border-yellow-500 hover:bg-yellow-300/40'
-                        }`}
-                        style={{
-                          left: block.bbox.x0 * imageScale,
-                          top: block.bbox.y0 * imageScale,
-                          width: (block.bbox.x1 - block.bbox.x0) * imageScale,
-                          height: (block.bbox.y1 - block.bbox.y0) * imageScale,
-                        }}
-                        onClick={() => handleTextClick(block)}
-                        title={block.text}
-                      />
-                    );
-                  })}
-                </div>
-              )}
             </div>
 
             <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
-              💡 <strong>사용법:</strong> 마우스로 드래그하여 텍스트 영역을 선택하거나, 개별 텍스트를 클릭하세요
+              💡 <strong>사용법:</strong> 마우스로 드래그하여 텍스트 영역을 선택하세요
             </div>
 
-            {textBlocks.length === 0 ? (
+            {textBlocks.length === 0 && !isProcessing ? (
               <div className="flex gap-2">
-                <Button onClick={processOCR} disabled={isProcessing} className="flex-1">
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      텍스트 인식 중...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="mr-2 h-4 w-4" />
-                      텍스트 인식 시작
-                    </>
-                  )}
+                <Button onClick={() => processOCR()} className="flex-1">
+                  <FileText className="mr-2 h-4 w-4" />
+                  텍스트 다시 인식
                 </Button>
                 <Button variant="outline" onClick={() => setPhoto(null)}>
                   다시 선택
@@ -516,7 +502,7 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
                   >
                     선택 초기화
                   </Button>
-                  <Button variant="outline" onClick={processOCR}>
+                  <Button variant="outline" onClick={() => processOCR()}>
                     다시 인식
                   </Button>
                   <Button variant="outline" onClick={() => setPhoto(null)}>
