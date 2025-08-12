@@ -56,9 +56,9 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     const questionWidth = tableWidth * 0.52;
     const answerWidth = tableWidth * 0.36;
     
-    // 세로 구분선
-    ctx.strokeStyle = '#4B5563';
-    ctx.lineWidth = 3;
+    // 세로 구분선 (더 뚜렷하게)
+    ctx.strokeStyle = '#2D3748'; // 더 진한 색상
+    ctx.lineWidth = 4; // 더 굵게
     
     // No. | Question 구분선
     ctx.beginPath();
@@ -83,10 +83,10 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
     ctx.fillText('Question', margin + noWidth + questionWidth / 2, headerY);
     ctx.fillText('Answer', margin + noWidth + questionWidth + answerWidth / 2, headerY);
     
-    // 콘텐츠 영역 (6-7문제용)
+    // 콘텐츠 영역 (6문제용, 간격 넓게)
     const contentHeight = tableHeight - headerHeight;
-    const rowsPerPage = Math.min(pageNotes.length, 7); // 최대 7문제
-    const rowHeight = contentHeight / 7; // 7개 행으로 고정하여 여유 공간 확보
+    const rowsPerPage = Math.min(pageNotes.length, 6); // 최대 6문제
+    const rowHeight = contentHeight / 6; // 6개 행으로 고정하여 넓은 간격 확보
     
     // 데이터 행 렌더링
     pageNotes.forEach((note, index) => {
@@ -111,9 +111,21 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       const wrappedQuestion = wrapText(ctx, note.question, questionMaxWidth);
       
       wrappedQuestion.forEach((line, lineIndex) => {
-        const lineY = rowY + (rowHeight * 0.1) + (lineIndex * (5 * dpi) / 25.4);
-        if (lineY < nextRowY - (2 * dpi) / 25.4) {
+        const lineY = rowY + (rowHeight * 0.15) + (lineIndex * (6 * dpi) / 25.4); // 줄 간격 증가
+        if (lineY < nextRowY - (4 * dpi) / 25.4) {
           ctx.fillText(line, questionX, lineY);
+          
+          // 문장 사이 희미한 회색 점선 추가
+          if (lineIndex < wrappedQuestion.length - 1) {
+            ctx.setLineDash([2, 4]); // 점선 패턴
+            ctx.strokeStyle = '#D1D5DB'; // 희미한 회색
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(questionX, lineY + (3 * dpi) / 25.4);
+            ctx.lineTo(questionX + questionMaxWidth, lineY + (3 * dpi) / 25.4);
+            ctx.stroke();
+            ctx.setLineDash([]); // 점선 해제
+          }
         }
       });
       
@@ -123,9 +135,21 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       const wrappedAnswer = wrapText(ctx, note.correctAnswer, answerMaxWidth);
       
       wrappedAnswer.forEach((line, lineIndex) => {
-        const lineY = rowY + (rowHeight * 0.1) + (lineIndex * (5 * dpi) / 25.4);
-        if (lineY < nextRowY - (2 * dpi) / 25.4) {
+        const lineY = rowY + (rowHeight * 0.15) + (lineIndex * (6 * dpi) / 25.4); // 동일한 줄 간격 적용
+        if (lineY < nextRowY - (4 * dpi) / 25.4) {
           ctx.fillText(line, answerX, lineY);
+          
+          // Answer 칸에도 희미한 회색 점선 추가
+          if (lineIndex < wrappedAnswer.length - 1) {
+            ctx.setLineDash([2, 4]); // 점선 패턴
+            ctx.strokeStyle = '#D1D5DB'; // 희미한 회색
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(answerX, lineY + (3 * dpi) / 25.4);
+            ctx.lineTo(answerX + answerMaxWidth, lineY + (3 * dpi) / 25.4);
+            ctx.stroke();
+            ctx.setLineDash([]); // 점선 해제
+          }
         }
       });
       
