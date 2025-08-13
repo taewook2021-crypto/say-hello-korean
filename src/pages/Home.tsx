@@ -5,19 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, ChevronRight, ChevronDown, LogIn, LogOut, User } from "lucide-react";
+import { BookOpen, Plus, ChevronRight, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
-import { Badge } from "@/components/ui/badge";
 
 const Home = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const { profile, isPremiumUser } = useProfile();
   const [subjects, setSubjects] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [newSubject, setNewSubject] = useState("");
@@ -153,31 +148,6 @@ const Home = () => {
             <p className="text-muted-foreground">
               과목별로 체계적인 학습을 시작해보세요
             </p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span className="text-sm text-muted-foreground">{profile?.email}</span>
-                  {isPremiumUser ? (
-                    <Badge variant="default">Premium</Badge>
-                  ) : (
-                    <Badge variant="outline">Free</Badge>
-                  )}
-                </div>
-                <Button variant="ghost" size="sm" onClick={signOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  로그아웃
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => navigate("/auth")}>
-                <LogIn className="h-4 w-4 mr-2" />
-                로그인
-              </Button>
-            )}
           </div>
         </div>
 
