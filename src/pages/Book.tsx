@@ -155,7 +155,7 @@ const Book = () => {
           ))
         ) : (
           chapters.map((chapter, index) => (
-            <Link key={index} to={`/notes?subject=${encodeURIComponent(subjectName || '')}&book=${encodeURIComponent(bookName || '')}&chapter=${encodeURIComponent(chapter)}`}>
+            <Link key={index} to={`/notes/${encodeURIComponent(subjectName || '')}/${encodeURIComponent(bookName || '')}/${encodeURIComponent(chapter)}`}>
               <Card className="p-4 text-center cursor-pointer hover:bg-accent">
                 <CardContent className="p-0">
                   <FileText className="h-12 w-12 text-primary mx-auto mb-2" />
