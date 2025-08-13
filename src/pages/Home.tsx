@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { User } from "lucide-react";
+import { useProfile } from "@/hooks/useProfile";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ const Home = () => {
   const [newEditName, setNewEditName] = useState("");
   
   const { toast } = useToast();
+  const { isPremiumUser } = useProfile();
 
   useEffect(() => {
     loadSubjects();
@@ -153,9 +155,10 @@ const Home = () => {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant={isPremiumUser ? "default" : "ghost"}
               size="icon"
               onClick={() => navigate('/account')}
+              className={isPremiumUser ? "bg-blue-500 hover:bg-blue-600" : ""}
             >
               <User className="h-4 w-4" />
             </Button>
