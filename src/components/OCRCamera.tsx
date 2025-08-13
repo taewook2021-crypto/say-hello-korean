@@ -285,42 +285,15 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
 
                 {extractedText && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">인식된 텍스트:</p>
-                      <div className="flex gap-2">
-                        {selectedRanges.length > 0 && (
-                          <Button 
-                            onClick={clearSelections} 
-                            variant="outline" 
-                            size="sm"
-                            className="text-xs"
-                          >
-                            선택 해제
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div 
-                      id="ocr-text-area"
-                      className="p-3 bg-gray-50 rounded border text-sm max-h-32 overflow-y-auto"
-                      onMouseUp={handleTextSelection}
-                      style={{ 
-                        userSelect: 'text',
-                        WebkitUserSelect: 'text',
-                        MozUserSelect: 'text',
-                        msUserSelect: 'text'
-                      }}
-                    >
-                      {renderHighlightedText()}
-                    </div>
-                    {selectedRanges.length > 0 && (
-                      <div className="p-2 bg-blue-50 rounded border text-xs">
-                        <p className="font-medium text-blue-800 mb-1">선택된 텍스트:</p>
-                        <p className="text-blue-700">{getSelectedText()}</p>
-                      </div>
-                    )}
+                    <p className="text-sm font-medium">인식된 텍스트:</p>
+                    <textarea
+                      value={extractedText}
+                      onChange={(e) => setExtractedText(e.target.value)}
+                      className="w-full p-3 bg-gray-50 rounded border text-sm min-h-32 max-h-48 resize-y"
+                      placeholder="인식된 텍스트가 여기에 표시됩니다..."
+                    />
                     <p className="text-xs text-muted-foreground">
-                      💡 원하는 텍스트를 마우스로 드래그하여 선택하세요. 여러 구간 선택 가능합니다.
+                      💡 텍스트를 드래그하여 선택하거나 직접 편집한 후 사용하세요.
                     </p>
                   </div>
                 )}
