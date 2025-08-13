@@ -127,7 +127,9 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
   };
 
   const handleConfirm = () => {
-    const selectedText = getSelectedText();
+    const textArea = document.querySelector('textarea') as HTMLTextAreaElement;
+    const selectedText = textArea?.value.substring(textArea.selectionStart, textArea.selectionEnd) || '';
+    
     if (selectedText.trim()) {
       onTextExtracted(selectedText);
       handleClose();
@@ -304,7 +306,7 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
                     disabled={!extractedText.trim()}
                     className="flex-1"
                   >
-                    {selectedRanges.length > 0 ? '선택된 텍스트 사용' : '전체 텍스트 사용'}
+                    선택된 텍스트 사용
                   </Button>
                   <Button
                     onClick={() => processOCR(photo)}
