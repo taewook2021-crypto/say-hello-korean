@@ -150,22 +150,36 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    console.log('Selection event triggered:', selection);
+    
+    if (!selection || selection.rangeCount === 0) {
+      console.log('No selection found');
+      return;
+    }
 
     const range = selection.getRangeAt(0);
-    const container = range.commonAncestorContainer;
+    const selectedText = selection.toString();
     
-    // Check if selection is within our text area
-    const textArea = document.getElementById('ocr-text-area');
-    if (!textArea || !textArea.contains(container)) return;
-
-    const startOffset = range.startOffset;
-    const endOffset = range.endOffset;
+    console.log('Selected text:', selectedText);
+    console.log('Selection range:', { start: range.startOffset, end: range.endOffset });
     
-    if (startOffset === endOffset) return;
+    if (!selectedText || selectedText.trim().length === 0) {
+      console.log('Empty selection');
+      return;
+    }
 
-    // Add new selection range
-    const newRange = { start: startOffset, end: endOffset };
+    // Find the position of selected text in the full text
+    const startIndex = extractedText.indexOf(selectedText);
+    if (startIndex === -1) {
+      console.log('Selected text not found in extracted text');
+      return;
+    }
+    
+    const endIndex = startIndex + selectedText.length;
+    const newRange = { start: startIndex, end: endIndex };
+    
+    console.log('Adding range:', newRange);
+    
     setSelectedRanges(prev => {
       // Remove overlapping ranges and add new one
       const filtered = prev.filter(existing => 
@@ -288,9 +302,14 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
                     </div>
                     <div 
                       id="ocr-text-area"
-                      className="p-3 bg-gray-50 rounded border text-sm max-h-32 overflow-y-auto cursor-text select-text"
+                      className="p-3 bg-gray-50 rounded border text-sm max-h-32 overflow-y-auto"
                       onMouseUp={handleTextSelection}
-                      style={{ userSelect: 'text' }}
+                      style={{ 
+                        userSelect: 'text',
+                        WebkitUserSelect: 'text',
+                        MozUserSelect: 'text',
+                        msUserSelect: 'text'
+                      }}
                     >
                       {renderHighlightedText()}
                     </div>
