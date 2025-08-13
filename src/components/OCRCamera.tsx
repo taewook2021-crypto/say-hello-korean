@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera } from "@capacitor/camera";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import Tesseract from "tesseract.js";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

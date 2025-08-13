@@ -21,7 +21,7 @@ import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { ReviewScheduler } from "@/components/study/ReviewScheduler";
-import { OCRCamera } from "@/components/OCRCamera";
+import OCRCamera from "@/components/OCRCamera";
 
 
 interface WrongNote {
