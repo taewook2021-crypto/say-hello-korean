@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useProfile } from "@/hooks/useProfile";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OCRCameraProps {
@@ -14,34 +14,11 @@ interface OCRCameraProps {
   onClose: () => void;
 }
 
-interface SelectionBox {
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-}
-
-interface TextBlock {
-  id: string;
-  text: string;
-  boundingBox: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-}
-
-const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
-  const { isPremiumUser } = useProfile();
+const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose }) => {
   const [photo, setPhoto] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [extractedTextBlocks, setExtractedTextBlocks] = useState<TextBlock[]>([]);
-  const [selectedTexts, setSelectedTexts] = useState<string[]>([]);
-  const [isSelecting, setIsSelecting] = useState(false);
-  const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
-  const [confirmedSelections, setConfirmedSelections] = useState<SelectionBox[]>([]);
-  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [extractedText, setExtractedText] = useState<string>("");
+  const { isPremiumUser } = useSubscription();
 
   const takePicture = async () => {
     try {
@@ -81,254 +58,83 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
     }
   };
 
-  const processOCRForImage = async (imageDataUrl: string) => {
-    await processOCR(imageDataUrl);
-  };
-
   const processOCRWithGoogleVision = async (imageDataUrl: string) => {
-    console.log("Starting Google Vision OCR...");
-    setIsProcessing(true);
-    setExtractedTextBlocks([]);
-    
     try {
       const { data, error } = await supabase.functions.invoke('google-vision-ocr', {
         body: { imageBase64: imageDataUrl }
       });
 
-      console.log("Google Vision 응답:", data, error);
-
       if (error) {
-        console.error("Supabase function error:", error);
         throw new Error(`Supabase function error: ${error.message}`);
       }
 
       if (!data || !data.success) {
-        console.error("Google Vision failed:", data);
         throw new Error(data?.error || 'Google Vision OCR failed');
       }
 
-      console.log("Google Vision 결과:", data);
-      setExtractedTextBlocks(data.textBlocks || []);
-      
+      // Extract full text from response
+      if (data.fullText) {
+        setExtractedText(data.fullText);
+      } else {
+        throw new Error('텍스트를 추출할 수 없습니다.');
+      }
     } catch (error) {
-      console.error("Google Vision OCR 처리 중 오류:", error);
-      toast.error(`Google Vision 오류: ${error.message}. Tesseract로 대체합니다.`);
-      // Fallback to Tesseract
-      await processOCRWithTesseract(imageDataUrl);
-    } finally {
-      setIsProcessing(false);
+      console.error('Google Vision OCR error:', error);
+      throw error;
     }
   };
 
   const processOCRWithTesseract = async (imageDataUrl: string) => {
-    console.log("시작 Tesseract OCR 처리...");
-    setIsProcessing(true);
-    setExtractedTextBlocks([]);
-    
     try {
       const worker = await Tesseract.createWorker("kor");
+      const result = await worker.recognize(imageDataUrl);
       
-      // 설정 없이 바로 인식 진행 (기본 설정 사용)
-      const { data } = await worker.recognize(imageDataUrl);
-      console.log("Tesseract 결과:", data);
-      
-      // Try to extract text data in order of preference
-      let extractedBlocks: TextBlock[] = [];
-      
-      // First try to get word-level data for better granularity
-      if ((data as any).words && (data as any).words.length > 0) {
-        console.log("Using words data from Tesseract");
-        extractedBlocks = (data as any).words
-          .filter((word: any) => word.text && word.text.trim() && word.confidence > 30)
-          .map((word: any, index: number) => ({
-            id: `word-${index}`,
-            text: word.text.trim(),
-            boundingBox: {
-              x: word.bbox.x0,
-              y: word.bbox.y0,
-              width: word.bbox.x1 - word.bbox.x0,
-              height: word.bbox.y1 - word.bbox.y0
-            }
-          }));
-      }
-      // Then try lines if words are not available
-      else if ((data as any).lines && (data as any).lines.length > 0) {
-        console.log("Using lines data from Tesseract");
-        extractedBlocks = (data as any).lines
-          .filter((line: any) => line.text && line.text.trim() && line.confidence > 30)
-          .map((line: any, index: number) => ({
-            id: `line-${index}`,
-            text: line.text.trim(),
-            boundingBox: {
-              x: line.bbox.x0,
-              y: line.bbox.y0,
-              width: line.bbox.x1 - line.bbox.x0,
-              height: line.bbox.y1 - line.bbox.y0
-            }
-          }));
-      }
-      // If still no data, try to split full text by lines and create estimated blocks
-      else if (data.text && data.text.trim()) {
-        console.log("Creating estimated text blocks from full text");
-        const lines = data.text.trim().split('\n').filter(line => line.trim());
-        extractedBlocks = lines.map((line, index) => ({
-          id: `estimated-line-${index}`,
-          text: line.trim(),
-          boundingBox: {
-            x: 10,
-            y: index * 30 + 10, // Estimate vertical spacing
-            width: Math.min(line.length * 12, 800), // Estimate width based on character count
-            height: 25
-          }
-        }));
-      }
-      
-      console.log(`추출된 텍스트 블록 수: ${extractedBlocks.length}`);
-      setExtractedTextBlocks(extractedBlocks);
+      const recognizedText = result.data.text;
+      console.log('Tesseract OCR result:', recognizedText);
+      setExtractedText(recognizedText);
       
       await worker.terminate();
     } catch (error) {
-      console.error("Tesseract OCR 처리 중 오류:", error);
-      toast.error("텍스트 인식 중 오류가 발생했습니다.");
+      console.error('Tesseract OCR error:', error);
+      throw error;
+    }
+  };
+
+  const processOCR = async (imageDataUrl: string) => {
+    try {
+      setIsProcessing(true);
+      
+      if (isPremiumUser) {
+        await processOCRWithGoogleVision(imageDataUrl);
+      } else {
+        await processOCRWithTesseract(imageDataUrl);
+      }
+    } catch (error) {
+      console.error('OCR 처리 중 오류:', error);
+      toast.error('OCR 처리 중 오류가 발생했습니다. Tesseract로 대체합니다.');
+      
+      // Google Vision 실패 시 Tesseract로 대체
+      try {
+        await processOCRWithTesseract(imageDataUrl);
+      } catch (tesseractError) {
+        console.error('Tesseract OCR 오류:', tesseractError);
+        toast.error('텍스트 인식에 실패했습니다.');
+      }
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const processOCR = async (imageDataUrl: string) => {
-    if (isPremiumUser) {
-      await processOCRWithGoogleVision(imageDataUrl);
-    } else {
-      await processOCRWithTesseract(imageDataUrl);
+  const handleConfirm = () => {
+    if (extractedText.trim()) {
+      onTextExtracted(extractedText);
+      handleClose();
     }
-  };
-
-  const getImageCoordinates = () => {
-    const imageElement = document.querySelector('img[data-ocr-image="true"]') as HTMLImageElement;
-    if (!imageElement) return null;
-    
-    const rect = imageElement.getBoundingClientRect();
-    const naturalWidth = imageElement.naturalWidth;
-    const naturalHeight = imageElement.naturalHeight;
-    const displayWidth = rect.width;
-    const displayHeight = rect.height;
-    
-    const scaleX = displayWidth / naturalWidth;
-    const scaleY = displayHeight / naturalHeight;
-    const scale = Math.min(scaleX, scaleY);
-    
-    const scaledWidth = naturalWidth * scale;
-    const scaledHeight = naturalHeight * scale;
-    const offsetX = (displayWidth - scaledWidth) / 2;
-    const offsetY = (displayHeight - scaledHeight) / 2;
-    
-    return {
-      rect,
-      scale,
-      offsetX,
-      offsetY,
-      scaledWidth,
-      scaledHeight
-    };
-  };
-
-  const getTextsInSelection = (selection: SelectionBox) => {
-    const coords = getImageCoordinates();
-    if (!coords) return [];
-    
-    const { scale, offsetX, offsetY } = coords;
-    
-    const minX = Math.min(selection.startX, selection.endX) - offsetX;
-    const maxX = Math.max(selection.startX, selection.endX) - offsetX;
-    const minY = Math.min(selection.startY, selection.endY) - offsetY;
-    const maxY = Math.max(selection.startY, selection.endY) - offsetY;
-    
-    return extractedTextBlocks.filter(block => {
-      const blockX = block.boundingBox.x * scale;
-      const blockY = block.boundingBox.y * scale;
-      const blockRight = blockX + (block.boundingBox.width * scale);
-      const blockBottom = blockY + (block.boundingBox.height * scale);
-      
-      return (
-        blockX >= minX && blockRight <= maxX &&
-        blockY >= minY && blockBottom <= maxY
-      );
-    });
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const coords = getImageCoordinates();
-    if (!coords) return;
-    
-    const x = e.clientX - coords.rect.left;
-    const y = e.clientY - coords.rect.top;
-    
-    setStartPoint({ x, y });
-    setIsSelecting(true);
-    setSelectionBox({
-      startX: x,
-      startY: y,
-      endX: x,
-      endY: y
-    });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isSelecting || !startPoint) return;
-    
-    const coords = getImageCoordinates();
-    if (!coords) return;
-    
-    const x = e.clientX - coords.rect.left;
-    const y = e.clientY - coords.rect.top;
-    
-    setSelectionBox({
-      startX: startPoint.x,
-      startY: startPoint.y,
-      endX: x,
-      endY: y
-    });
-  };
-
-  const handleMouseUp = () => {
-    if (!isSelecting || !selectionBox) return;
-    
-    const selectedBlocks = getTextsInSelection(selectionBox);
-    if (selectedBlocks.length > 0) {
-      const newTexts = selectedBlocks.map(block => block.text);
-      setSelectedTexts(prev => [...prev, ...newTexts]);
-      // 확정된 선택 영역 저장
-      setConfirmedSelections(prev => [...prev, selectionBox]);
-    }
-    
-    setIsSelecting(false);
-    setSelectionBox(null);
-    setStartPoint(null);
-  };
-
-  const handleTextClick = (text: string) => {
-    if (selectedTexts.includes(text)) {
-      setSelectedTexts(prev => prev.filter(t => t !== text));
-    } else {
-      setSelectedTexts(prev => [...prev, text]);
-    }
-  };
-
-  const handleConfirmSelection = () => {
-    const combinedText = selectedTexts.join(" ");
-    onTextExtracted(combinedText);
-    resetState();
-    onClose();
   };
 
   const resetState = () => {
     setPhoto("");
-    setExtractedTextBlocks([]);
-    setSelectedTexts([]);
-    setConfirmedSelections([]);
-    setIsSelecting(false);
-    setSelectionBox(null);
-    setStartPoint(null);
+    setExtractedText("");
   };
 
   const handleClose = () => {
@@ -371,59 +177,31 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
               </div>
             ) : (
               <div className="space-y-4">
-                <div 
-                  className="relative border rounded-lg overflow-hidden"
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                >
+                <div className="relative border rounded-lg overflow-hidden">
                   <img
                     src={photo}
                     alt="Captured"
                     className="w-full h-auto"
-                    data-ocr-image="true"
                     style={{ maxHeight: '400px', objectFit: 'contain' }}
                   />
-                  
-                  {/* 텍스트 박스 숨김 - 드래그와 확정 박스만 표시 */}
-                  
-                  {/* 드래그 중인 선택 박스 (파란색) */}
-                  {selectionBox && (
-                    <div
-                      className="absolute border-2 border-blue-500 bg-blue-500/10 pointer-events-none"
-                      style={{
-                        left: Math.min(selectionBox.startX, selectionBox.endX),
-                        top: Math.min(selectionBox.startY, selectionBox.endY),
-                        width: Math.abs(selectionBox.endX - selectionBox.startX),
-                        height: Math.abs(selectionBox.endY - selectionBox.startY),
-                      }}
-                    />
-                  )}
-                  
-                  {/* 확정된 선택 영역들 (초록색) */}
-                  {confirmedSelections.map((selection, index) => (
-                    <div
-                      key={`confirmed-${index}`}
-                      className="absolute border-2 border-green-500 bg-green-500/10 pointer-events-none"
-                      style={{
-                        left: Math.min(selection.startX, selection.endX),
-                        top: Math.min(selection.startY, selection.endY),
-                        width: Math.abs(selection.endX - selection.startX),
-                        height: Math.abs(selection.endY - selection.startY),
-                      }}
-                    />
-                  ))}
                 </div>
 
-                {/* 텍스트 목록 숨김 */}
+                {extractedText && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">인식된 텍스트:</p>
+                    <div className="p-3 bg-gray-50 rounded border text-sm max-h-32 overflow-y-auto">
+                      {extractedText}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <Button
-                    onClick={handleConfirmSelection}
-                    disabled={selectedTexts.length === 0}
+                    onClick={handleConfirm}
+                    disabled={!extractedText.trim()}
                     className="flex-1"
                   >
-                    선택 완료
+                    텍스트 사용
                   </Button>
                   <Button
                     onClick={() => processOCR(photo)}
