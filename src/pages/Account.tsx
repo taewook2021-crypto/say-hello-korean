@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Mail, Calendar, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { PremiumSubscription } from "@/components/PremiumSubscription";
 
 const Account = () => {
   const navigate = useNavigate();
@@ -85,41 +86,7 @@ const Account = () => {
           </Card>
 
           {/* 구독 정보 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Crown className="h-5 w-5" />
-                구독 정보
-              </CardTitle>
-              <CardDescription>
-                현재 구독 상태를 확인할 수 있습니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">구독 등급</p>
-                <p className="font-medium flex items-center gap-2">
-                  {subscription?.subscription_tier === 'premium' ? (
-                    <>
-                      <Crown className="h-4 w-4 text-yellow-500" />
-                      프리미엄
-                    </>
-                  ) : (
-                    '무료'
-                  )}
-                </p>
-              </div>
-              
-              {subscription?.subscription_end && (
-                <div>
-                  <p className="text-sm text-muted-foreground">구독 만료일</p>
-                  <p className="font-medium">
-                    {new Date(subscription.subscription_end).toLocaleDateString('ko-KR')}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <PremiumSubscription />
 
           {/* 계정 관리 */}
           <Card>

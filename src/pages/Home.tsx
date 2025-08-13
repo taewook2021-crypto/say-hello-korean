@@ -11,7 +11,6 @@ import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { PremiumSubscription } from "@/components/PremiumSubscription";
 import { User } from "lucide-react";
 
 const Home = () => {
@@ -166,11 +165,6 @@ const Home = () => {
 
         {/* Today's Reviews Section */}
         <TodayReviews />
-
-        {/* Premium Subscription Section */}
-        <div className="mt-8">
-          <PremiumSubscription />
-        </div>
 
         {/* Subjects Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
