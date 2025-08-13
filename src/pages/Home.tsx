@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, ChevronRight, ChevronDown, Archive, Repeat, Target, LogIn, LogOut, User, Star } from "lucide-react";
+import { BookOpen, Plus, ChevronRight, ChevronDown, LogIn, LogOut, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
@@ -145,86 +145,8 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background"></div>
-        <div className="relative max-w-6xl mx-auto px-4 py-16">
-          <div className="text-center space-y-8">
-            {/* ARO Logo and Title */}
-            <div className="space-y-4">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary text-primary-foreground mb-4">
-                <span className="text-3xl font-bold">ARO</span>
-              </div>
-              <h1 className="text-6xl md:text-7xl font-bold text-foreground tracking-tight">
-                ARO
-              </h1>
-              <div className="flex items-center justify-center gap-8 text-xl text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <Archive className="h-6 w-6" />
-                  <span>Archive</span>
-                </div>
-                <Star className="h-4 w-4" />
-                <div className="flex items-center gap-2">
-                  <Repeat className="h-6 w-6" />
-                  <span>Remind</span>
-                </div>
-                <Star className="h-4 w-4" />
-                <div className="flex items-center gap-2">
-                  <Target className="h-6 w-6" />
-                  <span>Output</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              학습 내용을 체계적으로 아카이브하고, 적시에 리마인드 받아 완벽한 아웃풋을 만들어내세요
-            </p>
-
-            {/* Feature Cards */}
-            <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-16">
-              <Card className="text-center p-6 hover:shadow-lg transition-all">
-                <CardContent className="pt-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Archive className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Archive</h3>
-                  <p className="text-sm text-muted-foreground">
-                    중요한 학습 내용과 오답을 체계적으로 보관하고 분류하세요
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="text-center p-6 hover:shadow-lg transition-all">
-                <CardContent className="pt-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Repeat className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Remind</h3>
-                  <p className="text-sm text-muted-foreground">
-                    스마트한 알고리즘으로 최적의 타이밍에 복습을 알려드려요
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="text-center p-6 hover:shadow-lg transition-all">
-                <CardContent className="pt-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Target className="h-6 w-6 text-primary" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">Output</h3>
-                  <p className="text-sm text-muted-foreground">
-                    학습한 내용을 완벽하게 이해하고 실제 성과로 연결하세요
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 pb-16">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-2xl font-bold text-foreground mb-2">내 학습 공간</h2>
