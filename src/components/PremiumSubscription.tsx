@@ -24,13 +24,13 @@ export function PremiumSubscription() {
   }
 
   return (
-    <Card className={`transition-all duration-300 ${isPremiumUser ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900' : 'border-dashed border-muted-foreground/50 hover:border-primary/50'}`}>
+    <Card className={`transition-all duration-300 ${isPremiumUser ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900' : 'border-dashed border-muted-foreground/50 hover:border-primary/50'}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Crown className={`h-5 w-5 ${isPremiumUser ? 'text-orange-500' : 'text-muted-foreground'}`} />
+            <Crown className={`h-5 w-5 ${isPremiumUser ? 'text-blue-500' : 'text-muted-foreground'}`} />
             {isPremiumUser ? "프리미엄 회원" : "프리미엄 플랜"}
-            {isPremiumUser && <Badge className="bg-orange-500 hover:bg-orange-600">Premium</Badge>}
+            {isPremiumUser && <Badge className="bg-blue-500 hover:bg-blue-600">Premium</Badge>}
           </CardTitle>
         </div>
       </CardHeader>
@@ -83,15 +83,15 @@ export function PremiumSubscription() {
               
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <Zap className="h-4 w-4 text-orange-500" />
+                  <Zap className="h-4 w-4 text-blue-500" />
                   <span>Google Vision OCR - 99% 정확도</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <Eye className="h-4 w-4 text-orange-500" />
+                  <Eye className="h-4 w-4 text-blue-500" />
                   <span>무제한 오답노트 생성</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <Crown className="h-4 w-4 text-orange-500" />
+                  <Crown className="h-4 w-4 text-blue-500" />
                   <span>프리미엄 PDF 템플릿</span>
                 </div>
               </div>
@@ -104,7 +104,7 @@ export function PremiumSubscription() {
             
             <Button 
               onClick={upgradeToPremium}
-              className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
             >
               <Crown className="h-4 w-4 mr-2" />
               프리미엄으로 업그레이드
