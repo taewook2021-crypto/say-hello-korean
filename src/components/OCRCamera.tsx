@@ -94,12 +94,16 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
         body: { imageBase64: imageDataUrl }
       });
 
+      console.log("Google Vision 응답:", data, error);
+
       if (error) {
-        throw new Error(error.message);
+        console.error("Supabase function error:", error);
+        throw new Error(`Supabase function error: ${error.message}`);
       }
 
-      if (!data.success) {
-        throw new Error(data.error || 'Google Vision OCR failed');
+      if (!data || !data.success) {
+        console.error("Google Vision failed:", data);
+        throw new Error(data?.error || 'Google Vision OCR failed');
       }
 
       console.log("Google Vision 결과:", data);
@@ -107,7 +111,7 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
       
     } catch (error) {
       console.error("Google Vision OCR 처리 중 오류:", error);
-      toast.error("Google Vision 텍스트 인식 중 오류가 발생했습니다. Tesseract로 대체합니다.");
+      toast.error(`Google Vision 오류: ${error.message}. Tesseract로 대체합니다.`);
       // Fallback to Tesseract
       await processOCRWithTesseract(imageDataUrl);
     } finally {
@@ -122,36 +126,22 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
     
     try {
       const worker = await Tesseract.createWorker("kor");
+      
+      // 설정 없이 바로 인식 진행 (기본 설정 사용)
       const { data } = await worker.recognize(imageDataUrl);
       console.log("Tesseract 결과:", data);
       
       // Try to extract text data in order of preference
       let extractedBlocks: TextBlock[] = [];
       
-      // First try symbols (most detailed)
-      if ((data as any).symbols && (data as any).symbols.length > 0) {
-        console.log("Using symbols data");
-        extractedBlocks = (data as any).symbols
-          .filter((symbol: any) => symbol.text && symbol.text.trim())
-          .map((symbol: any, index: number) => ({
-            id: `symbol-${index}`,
-            text: symbol.text,
-            boundingBox: {
-              x: symbol.bbox.x0,
-              y: symbol.bbox.y0,
-              width: symbol.bbox.x1 - symbol.bbox.x0,
-              height: symbol.bbox.y1 - symbol.bbox.y0
-            }
-          }));
-      }
-      // Then try words
-      else if ((data as any).words && (data as any).words.length > 0) {
-        console.log("Using words data");
+      // First try to get word-level data for better granularity
+      if ((data as any).words && (data as any).words.length > 0) {
+        console.log("Using words data from Tesseract");
         extractedBlocks = (data as any).words
-          .filter((word: any) => word.text && word.text.trim())
+          .filter((word: any) => word.text && word.text.trim() && word.confidence > 30)
           .map((word: any, index: number) => ({
             id: `word-${index}`,
-            text: word.text,
+            text: word.text.trim(),
             boundingBox: {
               x: word.bbox.x0,
               y: word.bbox.y0,
@@ -160,14 +150,14 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
             }
           }));
       }
-      // Then try lines
+      // Then try lines if words are not available
       else if ((data as any).lines && (data as any).lines.length > 0) {
-        console.log("Using lines data");
+        console.log("Using lines data from Tesseract");
         extractedBlocks = (data as any).lines
-          .filter((line: any) => line.text && line.text.trim())
+          .filter((line: any) => line.text && line.text.trim() && line.confidence > 30)
           .map((line: any, index: number) => ({
             id: `line-${index}`,
-            text: line.text,
+            text: line.text.trim(),
             boundingBox: {
               x: line.bbox.x0,
               y: line.bbox.y0,
@@ -176,15 +166,20 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
             }
           }));
       }
-      
-      // Fallback: if no structured data, create blocks from full text
-      if (extractedBlocks.length === 0 && data.text && data.text.trim()) {
-        console.log("Using fallback full text");
-        extractedBlocks = [{
-          id: 'full-text',
-          text: data.text.trim(),
-          boundingBox: { x: 0, y: 0, width: 100, height: 100 }
-        }];
+      // If still no data, try to split full text by lines and create estimated blocks
+      else if (data.text && data.text.trim()) {
+        console.log("Creating estimated text blocks from full text");
+        const lines = data.text.trim().split('\n').filter(line => line.trim());
+        extractedBlocks = lines.map((line, index) => ({
+          id: `estimated-line-${index}`,
+          text: line.trim(),
+          boundingBox: {
+            x: 10,
+            y: index * 30 + 10, // Estimate vertical spacing
+            width: Math.min(line.length * 12, 800), // Estimate width based on character count
+            height: 25
+          }
+        }));
       }
       
       console.log(`추출된 텍스트 블록 수: ${extractedBlocks.length}`);
