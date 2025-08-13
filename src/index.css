@@ -27,7 +27,7 @@ All colors MUST be HSL.
     --muted: 210 40% 98%;              /* 아주 연한 파란색 */
     --muted-foreground: 215 16% 47%;   /* 중간 회색 */
 
-    --accent: 25 95% 53%;              /* 주황색 액센트 */
+    --accent: 214 95% 65%;             /* 밝은 파란색 액센트 */
     --accent-foreground: 0 0% 100%;    /* 흰색 */
 
     --destructive: 0 84% 60%;          /* 빨간색 */
@@ -69,8 +69,8 @@ All colors MUST be HSL.
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 65%;
 
-    --accent: 0 0% 20%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 214 95% 65%;             /* 밝은 파란색 */
+    --accent-foreground: 0 0% 7%;      /* 진한 네이비 */
 
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
