@@ -8,45 +8,45 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Black & White Design System */
-    --background: 0 0% 7%;           /* 매우 진한 검은색 */
-    --foreground: 0 0% 98%;          /* 거의 순수한 흰색 */
+    /* Light Mode - 흰색, 파란색, 주황색 시스템 */
+    --background: 0 0% 100%;           /* 순수 흰색 */
+    --foreground: 222 84% 5%;          /* 매우 진한 네이비 */
 
-    --card: 0 0% 10%;                /* 약간 밝은 검은색 */
-    --card-foreground: 0 0% 98%;     /* 흰색 */
+    --card: 0 0% 100%;                 /* 흰색 카드 */
+    --card-foreground: 222 84% 5%;     /* 진한 네이비 */
 
-    --popover: 0 0% 8%;              /* 진한 검은색 */
-    --popover-foreground: 0 0% 98%;  /* 흰색 */
+    --popover: 0 0% 100%;              /* 흰색 팝오버 */
+    --popover-foreground: 222 84% 5%;  /* 진한 네이비 */
 
-    --primary: 0 0% 98%;             /* 흰색 */
-    --primary-foreground: 0 0% 7%;   /* 검은색 */
+    --primary: 217 91% 60%;            /* 예쁜 파란색 */
+    --primary-foreground: 0 0% 100%;   /* 흰색 */
 
-    --secondary: 0 0% 15%;           /* 회색 검은색 */
-    --secondary-foreground: 0 0% 90%; /* 밝은 회색 */
+    --secondary: 210 40% 95%;          /* 연한 파란색 배경 */
+    --secondary-foreground: 222 84% 5%; /* 진한 네이비 */
 
-    --muted: 0 0% 12%;               /* 어두운 회색 */
-    --muted-foreground: 0 0% 65%;    /* 중간 회색 */
+    --muted: 210 40% 98%;              /* 아주 연한 파란색 */
+    --muted-foreground: 215 16% 47%;   /* 중간 회색 */
 
-    --accent: 0 0% 20%;              /* 밝은 회색 */
-    --accent-foreground: 0 0% 95%;   /* 거의 흰색 */
+    --accent: 25 95% 53%;              /* 주황색 액센트 */
+    --accent-foreground: 0 0% 100%;    /* 흰색 */
 
-    --destructive: 0 70% 50%;        /* 빨간색 유지 */
-    --destructive-foreground: 0 0% 98%; /* 흰색 */
+    --destructive: 0 84% 60%;          /* 빨간색 */
+    --destructive-foreground: 0 0% 100%; /* 흰색 */
 
-    --border: 0 0% 20%;              /* 밝은 회색 테두리 */
-    --input: 0 0% 15%;               /* 어두운 입력 필드 */
-    --ring: 0 0% 60%;                /* 포커스 링 */
+    --border: 220 13% 91%;             /* 연한 회색 테두리 */
+    --input: 220 13% 91%;              /* 연한 회색 입력 필드 */
+    --ring: 217 91% 60%;               /* 파란색 포커스 링 */
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 5%;   /* 매우 어두운 사이드바 */
-    --sidebar-foreground: 0 0% 95%;  /* 밝은 텍스트 */
-    --sidebar-primary: 0 0% 98%;     /* 흰색 */
-    --sidebar-primary-foreground: 0 0% 7%; /* 검은색 */
-    --sidebar-accent: 0 0% 12%;      /* 어두운 액센트 */
-    --sidebar-accent-foreground: 0 0% 95%; /* 밝은 텍스트 */
-    --sidebar-border: 0 0% 15%;      /* 어두운 테두리 */
-    --sidebar-ring: 0 0% 60%;        /* 링 */
+    --sidebar-background: 0 0% 100%;   /* 흰색 사이드바 */
+    --sidebar-foreground: 222 84% 5%;  /* 진한 네이비 */
+    --sidebar-primary: 217 91% 60%;    /* 파란색 */
+    --sidebar-primary-foreground: 0 0% 100%; /* 흰색 */
+    --sidebar-accent: 210 40% 98%;     /* 연한 파란색 */
+    --sidebar-accent-foreground: 222 84% 5%; /* 진한 네이비 */
+    --sidebar-border: 220 13% 91%;     /* 연한 회색 테두리 */
+    --sidebar-ring: 217 91% 60%;       /* 파란색 링 */
   }
 
   .dark {

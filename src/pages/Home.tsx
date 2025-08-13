@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -149,6 +150,7 @@ const Home = () => {
               과목별로 체계적인 학습을 시작해보세요
             </p>
           </div>
+          <ThemeToggle />
         </div>
 
         {/* Today's Reviews Section */}
