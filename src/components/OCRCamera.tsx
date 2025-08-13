@@ -40,6 +40,7 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
   const [selectedTexts, setSelectedTexts] = useState<string[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
+  const [confirmedSelections, setConfirmedSelections] = useState<SelectionBox[]>([]);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
 
   const takePicture = async () => {
@@ -296,6 +297,8 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
     if (selectedBlocks.length > 0) {
       const newTexts = selectedBlocks.map(block => block.text);
       setSelectedTexts(prev => [...prev, ...newTexts]);
+      // 확정된 선택 영역 저장
+      setConfirmedSelections(prev => [...prev, selectionBox]);
     }
     
     setIsSelecting(false);
@@ -322,6 +325,7 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
     setPhoto("");
     setExtractedTextBlocks([]);
     setSelectedTexts([]);
+    setConfirmedSelections([]);
     setIsSelecting(false);
     setSelectionBox(null);
     setStartPoint(null);
@@ -381,40 +385,9 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
                     style={{ maxHeight: '400px', objectFit: 'contain' }}
                   />
                   
-                  {/* Text blocks overlay */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    {extractedTextBlocks.map((block) => {
-                      const coords = getImageCoordinates();
-                      if (!coords) return null;
-                      
-                      const { scale, offsetX, offsetY } = coords;
-                      const x = block.boundingBox.x * scale + offsetX;
-                      const y = block.boundingBox.y * scale + offsetY;
-                      const width = block.boundingBox.width * scale;
-                      const height = block.boundingBox.height * scale;
-                      
-                      return (
-                        <div
-                          key={block.id}
-                          className={`absolute border-2 cursor-pointer pointer-events-auto ${
-                            selectedTexts.includes(block.text)
-                              ? 'border-blue-500 bg-blue-500/20'
-                              : 'border-red-500 bg-red-500/10'
-                          }`}
-                          style={{
-                            left: x,
-                            top: y,
-                            width,
-                            height,
-                          }}
-                          onClick={() => handleTextClick(block.text)}
-                          title={block.text}
-                        />
-                      );
-                    })}
-                  </div>
+                  {/* 텍스트 박스 숨김 - 드래그와 확정 박스만 표시 */}
                   
-                  {/* Selection box */}
+                  {/* 드래그 중인 선택 박스 (파란색) */}
                   {selectionBox && (
                     <div
                       className="absolute border-2 border-blue-500 bg-blue-500/10 pointer-events-none"
@@ -426,6 +399,20 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
                       }}
                     />
                   )}
+                  
+                  {/* 확정된 선택 영역들 (초록색) */}
+                  {confirmedSelections.map((selection, index) => (
+                    <div
+                      key={`confirmed-${index}`}
+                      className="absolute border-2 border-green-500 bg-green-500/10 pointer-events-none"
+                      style={{
+                        left: Math.min(selection.startX, selection.endX),
+                        top: Math.min(selection.startY, selection.endY),
+                        width: Math.abs(selection.endX - selection.startX),
+                        height: Math.abs(selection.endY - selection.startY),
+                      }}
+                    />
+                  ))}
                 </div>
 
                 {/* 텍스트 목록 숨김 */}
