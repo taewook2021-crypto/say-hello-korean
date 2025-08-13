@@ -382,35 +382,37 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
                   />
                   
                   {/* Text blocks overlay */}
-                  {extractedTextBlocks.map((block) => {
-                    const coords = getImageCoordinates();
-                    if (!coords) return null;
-                    
-                    const { scale, offsetX, offsetY } = coords;
-                    const x = block.boundingBox.x * scale + offsetX;
-                    const y = block.boundingBox.y * scale + offsetY;
-                    const width = block.boundingBox.width * scale;
-                    const height = block.boundingBox.height * scale;
-                    
-                    return (
-                      <div
-                        key={block.id}
-                        className={`absolute border cursor-pointer ${
-                          selectedTexts.includes(block.text)
-                            ? 'border-blue-500 bg-blue-500/20'
-                            : 'border-red-500 bg-red-500/10'
-                        }`}
-                        style={{
-                          left: x,
-                          top: y,
-                          width,
-                          height,
-                        }}
-                        onClick={() => handleTextClick(block.text)}
-                        title={block.text}
-                      />
-                    );
-                  })}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {extractedTextBlocks.map((block) => {
+                      const coords = getImageCoordinates();
+                      if (!coords) return null;
+                      
+                      const { scale, offsetX, offsetY } = coords;
+                      const x = block.boundingBox.x * scale + offsetX;
+                      const y = block.boundingBox.y * scale + offsetY;
+                      const width = block.boundingBox.width * scale;
+                      const height = block.boundingBox.height * scale;
+                      
+                      return (
+                        <div
+                          key={block.id}
+                          className={`absolute border-2 cursor-pointer pointer-events-auto ${
+                            selectedTexts.includes(block.text)
+                              ? 'border-blue-500 bg-blue-500/20'
+                              : 'border-red-500 bg-red-500/10'
+                          }`}
+                          style={{
+                            left: x,
+                            top: y,
+                            width,
+                            height,
+                          }}
+                          onClick={() => handleTextClick(block.text)}
+                          title={block.text}
+                        />
+                      );
+                    })}
+                  </div>
                   
                   {/* Selection box */}
                   {selectionBox && (
@@ -426,39 +428,7 @@ const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
                   )}
                 </div>
 
-                {extractedTextBlocks.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      인식된 텍스트를 클릭하거나 드래그로 선택하세요:
-                    </p>
-                    <div className="max-h-32 overflow-y-auto border rounded p-2">
-                      <div className="flex flex-wrap gap-1">
-                        {extractedTextBlocks.map((block) => (
-                          <button
-                            key={block.id}
-                            onClick={() => handleTextClick(block.text)}
-                            className={`px-2 py-1 text-xs rounded ${
-                              selectedTexts.includes(block.text)
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                          >
-                            {block.text}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {selectedTexts.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">선택된 텍스트:</p>
-                        <div className="p-2 bg-gray-50 rounded border text-sm">
-                          {selectedTexts.join(" ")}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* 텍스트 목록 숨김 */}
 
                 <div className="flex gap-2">
                   <Button
