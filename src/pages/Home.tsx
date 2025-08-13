@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PremiumSubscription } from "@/components/PremiumSubscription";
+import { User } from "lucide-react";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -151,7 +152,16 @@ const Home = () => {
               과목별로 체계적인 학습을 시작해보세요
             </p>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/account')}
+            >
+              <User className="h-4 w-4" />
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
 
         {/* Today's Reviews Section */}
