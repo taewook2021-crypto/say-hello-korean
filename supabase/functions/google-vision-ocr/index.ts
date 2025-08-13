@@ -15,18 +15,26 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Google Vision OCR function called');
+    
     if (!googleVisionApiKey) {
+      console.error('Google Vision API key not configured');
       throw new Error('Google Vision API key not configured');
     }
 
+    console.log('API key found, parsing request body...');
     const { imageBase64 } = await req.json();
 
     if (!imageBase64) {
+      console.error('No image data provided in request');
       throw new Error('No image data provided');
     }
 
+    console.log('Image data received, processing...');
     // Remove data URL prefix if present
     const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+    
+    console.log(`Sending request to Google Vision API with image data length: ${base64Data.length}`);
 
     // Call Google Vision API
     const response = await fetch(
@@ -54,10 +62,14 @@ serve(async (req) => {
       }
     );
 
+    console.log(`Google Vision API response status: ${response.status}`);
+
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('Google Vision API error:', errorData);
-      throw new Error(`Google Vision API error: ${response.status}`);
+      console.error('Google Vision API error response:', errorData);
+      console.error('Response status:', response.status);
+      console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+      throw new Error(`Google Vision API error: ${response.status} - ${errorData}`);
     }
 
     const data = await response.json();
