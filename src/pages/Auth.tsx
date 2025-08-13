@@ -21,7 +21,7 @@ export default function Auth() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        navigate("/");
+        navigate("/home");
       }
     };
 
@@ -32,7 +32,7 @@ export default function Auth() {
       (event, session) => {
         if (session?.user) {
           setUser(session.user);
-          navigate("/");
+          navigate("/home");
         } else {
           setUser(null);
         }
@@ -47,7 +47,7 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/home`;
       
       const { error } = await supabase.auth.signUp({
         email,
@@ -104,7 +104,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/home`
         }
       });
 
@@ -130,10 +130,10 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle>오답노트 앱</CardTitle>
-          <CardDescription>
-            계정으로 로그인하거나 새 계정을 만드세요
-          </CardDescription>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary text-primary-foreground mb-4 mx-auto">
+            <span className="text-2xl font-bold">ARO</span>
+          </div>
+          <CardTitle>ARO</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
