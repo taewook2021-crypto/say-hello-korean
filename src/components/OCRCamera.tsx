@@ -18,6 +18,7 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
   const [photo, setPhoto] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedText, setExtractedText] = useState<string>("");
+  const [selectedRanges, setSelectedRanges] = useState<Array<{start: number, end: number}>>([]);
   const { isPremiumUser } = useSubscription();
 
   const takePicture = async () => {
@@ -126,15 +127,97 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
   };
 
   const handleConfirm = () => {
-    if (extractedText.trim()) {
+    const selectedText = getSelectedText();
+    if (selectedText.trim()) {
+      onTextExtracted(selectedText);
+      handleClose();
+    } else if (extractedText.trim()) {
       onTextExtracted(extractedText);
       handleClose();
     }
   };
 
+  const getSelectedText = () => {
+    if (selectedRanges.length === 0) return extractedText;
+    
+    // Sort ranges by start position
+    const sortedRanges = [...selectedRanges].sort((a, b) => a.start - b.start);
+    
+    return sortedRanges
+      .map(range => extractedText.slice(range.start, range.end))
+      .join(' ');
+  };
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    
+    // Check if selection is within our text area
+    const textArea = document.getElementById('ocr-text-area');
+    if (!textArea || !textArea.contains(container)) return;
+
+    const startOffset = range.startOffset;
+    const endOffset = range.endOffset;
+    
+    if (startOffset === endOffset) return;
+
+    // Add new selection range
+    const newRange = { start: startOffset, end: endOffset };
+    setSelectedRanges(prev => {
+      // Remove overlapping ranges and add new one
+      const filtered = prev.filter(existing => 
+        !(existing.start < newRange.end && existing.end > newRange.start)
+      );
+      return [...filtered, newRange];
+    });
+  };
+
+  const clearSelections = () => {
+    setSelectedRanges([]);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const renderHighlightedText = () => {
+    if (selectedRanges.length === 0) {
+      return extractedText;
+    }
+
+    // Sort ranges by start position
+    const sortedRanges = [...selectedRanges].sort((a, b) => a.start - b.start);
+    const result = [];
+    let lastIndex = 0;
+
+    for (const range of sortedRanges) {
+      // Add text before highlight
+      if (lastIndex < range.start) {
+        result.push(extractedText.slice(lastIndex, range.start));
+      }
+      
+      // Add highlighted text
+      result.push(
+        <mark key={`highlight-${range.start}-${range.end}`} className="bg-blue-200">
+          {extractedText.slice(range.start, range.end)}
+        </mark>
+      );
+      
+      lastIndex = range.end;
+    }
+
+    // Add remaining text
+    if (lastIndex < extractedText.length) {
+      result.push(extractedText.slice(lastIndex));
+    }
+
+    return result;
+  };
+
   const resetState = () => {
     setPhoto("");
     setExtractedText("");
+    setSelectedRanges([]);
   };
 
   const handleClose = () => {
@@ -187,11 +270,39 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
                 </div>
 
                 {extractedText && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">인식된 텍스트:</p>
-                    <div className="p-3 bg-gray-50 rounded border text-sm max-h-32 overflow-y-auto">
-                      {extractedText}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">인식된 텍스트:</p>
+                      <div className="flex gap-2">
+                        {selectedRanges.length > 0 && (
+                          <Button 
+                            onClick={clearSelections} 
+                            variant="outline" 
+                            size="sm"
+                            className="text-xs"
+                          >
+                            선택 해제
+                          </Button>
+                        )}
+                      </div>
                     </div>
+                    <div 
+                      id="ocr-text-area"
+                      className="p-3 bg-gray-50 rounded border text-sm max-h-32 overflow-y-auto cursor-text select-text"
+                      onMouseUp={handleTextSelection}
+                      style={{ userSelect: 'text' }}
+                    >
+                      {renderHighlightedText()}
+                    </div>
+                    {selectedRanges.length > 0 && (
+                      <div className="p-2 bg-blue-50 rounded border text-xs">
+                        <p className="font-medium text-blue-800 mb-1">선택된 텍스트:</p>
+                        <p className="text-blue-700">{getSelectedText()}</p>
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      💡 원하는 텍스트를 마우스로 드래그하여 선택하세요. 여러 구간 선택 가능합니다.
+                    </p>
                   </div>
                 )}
 
@@ -201,7 +312,7 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
                     disabled={!extractedText.trim()}
                     className="flex-1"
                   >
-                    텍스트 사용
+                    {selectedRanges.length > 0 ? '선택된 텍스트 사용' : '전체 텍스트 사용'}
                   </Button>
                   <Button
                     onClick={() => processOCR(photo)}
