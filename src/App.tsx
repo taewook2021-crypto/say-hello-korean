@@ -8,6 +8,7 @@ import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
 import Home from "./pages/Home";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/home" element={<Home />} />
             <Route path="/subject/:subjectName" element={<Subject />} />
             <Route path="/book/:subjectName/:bookName" element={<Book />} />

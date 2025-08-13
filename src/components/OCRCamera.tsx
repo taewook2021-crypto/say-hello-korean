@@ -1,11 +1,12 @@
-import { useState, useRef, useCallback } from 'react';
-import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
-import { createWorker } from 'tesseract.js';
+import { useState } from "react";
+import { Camera } from "@capacitor/camera";
+import Tesseract from "tesseract.js";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera as CameraIcon, Image, FileText, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OCRCameraProps {
   onTextExtracted: (text: string) => void;
@@ -21,27 +22,25 @@ interface SelectionBox {
 }
 
 interface TextBlock {
+  id: string;
   text: string;
-  bbox: {
-    x0: number;
-    y0: number;
-    x1: number;
-    y1: number;
+  boundingBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
   };
 }
 
-export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
-  const [photo, setPhoto] = useState<Photo | null>(null);
+const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) => {
+  const { isPremiumUser } = useProfile();
+  const [photo, setPhoto] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [textBlocks, setTextBlocks] = useState<TextBlock[]>([]);
+  const [extractedTextBlocks, setExtractedTextBlocks] = useState<TextBlock[]>([]);
   const [selectedTexts, setSelectedTexts] = useState<string[]>([]);
-  const [imageScale, setImageScale] = useState(1);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
-  const [currentSelection, setCurrentSelection] = useState<SelectionBox | null>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
 
   const takePicture = async () => {
     try {
@@ -52,20 +51,13 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
         source: CameraSource.Camera,
       });
 
-      setPhoto(image);
-      setTextBlocks([]);
-      setSelectedTexts([]);
-      // 사진 선택 후 자동으로 OCR 실행
-      setTimeout(() => {
-        processOCRForImage(image);
-      }, 500);
+      if (image.dataUrl) {
+        setPhoto(image.dataUrl);
+        await processOCR(image.dataUrl);
+      }
     } catch (error) {
-      console.error('Error taking picture:', error);
-      toast({
-        title: "오류",
-        description: "사진 촬영에 실패했습니다.",
-        variant: "destructive",
-      });
+      console.error("Error taking picture:", error);
+      toast.error("사진 촬영에 실패했습니다.");
     }
   };
 
@@ -78,574 +70,266 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
         source: CameraSource.Photos,
       });
 
-      setPhoto(image);
-      setTextBlocks([]);
-      setSelectedTexts([]);
-      // 갤러리 선택 후 자동으로 OCR 실행
-      setTimeout(() => {
-        processOCRForImage(image);
-      }, 500);
+      if (image.dataUrl) {
+        setPhoto(image.dataUrl);
+        await processOCR(image.dataUrl);
+      }
     } catch (error) {
-      console.error('Error picking from gallery:', error);
-      toast({
-        title: "오류",
-        description: "갤러리에서 이미지 선택에 실패했습니다.",
-        variant: "destructive",
-      });
+      console.error("Error picking from gallery:", error);
+      toast.error("갤러리에서 이미지 선택에 실패했습니다.");
     }
   };
 
-  const processOCRForImage = async (imageToProcess: Photo) => {
-    if (!imageToProcess?.dataUrl) return;
+  const processOCRForImage = async (imageDataUrl: string) => {
+    await processOCR(imageDataUrl);
+  };
 
+  const processOCRWithGoogleVision = async (imageDataUrl: string) => {
+    console.log("Starting Google Vision OCR...");
     setIsProcessing(true);
+    setExtractedTextBlocks([]);
+    
     try {
-      await processOCR(imageToProcess);
+      const { data, error } = await supabase.functions.invoke('google-vision-ocr', {
+        body: { imageBase64: imageDataUrl }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Google Vision OCR failed');
+      }
+
+      console.log("Google Vision 결과:", data);
+      setExtractedTextBlocks(data.textBlocks || []);
+      
+    } catch (error) {
+      console.error("Google Vision OCR 처리 중 오류:", error);
+      toast.error("Google Vision 텍스트 인식 중 오류가 발생했습니다. Tesseract로 대체합니다.");
+      // Fallback to Tesseract
+      await processOCRWithTesseract(imageDataUrl);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const processOCR = async (imageToProcess?: Photo) => {
-    const imageDataUrl = imageToProcess?.dataUrl || photo?.dataUrl;
-    if (!imageDataUrl) return;
-
+  const processOCRWithTesseract = async (imageDataUrl: string) => {
+    console.log("시작 Tesseract OCR 처리...");
     setIsProcessing(true);
+    setExtractedTextBlocks([]);
+    
     try {
-      const worker = await createWorker('kor+eng', 1, {
-        logger: m => console.log(m)
-      });
-
-      // OCR 정확도를 높이기 위한 설정 (문서/책 텍스트에 최적화)
-      await worker.setParameters({
-        tessedit_char_whitelist: '',
-        preserve_interword_spaces: '1',
-      });
-
-      // 더 자세한 정보를 얻기 위해 TSV 출력도 요청
-      const ret = await worker.recognize(imageDataUrl, {
-        rectangle: undefined,
-      });
-
-      console.log('OCR Result:', ret);
+      const worker = await Tesseract.createWorker("kor");
+      const { data } = await worker.recognize(imageDataUrl);
+      console.log("Tesseract 결과:", data);
       
-      // OCR 결과에서 텍스트 정보 추출
-      const fullText = ret.data.text || '';
-      console.log('Full OCR Text:', fullText);
+      // Try to extract text data in order of preference
+      let extractedBlocks: TextBlock[] = [];
       
-      const blocks: TextBlock[] = [];
-      
-      // Tesseract.js 결과에서 정보 추출 (개선된 방법)
-      try {
-        const data = ret.data as any;
-        
-        // 먼저 symbols부터 시작해서 더 세밀한 단위로 추출 시도
-        if (data.symbols && Array.isArray(data.symbols) && data.symbols.length > 0) {
-          console.log('Using symbols from OCR result:', data.symbols.length);
-          // 심볼들을 단어 단위로 그룹화
-          let currentWord = '';
-          let currentBbox = null;
-          
-          let currentConfidence = 0;
-          let symbolCount = 0;
-          
-          data.symbols.forEach((symbol: any) => {
-            if (symbol.text && symbol.bbox) {
-              // 신뢰도 체크 (더 엄격한 필터링)
-              const confidence = symbol.confidence || 0;
-              if (confidence < 75) { // 75% 미만 신뢰도는 제외
-                return;
-              }
-              
-              if (symbol.text === ' ' || symbol.text === '\n') {
-                // 공백이나 줄바꿈이면 현재 단어 저장
-                if (currentWord.trim() && currentBbox && symbolCount > 0) {
-                  const avgConfidence = currentConfidence / symbolCount;
-                  if (avgConfidence >= 75) { // 평균 신뢰도 75% 이상만 저장
-                    blocks.push({
-                      text: currentWord.trim(),
-                      bbox: currentBbox
-                    });
-                  }
-                }
-                currentWord = '';
-                currentBbox = null;
-                currentConfidence = 0;
-                symbolCount = 0;
-              } else {
-                // 문자 추가
-                currentWord += symbol.text;
-                currentConfidence += confidence;
-                symbolCount++;
-                
-                if (!currentBbox) {
-                  currentBbox = { ...symbol.bbox };
-                } else {
-                  // bbox 확장
-                  currentBbox.x1 = symbol.bbox.x1;
-                  currentBbox.y1 = Math.max(currentBbox.y1, symbol.bbox.y1);
-                }
-              }
+      // First try symbols (most detailed)
+      if ((data as any).symbols && (data as any).symbols.length > 0) {
+        console.log("Using symbols data");
+        extractedBlocks = (data as any).symbols
+          .filter((symbol: any) => symbol.text && symbol.text.trim())
+          .map((symbol: any, index: number) => ({
+            id: `symbol-${index}`,
+            text: symbol.text,
+            boundingBox: {
+              x: symbol.bbox.x0,
+              y: symbol.bbox.y0,
+              width: symbol.bbox.x1 - symbol.bbox.x0,
+              height: symbol.bbox.y1 - symbol.bbox.y0
             }
-          });
-          
-          // 마지막 단어 저장 (신뢰도 체크)
-          if (currentWord.trim() && currentBbox && symbolCount > 0) {
-            const avgConfidence = currentConfidence / symbolCount;
-            if (avgConfidence >= 75) {
-              blocks.push({
-                text: currentWord.trim(),
-                bbox: currentBbox
-              });
+          }));
+      }
+      // Then try words
+      else if ((data as any).words && (data as any).words.length > 0) {
+        console.log("Using words data");
+        extractedBlocks = (data as any).words
+          .filter((word: any) => word.text && word.text.trim())
+          .map((word: any, index: number) => ({
+            id: `word-${index}`,
+            text: word.text,
+            boundingBox: {
+              x: word.bbox.x0,
+              y: word.bbox.y0,
+              width: word.bbox.x1 - word.bbox.x0,
+              height: word.bbox.y1 - word.bbox.y0
             }
-          }
-        }
-        // words가 있는지 확인
-        else if (data.words && Array.isArray(data.words) && data.words.length > 0) {
-          console.log('Using words from OCR result:', data.words.length);
-          data.words.forEach((word: any) => {
-            if (word.text && word.text.trim() && word.bbox) {
-              // 신뢰도 체크 (더 엄격한 필터링)
-              const confidence = word.confidence || 0;
-              if (confidence >= 75) { // 75% 이상 신뢰도만 사용
-                blocks.push({
-                  text: word.text.trim(),
-                  bbox: word.bbox
-                });
-              }
+          }));
+      }
+      // Then try lines
+      else if ((data as any).lines && (data as any).lines.length > 0) {
+        console.log("Using lines data");
+        extractedBlocks = (data as any).lines
+          .filter((line: any) => line.text && line.text.trim())
+          .map((line: any, index: number) => ({
+            id: `line-${index}`,
+            text: line.text,
+            boundingBox: {
+              x: line.bbox.x0,
+              y: line.bbox.y0,
+              width: line.bbox.x1 - line.bbox.x0,
+              height: line.bbox.y1 - line.bbox.y0
             }
-          });
-        }
-        // lines가 있는지 확인
-        else if (data.lines && Array.isArray(data.lines) && data.lines.length > 0) {
-          console.log('Using lines from OCR result:', data.lines.length);
-          data.lines.forEach((line: any) => {
-            if (line.words && Array.isArray(line.words) && line.words.length > 0) {
-              line.words.forEach((word: any) => {
-                if (word.text && word.text.trim() && word.bbox) {
-                  blocks.push({
-                    text: word.text.trim(),
-                    bbox: word.bbox
-                  });
-                }
-              });
-            } else if (line.text && line.text.trim() && line.bbox) {
-              // 라인 레벨에서 텍스트 분할
-              const words = line.text.trim().split(/\s+/);
-              const lineWidth = line.bbox.x1 - line.bbox.x0;
-              const wordWidth = lineWidth / words.length;
-              
-              words.forEach((word: string, index: number) => {
-                if (word.trim()) {
-                  blocks.push({
-                    text: word.trim(),
-                    bbox: {
-                      x0: line.bbox.x0 + (index * wordWidth),
-                      y0: line.bbox.y0,
-                      x1: line.bbox.x0 + ((index + 1) * wordWidth),
-                      y1: line.bbox.y1
-                    }
-                  });
-                }
-              });
-            }
-          });
-        } 
-        // paragraphs에서 추출
-        else if (data.paragraphs && Array.isArray(data.paragraphs)) {
-          console.log('Using paragraphs from OCR result');
-          data.paragraphs.forEach((paragraph: any) => {
-            if (paragraph.lines && Array.isArray(paragraph.lines)) {
-              paragraph.lines.forEach((line: any) => {
-                if (line.words && Array.isArray(line.words)) {
-                  line.words.forEach((word: any) => {
-                    if (word.text && word.text.trim() && word.bbox) {
-                      blocks.push({
-                        text: word.text.trim(),
-                        bbox: word.bbox
-                      });
-                    }
-                  });
-                } else if (line.text && line.text.trim() && line.bbox) {
-                  // 라인을 단어로 분할
-                  const words = line.text.trim().split(/\s+/);
-                  const lineWidth = line.bbox.x1 - line.bbox.x0;
-                  const wordWidth = lineWidth / words.length;
-                  
-                  words.forEach((word: string, index: number) => {
-                    if (word.trim()) {
-                      blocks.push({
-                        text: word.trim(),
-                        bbox: {
-                          x0: line.bbox.x0 + (index * wordWidth),
-                          y0: line.bbox.y0,
-                          x1: line.bbox.x0 + ((index + 1) * wordWidth),
-                          y1: line.bbox.y1
-                        }
-                      });
-                    }
-                  });
-                }
-              });
-            }
-          });
-        }
-        
-        // 마지막 대안: 전체 텍스트를 줄 단위로 분할하고 실제 이미지 크기 고려
-        if (blocks.length === 0 && fullText.trim()) {
-          console.log('No structured data found, using improved fallback method');
-          
-          // 이미지 크기 정보 가져오기
-          let imageWidth = 800; // 기본값
-          let imageHeight = 600; // 기본값
-          
-          if (imageRef.current) {
-            imageWidth = imageRef.current.naturalWidth;
-            imageHeight = imageRef.current.naturalHeight;
-          }
-          
-          const lines = fullText.split(/\n+/).filter(line => line.trim().length > 0);
-          const lineHeight = Math.max(30, imageHeight / Math.max(lines.length * 2, 10));
-          const startY = Math.max(50, imageHeight * 0.1);
-          
-          lines.forEach((line, index) => {
-            if (line.trim()) {
-              const words = line.trim().split(/\s+/);
-              const lineY = startY + (index * lineHeight);
-              const wordWidth = Math.max(imageWidth * 0.8 / words.length, 50);
-              const startX = imageWidth * 0.1;
-              
-              words.forEach((word, wordIndex) => {
-                if (word.trim()) {
-                  blocks.push({
-                    text: word.trim(),
-                    bbox: {
-                      x0: startX + (wordIndex * wordWidth),
-                      y0: lineY,
-                      x1: startX + ((wordIndex + 1) * wordWidth),
-                      y1: lineY + lineHeight * 0.8
-                    }
-                  });
-                }
-              });
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error processing OCR blocks:', error);
-        
-        // 최종 대체 방법
-        if (fullText.trim()) {
-          console.log('Using emergency fallback method');
-          const lines = fullText.split(/\n+/).filter(line => line.trim().length > 0);
-          const lineHeight = 40;
-          const startY = 50;
-          
-          lines.forEach((line, index) => {
-            if (line.trim()) {
-              const words = line.trim().split(/\s+/);
-              const wordWidth = 100;
-              const startX = 10;
-              
-              words.forEach((word, wordIndex) => {
-                if (word.trim()) {
-                  blocks.push({
-                    text: word.trim(),
-                    bbox: {
-                      x0: startX + (wordIndex * wordWidth),
-                      y0: startY + (index * lineHeight),
-                      x1: startX + ((wordIndex + 1) * wordWidth),
-                      y1: startY + (index * lineHeight) + 30
-                    }
-                  });
-                }
-              });
-            }
-          });
-        }
+          }));
       }
       
-      console.log('Final text blocks:', blocks);
-
-      setTextBlocks(blocks);
-      
-      // 이미지 스케일 계산 (더 정확하게)
-      if (imageRef.current) {
-        const naturalWidth = imageRef.current.naturalWidth;
-        const naturalHeight = imageRef.current.naturalHeight;
-        const displayWidth = imageRef.current.clientWidth;
-        const displayHeight = imageRef.current.clientHeight;
-        
-        // 실제 표시되는 이미지의 크기를 고려한 스케일 계산
-        const scaleX = displayWidth / naturalWidth;
-        const scaleY = displayHeight / naturalHeight;
-        const scale = Math.min(scaleX, scaleY); // object-fit: contain과 같은 방식
-        
-        setImageScale(scale);
-        console.log('Image scale calculation:', {
-          naturalWidth, naturalHeight,
-          displayWidth, displayHeight,
-          scaleX, scaleY, finalScale: scale
-        });
+      // Fallback: if no structured data, create blocks from full text
+      if (extractedBlocks.length === 0 && data.text && data.text.trim()) {
+        console.log("Using fallback full text");
+        extractedBlocks = [{
+          id: 'full-text',
+          text: data.text.trim(),
+          boundingBox: { x: 0, y: 0, width: 100, height: 100 }
+        }];
       }
-
+      
+      console.log(`추출된 텍스트 블록 수: ${extractedBlocks.length}`);
+      setExtractedTextBlocks(extractedBlocks);
+      
       await worker.terminate();
-      
-      toast({
-        title: "OCR 완료",
-        description: "텍스트 인식이 완료되었습니다. 원하는 텍스트를 선택하세요.",
-      });
     } catch (error) {
-      console.error('Error processing OCR:', error);
-      toast({
-        title: "오류",
-        description: "텍스트 인식에 실패했습니다.",
-        variant: "destructive",
-      });
+      console.error("Tesseract OCR 처리 중 오류:", error);
+      toast.error("텍스트 인식 중 오류가 발생했습니다.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // 정확한 이미지 좌표 계산을 위한 헬퍼 함수 (수정됨)
-  const getImageCoordinates = useCallback(() => {
-    if (!imageRef.current) return null;
+  const processOCR = async (imageDataUrl: string) => {
+    if (isPremiumUser) {
+      await processOCRWithGoogleVision(imageDataUrl);
+    } else {
+      await processOCRWithTesseract(imageDataUrl);
+    }
+  };
+
+  const getImageCoordinates = () => {
+    const imageElement = document.querySelector('img[data-ocr-image="true"]') as HTMLImageElement;
+    if (!imageElement) return null;
     
-    const img = imageRef.current;
-    const naturalWidth = img.naturalWidth;
-    const naturalHeight = img.naturalHeight;
-    const displayWidth = img.clientWidth;
-    const displayHeight = img.clientHeight;
+    const rect = imageElement.getBoundingClientRect();
+    const naturalWidth = imageElement.naturalWidth;
+    const naturalHeight = imageElement.naturalHeight;
+    const displayWidth = rect.width;
+    const displayHeight = rect.height;
     
-    // object-fit: contain 방식으로 실제 이미지가 표시되는 영역 계산
     const scaleX = displayWidth / naturalWidth;
     const scaleY = displayHeight / naturalHeight;
     const scale = Math.min(scaleX, scaleY);
     
-    const actualImageWidth = naturalWidth * scale;
-    const actualImageHeight = naturalHeight * scale;
-    const offsetX = (displayWidth - actualImageWidth) / 2;
-    const offsetY = (displayHeight - actualImageHeight) / 2;
+    const scaledWidth = naturalWidth * scale;
+    const scaledHeight = naturalHeight * scale;
+    const offsetX = (displayWidth - scaledWidth) / 2;
+    const offsetY = (displayHeight - scaledHeight) / 2;
     
     return {
-      naturalWidth,
-      naturalHeight,
-      displayWidth,
-      displayHeight,
+      rect,
       scale,
-      actualImageWidth,
-      actualImageHeight,
       offsetX,
-      offsetY
+      offsetY,
+      scaledWidth,
+      scaledHeight
     };
-  }, []);
+  };
 
-  // 선택 영역 내의 텍스트 찾기 (정확한 좌표 변환)
-  const getTextsInSelection = useCallback((selection: SelectionBox) => {
-    if (!selection || textBlocks.length === 0 || !imageRef.current) {
-      console.log('No selection, text blocks, or image ref');
-      return [];
-    }
+  const getTextsInSelection = (selection: SelectionBox) => {
+    const coords = getImageCoordinates();
+    if (!coords) return [];
     
-    const img = imageRef.current;
-    const naturalWidth = img.naturalWidth;
-    const naturalHeight = img.naturalHeight;
-    const displayWidth = img.clientWidth;
-    const displayHeight = img.clientHeight;
+    const { scale, offsetX, offsetY } = coords;
     
-    // 정확한 스케일 계산
-    const scaleX = displayWidth / naturalWidth;
-    const scaleY = displayHeight / naturalHeight;
-    const scale = Math.min(scaleX, scaleY);
+    const minX = Math.min(selection.startX, selection.endX) - offsetX;
+    const maxX = Math.max(selection.startX, selection.endX) - offsetX;
+    const minY = Math.min(selection.startY, selection.endY) - offsetY;
+    const maxY = Math.max(selection.startY, selection.endY) - offsetY;
     
-    // 실제 이미지 표시 영역 계산
-    const actualImageWidth = naturalWidth * scale;
-    const actualImageHeight = naturalHeight * scale;
-    const offsetX = (displayWidth - actualImageWidth) / 2;
-    const offsetY = (displayHeight - actualImageHeight) / 2;
-    
-    console.log('Detailed image positioning:', {
-      naturalWidth, naturalHeight,
-      displayWidth, displayHeight,
-      scale, actualImageWidth, actualImageHeight,
-      offsetX, offsetY,
-      selectionBox: selection
-    });
-    
-    // 브라우저 좌표를 이미지 좌표계로 정확히 변환
-    const minX = Math.min(selection.startX, selection.endX);
-    const maxX = Math.max(selection.startX, selection.endX);
-    const minY = Math.min(selection.startY, selection.endY);
-    const maxY = Math.max(selection.startY, selection.endY);
-    
-    // 선택 영역이 실제 이미지 영역 내에 있는지 확인하고 클램핑
-    const clampedMinX = Math.max(0, minX - offsetX);
-    const clampedMaxX = Math.min(actualImageWidth, maxX - offsetX);
-    const clampedMinY = Math.max(0, minY - offsetY);
-    const clampedMaxY = Math.min(actualImageHeight, maxY - offsetY);
-    
-    // 오프셋을 제거하고 스케일로 나누어 원본 이미지 좌표로 변환
-    const adjustedMinX = clampedMinX / scale;
-    const adjustedMaxX = clampedMaxX / scale;
-    const adjustedMinY = clampedMinY / scale;
-    const adjustedMaxY = clampedMaxY / scale;
-    
-    console.log('Coordinate conversion:', {
-      browser: { minX, maxX, minY, maxY },
-      adjusted: { 
-        minX: adjustedMinX, maxX: adjustedMaxX, 
-        minY: adjustedMinY, maxY: adjustedMaxY 
-      }
-    });
-    
-    // 구조화된 문서를 위한 더 관대한 여유 공간
-    const margin = 8; // 문서 텍스트의 행간과 들여쓰기를 고려한 여유
-    
-    // 선택 영역과 겹치는 텍스트 블록 찾기
-    const foundTexts = textBlocks
-      .filter(block => {
-        // 블록의 경계 상자가 선택 영역과 겹치는지 확인
-        const blockLeft = block.bbox.x0;
-        const blockRight = block.bbox.x1;
-        const blockTop = block.bbox.y0;
-        const blockBottom = block.bbox.y1;
-        
-        // 블록과 선택 영역이 겹치는지 확인 (AABB 충돌 검사)
-        const horizontalOverlap = blockRight >= (adjustedMinX - margin) && 
-                                 blockLeft <= (adjustedMaxX + margin);
-        const verticalOverlap = blockBottom >= (adjustedMinY - margin) && 
-                               blockTop <= (adjustedMaxY + margin);
-        const overlaps = horizontalOverlap && verticalOverlap;
-        
-        // 블록의 중심점이 선택 영역 내에 있는지도 확인
-        const centerX = (blockLeft + blockRight) / 2;
-        const centerY = (blockTop + blockBottom) / 2;
-        const centerInside = centerX >= (adjustedMinX - margin) && 
-                            centerX <= (adjustedMaxX + margin) && 
-                            centerY >= (adjustedMinY - margin) && 
-                            centerY <= (adjustedMaxY + margin);
-        
-        // 블록의 일부분이라도 선택 영역과 겹치는지 확인 (더 관대한 방식)
-        const partialOverlap = !(
-          blockRight < (adjustedMinX - margin) ||
-          blockLeft > (adjustedMaxX + margin) ||
-          blockBottom < (adjustedMinY - margin) ||
-          blockTop > (adjustedMaxY + margin)
-        );
-        
-        const isSelected = overlaps || centerInside || partialOverlap;
-        
-        if (isSelected) {
-          console.log(`✓ Selected: "${block.text}"`, {
-            bbox: block.bbox,
-            center: { x: centerX, y: centerY },
-            overlaps,
-            centerInside,
-            partialOverlap
-          });
-        }
-        
-        return isSelected;
-      })
-      .map(block => block.text.trim())
-      .filter(text => text.length > 0);
+    return extractedTextBlocks.filter(block => {
+      const blockX = block.boundingBox.x * scale;
+      const blockY = block.boundingBox.y * scale;
+      const blockRight = blockX + (block.boundingBox.width * scale);
+      const blockBottom = blockY + (block.boundingBox.height * scale);
       
-    console.log('Found texts in selection:', foundTexts);
-    return foundTexts;
-  }, [textBlocks, getImageCoordinates]);
+      return (
+        blockX >= minX && blockRight <= maxX &&
+        blockY >= minY && blockBottom <= maxY
+      );
+    });
+  };
 
-  // 정확한 마우스 좌표 계산을 위한 드래그 이벤트 핸들러들
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!imageRef.current) return;
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const coords = getImageCoordinates();
+    if (!coords) return;
     
-    // 이미지 요소 기준으로 정확한 좌표 계산
-    const rect = imageRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX - coords.rect.left;
+    const y = e.clientY - coords.rect.top;
     
-    console.log('Mouse down at image coordinates:', { x, y });
-    
+    setStartPoint({ x, y });
     setIsSelecting(true);
-    setCurrentSelection({
+    setSelectionBox({
       startX: x,
       startY: y,
       endX: x,
       endY: y
     });
-  }, []);
+  };
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isSelecting || !imageRef.current) return;
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isSelecting || !startPoint) return;
     
-    const rect = imageRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const coords = getImageCoordinates();
+    if (!coords) return;
     
-    setCurrentSelection(prev => prev ? {
-      ...prev,
+    const x = e.clientX - coords.rect.left;
+    const y = e.clientY - coords.rect.top;
+    
+    setSelectionBox({
+      startX: startPoint.x,
+      startY: startPoint.y,
       endX: x,
       endY: y
-    } : null);
-  }, [isSelecting]);
-
-  const handleMouseUp = useCallback(() => {
-    if (!currentSelection || !isSelecting) return;
-    
-    console.log('Mouse up with selection:', currentSelection);
-    console.log('Text blocks available:', textBlocks.length);
-    console.log('Image scale:', imageScale);
-    
-    setIsSelecting(false);
-    setSelectionBox(currentSelection);
-    
-    // 선택된 영역 내의 텍스트 찾기
-    const selectedTextsInArea = getTextsInSelection(currentSelection);
-    console.log('Texts found in selection area:', selectedTextsInArea);
-    setSelectedTexts(selectedTextsInArea);
-    
-  }, [currentSelection, isSelecting, textBlocks, imageScale, getTextsInSelection]);
-
-  const handleTextClick = (textBlock: TextBlock) => {
-    const text = textBlock.text.trim();
-    if (!text) return;
-
-    console.log('Text clicked:', text);
-    setSelectedTexts(prev => {
-      const newSelection = prev.includes(text) 
-        ? prev.filter(t => t !== text)
-        : [...prev, text];
-      console.log('Updated selection:', newSelection);
-      return newSelection;
     });
   };
 
-  const handleConfirmSelection = () => {
-    console.log('Confirming selection:', selectedTexts);
-    if (selectedTexts.length === 0) {
-      console.log('No texts selected');
-      toast({
-        title: "알림",
-        description: "선택된 텍스트가 없습니다.",
-        variant: "destructive",
-      });
-      return;
+  const handleMouseUp = () => {
+    if (!isSelecting || !selectionBox) return;
+    
+    const selectedBlocks = getTextsInSelection(selectionBox);
+    if (selectedBlocks.length > 0) {
+      const newTexts = selectedBlocks.map(block => block.text);
+      setSelectedTexts(prev => [...prev, ...newTexts]);
     }
+    
+    setIsSelecting(false);
+    setSelectionBox(null);
+    setStartPoint(null);
+  };
 
-    const combinedText = selectedTexts.join(' ');
-    console.log('Combined text to extract:', combinedText);
+  const handleTextClick = (text: string) => {
+    if (selectedTexts.includes(text)) {
+      setSelectedTexts(prev => prev.filter(t => t !== text));
+    } else {
+      setSelectedTexts(prev => [...prev, text]);
+    }
+  };
+
+  const handleConfirmSelection = () => {
+    const combinedText = selectedTexts.join(" ");
     onTextExtracted(combinedText);
-    onClose();
     resetState();
+    onClose();
   };
 
   const resetState = () => {
-    setPhoto(null);
-    setTextBlocks([]);
+    setPhoto("");
+    setExtractedTextBlocks([]);
     setSelectedTexts([]);
-    setIsProcessing(false);
-    setSelectionBox(null);
-    setCurrentSelection(null);
     setIsSelecting(false);
+    setSelectionBox(null);
+    setStartPoint(null);
   };
 
   const handleClose = () => {
@@ -655,182 +339,151 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>OCR 텍스트 추출</DialogTitle>
+          <DialogTitle>
+            텍스트 추출 {isPremiumUser && <Badge variant="secondary" className="ml-2">Premium (Google Vision)</Badge>}
+            {!isPremiumUser && <Badge variant="outline" className="ml-2">Free (Tesseract)</Badge>}
+          </DialogTitle>
         </DialogHeader>
 
         {!photo ? (
           <div className="space-y-4">
-            <div className="text-center text-muted-foreground mb-6">
-              사진을 촬영하거나 갤러리에서 선택하세요
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Button onClick={takePicture} className="h-20 flex-col gap-2">
-                <CameraIcon className="h-8 w-8" />
-                사진 촬영
+            <p className="text-sm text-muted-foreground">
+              카메라로 촬영하거나 갤러리에서 이미지를 선택하세요.
+            </p>
+            <div className="flex gap-4">
+              <Button onClick={takePicture} className="flex-1">
+                카메라로 촬영
               </Button>
-              <Button onClick={pickFromGallery} variant="outline" className="h-20 flex-col gap-2">
-                <Image className="h-8 w-8" />
-                갤러리 선택
+              <Button onClick={pickFromGallery} variant="outline" className="flex-1">
+                갤러리에서 선택
               </Button>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
-            <div 
-              ref={containerRef}
-              className="relative cursor-crosshair select-none"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-            >
-              <img
-                ref={imageRef}
-                src={photo.dataUrl}
-                alt="Selected"
-                className="max-w-full h-auto rounded-lg border"
-                draggable={false}
-                onLoad={() => {
-                  // 이미지 로드 후 좌표 계산 준비
-                  console.log('Image loaded, ready for coordinate calculations');
-                }}
-              />
-              
-              {/* 텍스트 블록들을 시각적으로 표시 (디버깅용 - Y축 오프셋 수정) */}
-              {textBlocks.length > 0 && (
-                <>
-                  {textBlocks.map((block, index) => {
-                    if (!imageRef.current) return null;
+            {isProcessing ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {isPremiumUser ? "Google Vision으로 텍스트를 인식하고 있습니다..." : "Tesseract로 텍스트를 인식하고 있습니다..."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div 
+                  className="relative border rounded-lg overflow-hidden"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                >
+                  <img
+                    src={photo}
+                    alt="Captured"
+                    className="w-full h-auto"
+                    data-ocr-image="true"
+                    style={{ maxHeight: '400px', objectFit: 'contain' }}
+                  />
+                  
+                  {/* Text blocks overlay */}
+                  {extractedTextBlocks.map((block) => {
+                    const coords = getImageCoordinates();
+                    if (!coords) return null;
                     
-                    const img = imageRef.current;
-                    const naturalWidth = img.naturalWidth;
-                    const naturalHeight = img.naturalHeight;
-                    const displayWidth = img.clientWidth;
-                    const displayHeight = img.clientHeight;
-                    
-                    // 정확한 스케일 계산
-                    const scaleX = displayWidth / naturalWidth;
-                    const scaleY = displayHeight / naturalHeight;
-                    const scale = Math.min(scaleX, scaleY);
-                    
-                    // 실제 이미지 표시 영역 계산
-                    const actualImageWidth = naturalWidth * scale;
-                    const actualImageHeight = naturalHeight * scale;
-                    const offsetX = (displayWidth - actualImageWidth) / 2;
-                    const offsetY = (displayHeight - actualImageHeight) / 2;
-                    
-                    // OCR 좌표를 화면 좌표로 변환 (더 정확한 계산)
-                    const left = (block.bbox.x0 * scale) + offsetX;
-                    const top = (block.bbox.y0 * scale) + offsetY;
-                    const width = (block.bbox.x1 - block.bbox.x0) * scale;
-                    const height = (block.bbox.y1 - block.bbox.y0) * scale;
-                    
-                    // 디버깅 정보 출력 (첫 번째 블록만)
-                    if (index === 0) {
-                      console.log('First block debug:', {
-                        ocrBox: block.bbox,
-                        scale,
-                        offsetX, offsetY,
-                        convertedBox: { left, top, width, height },
-                        imageSize: { naturalWidth, naturalHeight, displayWidth, displayHeight }
-                      });
-                    }
+                    const { scale, offsetX, offsetY } = coords;
+                    const x = block.boundingBox.x * scale + offsetX;
+                    const y = block.boundingBox.y * scale + offsetY;
+                    const width = block.boundingBox.width * scale;
+                    const height = block.boundingBox.height * scale;
                     
                     return (
                       <div
-                        key={index}
-                        className="absolute border border-red-300 bg-red-100/20 pointer-events-none"
+                        key={block.id}
+                        className={`absolute border cursor-pointer ${
+                          selectedTexts.includes(block.text)
+                            ? 'border-blue-500 bg-blue-500/20'
+                            : 'border-red-500 bg-red-500/10'
+                        }`}
                         style={{
-                          left: left,
-                          top: top,
-                          width: width,
-                          height: height,
+                          left: x,
+                          top: y,
+                          width,
+                          height,
                         }}
+                        onClick={() => handleTextClick(block.text)}
                         title={block.text}
                       />
                     );
                   })}
-                </>
-              )}
-              
-              {/* 현재 드래그 중인 선택 영역 */}
-              {isSelecting && currentSelection && (
-                <div
-                  className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
-                  style={{
-                    left: Math.min(currentSelection.startX, currentSelection.endX),
-                    top: Math.min(currentSelection.startY, currentSelection.endY),
-                    width: Math.abs(currentSelection.endX - currentSelection.startX),
-                    height: Math.abs(currentSelection.endY - currentSelection.startY),
-                  }}
-                />
-              )}
-              
-              {/* 확정된 선택 영역 */}
-              {!isSelecting && selectionBox && (
-                <div
-                  className="absolute border-2 border-green-500 bg-green-500/20 pointer-events-none"
-                  style={{
-                    left: Math.min(selectionBox.startX, selectionBox.endX),
-                    top: Math.min(selectionBox.startY, selectionBox.endY),
-                    width: Math.abs(selectionBox.endX - selectionBox.startX),
-                    height: Math.abs(selectionBox.endY - selectionBox.startY),
-                  }}
-                />
-              )}
-            </div>
+                  
+                  {/* Selection box */}
+                  {selectionBox && (
+                    <div
+                      className="absolute border-2 border-blue-500 bg-blue-500/10 pointer-events-none"
+                      style={{
+                        left: Math.min(selectionBox.startX, selectionBox.endX),
+                        top: Math.min(selectionBox.startY, selectionBox.endY),
+                        width: Math.abs(selectionBox.endX - selectionBox.startX),
+                        height: Math.abs(selectionBox.endY - selectionBox.startY),
+                      }}
+                    />
+                  )}
+                </div>
 
-            <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
-              💡 <strong>사용법:</strong> 마우스로 드래그하여 텍스트 영역을 선택하세요
-            </div>
-
-            {textBlocks.length === 0 && !isProcessing ? (
-              <div className="flex gap-2">
-                <Button onClick={() => processOCR()} className="flex-1">
-                  <FileText className="mr-2 h-4 w-4" />
-                  텍스트 다시 인식
-                </Button>
-                <Button variant="outline" onClick={() => setPhoto(null)}>
-                  다시 선택
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {selectedTexts.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm">선택된 텍스트</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm bg-muted p-3 rounded border">
-                        {selectedTexts.join(' ')}
-                      </p>
-                    </CardContent>
-                  </Card>
+                {extractedTextBlocks.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      인식된 텍스트를 클릭하거나 드래그로 선택하세요:
+                    </p>
+                    <div className="max-h-32 overflow-y-auto border rounded p-2">
+                      <div className="flex flex-wrap gap-1">
+                        {extractedTextBlocks.map((block) => (
+                          <button
+                            key={block.id}
+                            onClick={() => handleTextClick(block.text)}
+                            className={`px-2 py-1 text-xs rounded ${
+                              selectedTexts.includes(block.text)
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            {block.text}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {selectedTexts.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">선택된 텍스트:</p>
+                        <div className="p-2 bg-gray-50 rounded border text-sm">
+                          {selectedTexts.join(" ")}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-                
+
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={handleConfirmSelection} 
+                  <Button
+                    onClick={handleConfirmSelection}
                     disabled={selectedTexts.length === 0}
                     className="flex-1"
                   >
                     선택 완료
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setSelectionBox(null);
-                      setSelectedTexts([]);
-                    }}
+                  <Button
+                    onClick={() => processOCR(photo)}
+                    variant="outline"
+                    disabled={isProcessing}
                   >
-                    선택 초기화
-                  </Button>
-                  <Button variant="outline" onClick={() => processOCR()}>
                     다시 인식
                   </Button>
-                  <Button variant="outline" onClick={() => setPhoto(null)}>
+                  <Button
+                    onClick={() => setPhoto("")}
+                    variant="outline"
+                  >
                     다시 선택
                   </Button>
                 </div>
@@ -842,3 +495,5 @@ export const OCRCamera = ({ onTextExtracted, isOpen, onClose }: OCRCameraProps) 
     </Dialog>
   );
 };
+
+export default OCRCamera;
