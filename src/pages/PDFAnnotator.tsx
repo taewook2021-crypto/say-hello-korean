@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
+import { Canvas as FabricCanvas, PencilBrush, Path } from 'fabric';
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -31,39 +31,40 @@ const PDFAnnotator = () => {
     '#FFA50080', '#FF00FF80', '#00FFFF80'
   ];
 
-  // 캔버스 크기 조정 함수
+  // 캔버스 크기 조정 함수 (수정됨)
   const resizeCanvas = () => {
     if (!containerRef.current || !canvasRef.current || !fabricCanvas || !iframeRef.current) return;
     
     const container = containerRef.current;
     const iframe = iframeRef.current;
-    
-    // iframe의 실제 크기 가져오기
-    const iframeRect = iframe.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    
-    console.log('Container 크기:', containerRect.width, 'x', containerRect.height);
-    console.log('Iframe 크기:', iframeRect.width, 'x', iframeRect.height);
-    
-    // Canvas를 iframe과 정확히 같은 크기로 설정
     const canvas = canvasRef.current;
-    canvas.width = iframeRect.width;
-    canvas.height = iframeRect.height;
-    canvas.style.width = iframeRect.width + 'px';
-    canvas.style.height = iframeRect.height + 'px';
+    
+    // Container 크기를 기준으로 설정
+    const containerRect = container.getBoundingClientRect();
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    
+    console.log('Container 크기:', width, 'x', height);
+    
+    // Canvas 크기 설정
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0px';
+    canvas.style.left = '0px';
+    canvas.style.zIndex = '20'; // iframe보다 위에
+    canvas.style.pointerEvents = 'auto';
     
     // Fabric Canvas 크기 설정
     fabricCanvas.setDimensions({
-      width: iframeRect.width,
-      height: iframeRect.height
+      width: width,
+      height: height
     });
     
-    // Canvas 위치를 iframe과 정확히 맞춤
-    canvas.style.left = '0px';
-    canvas.style.top = '0px';
-    
     fabricCanvas.renderAll();
-    console.log('Canvas 크기 조정 완료:', iframeRect.width, 'x', iframeRect.height);
+    console.log('Canvas 크기 조정 완료:', width, 'x', height);
   };
 
   // PDF 파일 로드
@@ -89,7 +90,7 @@ const PDFAnnotator = () => {
     toast.success('PDF 파일이 로드되었습니다.');
   };
 
-  // Fabric.js 캔버스 초기화
+  // Fabric.js 캔버스 초기화 (수정됨)
   useEffect(() => {
     if (!canvasRef.current || !pdfUrl) return;
 
@@ -101,39 +102,43 @@ const PDFAnnotator = () => {
       isDrawingMode: true,
       selection: false,
       backgroundColor: 'transparent',
-      // 터치 이벤트 지원 개선
-      enableRetinaScaling: false,
-      imageSmoothingEnabled: false
+      enableRetinaScaling: true,
+      imageSmoothingEnabled: true,
+      allowTouchScrolling: false,
+      // 터치 및 마우스 이벤트 설정
+      skipTargetFind: false,
+      perPixelTargetFind: true
     });
 
-    // 터치 이벤트 활성화
-    canvas.allowTouchScrolling = false;
-    canvas.selection = false;
+    // 브러시 설정
+    const brush = new PencilBrush(canvas);
+    brush.width = brushSize[0];
+    brush.color = brushColor;
+    brush.decimate = 0.4;
+    canvas.freeDrawingBrush = brush;
+    canvas.isDrawingMode = true;
     
-    // 즉시 브러시 설정
-    const brush = canvas.freeDrawingBrush;
-    if (brush) {
-      brush.width = brushSize[0];
-      brush.color = brushColor;
-      canvas.isDrawingMode = true;
-      console.log('브러시 즉시 설정 완료:', { width: brush.width, color: brush.color });
-    }
+    console.log('브러시 설정 완료:', { width: brush.width, color: brush.color });
     
-    // 그리기 이벤트 리스너 추가 (디버깅용)
+    // 그리기 이벤트 리스너 추가
     canvas.on('path:created', (e) => {
-      console.log('그리기 완료:', e.path);
-      console.log('현재 캔버스 객체 수:', canvas.getObjects().length);
+      console.log('선 그리기 완료! 객체 수:', canvas.getObjects().length);
+      toast.success('필기 완료!');
     });
     
     canvas.on('mouse:down', (e) => {
-      console.log('마우스/터치 다운:', e.pointer);
+      console.log('마우스 다운:', e.pointer);
     });
     
     canvas.on('mouse:move', (e) => {
-      if (canvas.isDrawingMode) {
-        console.log('그리는 중:', e.pointer);
+      if (canvas.isDrawingMode && e.pointer) {
+        console.log('그리는 중...');
       }
     });
+
+    // 터치 이벤트 강제 활성화
+    const canvasElement = canvas.getElement();
+    canvasElement.style.touchAction = 'none';
     
     setFabricCanvas(canvas);
     setIsCanvasReady(true);
@@ -142,32 +147,34 @@ const PDFAnnotator = () => {
 
     // 창 크기 변경 이벤트 리스너
     const handleResize = () => {
-      console.log('창 크기 변경 감지');
-      setTimeout(resizeCanvas, 200);
+      setTimeout(resizeCanvas, 100);
     };
     
     window.addEventListener('resize', handleResize);
     
-    // 초기 크기 조정 (PDF 로드 대기)
-    const timer = setTimeout(() => {
-      console.log('초기 캔버스 크기 조정 실행');
+    // 초기 크기 조정
+    setTimeout(() => {
       resizeCanvas();
-    }, 1500);
+    }, 1000);
+
+    // PDF 로드 후 추가 크기 조정
+    setTimeout(() => {
+      resizeCanvas();
+    }, 2000);
 
     return () => {
       console.log('Fabric.js 캔버스 정리');
       canvas.dispose();
       window.removeEventListener('resize', handleResize);
-      clearTimeout(timer);
     };
   }, [pdfUrl]);
 
-  // 브러시 설정이 변경될 때마다 업데이트
+  // 브러시 설정이 변경될 때마다 업데이트 (수정됨)
   useEffect(() => {
-    if (fabricCanvas) {
+    if (fabricCanvas && isCanvasReady) {
       setupBrush(fabricCanvas);
     }
-  }, [currentTool, brushSize, brushColor, fabricCanvas]);
+  }, [currentTool, brushSize, brushColor, fabricCanvas, isCanvasReady]);
 
   const setupBrush = (canvas: FabricCanvas) => {
     if (!canvas.freeDrawingBrush) {
@@ -176,10 +183,12 @@ const PDFAnnotator = () => {
     
     const brush = canvas.freeDrawingBrush;
     brush.width = brushSize[0];
-    brush.color = currentTool === 'highlighter' ? brushColor + '80' : brushColor;
     
     if (currentTool === 'highlighter') {
+      brush.color = brushColor + '80'; // 투명도 추가
       brush.width = brushSize[0] * 2;
+    } else {
+      brush.color = brushColor;
     }
     
     // 더 부드러운 그리기를 위한 설정
@@ -190,7 +199,22 @@ const PDFAnnotator = () => {
     
     canvas.isDrawingMode = currentTool !== 'eraser';
     
-    console.log('브러시 설정 완료:', { 
+    // 지우개 모드일 때
+    if (currentTool === 'eraser') {
+      canvas.isDrawingMode = false;
+      // 클릭한 객체 삭제 이벤트
+      canvas.on('mouse:down', (e) => {
+        if (currentTool === 'eraser' && e.target) {
+          canvas.remove(e.target);
+          canvas.renderAll();
+          console.log('객체 삭제됨');
+        }
+      });
+    } else {
+      canvas.off('mouse:down'); // 기존 이벤트 제거
+    }
+    
+    console.log('브러시 설정 업데이트:', { 
       tool: currentTool, 
       size: brush.width, 
       color: brush.color,
@@ -203,32 +227,20 @@ const PDFAnnotator = () => {
     setCurrentTool(tool);
     
     if (tool === 'highlighter') {
-      setBrushColor(highlighterColors[0].slice(0, -2));
+      setBrushColor('#FFFF00');
     } else if (tool === 'pen') {
       setBrushColor('#000000');
-    }
-    
-    if (fabricCanvas) {
-      setupBrush(fabricCanvas);
     }
   };
 
   const handleColorChange = (color: string) => {
     console.log('색상 변경:', color);
     setBrushColor(color);
-    
-    if (fabricCanvas) {
-      setupBrush(fabricCanvas);
-    }
   };
 
   const handleBrushSizeChange = (size: number[]) => {
     console.log('브러시 크기 변경:', size[0]);
     setBrushSize(size);
-    
-    if (fabricCanvas) {
-      setupBrush(fabricCanvas);
-    }
   };
 
   const clearCanvas = () => {
@@ -481,6 +493,45 @@ const PDFAnnotator = () => {
             </div>
           </div>
         </Card>
+
+        {/* 테스트 버튼 추가 */}
+        <Card className="p-4">
+          <h3 className="font-medium mb-3">테스트</h3>
+          <Button
+            onClick={() => {
+              if (fabricCanvas) {
+                // 테스트용 선 그리기
+                const points = [
+                  { x: 100, y: 100 },
+                  { x: 200, y: 150 },
+                  { x: 150, y: 200 }
+                ];
+                
+                console.log('테스트 선 그리기 시작');
+                fabricCanvas.isDrawingMode = true;
+                
+                // 수동으로 path 생성
+                const path = `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y} L ${points[2].x} ${points[2].y}`;
+                const pathObj = new Path(path, {
+                  stroke: brushColor,
+                  strokeWidth: brushSize[0],
+                  fill: '',
+                  selectable: false
+                });
+                
+                fabricCanvas.add(pathObj);
+                fabricCanvas.renderAll();
+                console.log('테스트 선 추가됨');
+                toast.success('테스트 선이 그어졌습니다!');
+              }
+            }}
+            className="w-full"
+            variant="outline"
+            disabled={!isCanvasReady}
+          >
+            테스트 선 그리기
+          </Button>
+        </Card>
       </div>
 
       {/* PDF 뷰어 및 필기 영역 */}
@@ -520,44 +571,35 @@ const PDFAnnotator = () => {
               ref={iframeRef}
               src={pdfUrl}
               className="w-full h-full border-0 block"
+              style={{ zIndex: 1 }}
               title="PDF 뷰어"
               onLoad={() => {
                 console.log('PDF iframe 로드 완료');
-                setTimeout(() => {
-                  resizeCanvas();
-                }, 800);
-                setTimeout(() => {
-                  resizeCanvas();
-                }, 2000);
+                setTimeout(resizeCanvas, 500);
+                setTimeout(resizeCanvas, 1500);
               }}
               onError={(e) => {
                 console.error('PDF iframe 로드 실패:', e);
-                toast.error('PDF를 표시할 수 없습니다. 브라우저에서 PDF 뷰어를 지원하지 않을 수 있습니다.');
+                toast.error('PDF를 표시할 수 없습니다.');
               }}
             />
             
             {/* 투명 필기 캔버스 오버레이 */}
             <canvas
               ref={canvasRef}
-              className="absolute top-0 left-0 z-10"
+              className="absolute top-0 left-0"
               style={{
+                zIndex: 20,
                 pointerEvents: 'auto',
                 touchAction: 'none',
                 cursor: currentTool === 'pen' ? 'crosshair' : currentTool === 'highlighter' ? 'cell' : 'grab',
                 backgroundColor: 'transparent'
               }}
-              onMouseDown={(e) => {
-                console.log('캔버스 마우스 다운:', e.clientX, e.clientY);
-              }}
-              onTouchStart={(e) => {
-                console.log('캔버스 터치 시작:', e.touches[0]?.clientX, e.touches[0]?.clientY);
-                e.preventDefault(); // 스크롤 방지
-              }}
             />
             
             {/* 로딩 상태 표시 */}
             {!isCanvasReady && pdfUrl && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-30">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                   <p className="text-sm text-muted-foreground">필기 도구 준비 중...</p>
@@ -567,7 +609,7 @@ const PDFAnnotator = () => {
 
             {/* 도구 상태 표시 */}
             {isCanvasReady && (
-              <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 shadow-lg z-15 border">
+              <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 shadow-lg z-25 border">
                 <div className="flex items-center gap-2 text-sm">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brushColor }}></div>
                   <span className="font-medium">
@@ -582,10 +624,11 @@ const PDFAnnotator = () => {
 
             {/* 디버깅 정보 */}
             {isCanvasReady && fabricCanvas && (
-              <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 shadow-lg z-15 border text-xs">
+              <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 shadow-lg z-25 border text-xs">
                 <div>그린 객체 수: {fabricCanvas.getObjects().length}</div>
                 <div>그리기 모드: {fabricCanvas.isDrawingMode ? '활성' : '비활성'}</div>
                 <div>캔버스 크기: {fabricCanvas.width} x {fabricCanvas.height}</div>
+                <div>도구: {currentTool}</div>
               </div>
             )}
           </div>
