@@ -49,41 +49,62 @@ const PDFAnnotator = () => {
   }, [pages]);
 
   const handleFileUpload = async (file: File) => {
-    console.log('파일 업로드 시도:', file.name, file.type, file.size);
+    console.log('=== PDF 파일 업로드 시작 ===');
+    console.log('파일 정보:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified
+    });
     
     if (file.type !== 'application/pdf') {
-      console.error('PDF가 아닌 파일:', file.type);
+      console.error('❌ PDF가 아닌 파일 타입:', file.type);
       toast.error('PDF 파일만 업로드 가능합니다.');
       return;
     }
 
+    console.log('✅ PDF 파일 타입 확인됨');
+    console.log('현재 worker 설정:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+
     try {
-      console.log('PDF 로딩 시작...');
+      console.log('📄 PDF 로딩 시작...');
       const arrayBuffer = await file.arrayBuffer();
-      console.log('ArrayBuffer 크기:', arrayBuffer.byteLength);
+      console.log('✅ ArrayBuffer 생성 완료. 크기:', arrayBuffer.byteLength, 'bytes');
       
-      // PDF.js 로딩 옵션 추가
+      console.log('🔧 PDF.js getDocument 호출...');
       const loadingTask = pdfjsLib.getDocument({
         data: arrayBuffer,
         cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
         cMapPacked: true,
       });
       
+      console.log('⏳ PDF 문서 로딩 대기 중...');
       const pdf = await loadingTask.promise;
-      console.log('PDF 로드 성공, 페이지 수:', pdf.numPages);
+      console.log('🎉 PDF 로드 성공! 페이지 수:', pdf.numPages);
       
       setPdfDoc(pdf);
       
       // 기존 페이지들 정리
+      console.log('🧹 기존 페이지 정리 중...');
       pages.forEach(page => {
         page.fabricCanvas.dispose();
       });
       
+      console.log('🎨 페이지 렌더링 시작...');
       await renderAllPages(pdf);
+      console.log('✅ 모든 페이지 렌더링 완료');
       toast.success(`PDF 로드 완료 (${pdf.numPages} 페이지)`);
     } catch (error) {
-      console.error('PDF 로드 실패:', error);
-      toast.error(`PDF 파일을 로드할 수 없습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      console.error('❌ PDF 로드 실패. 상세 오류:', error);
+      console.error('오류 스택:', error instanceof Error ? error.stack : '스택 없음');
+      
+      let errorMessage = '알 수 없는 오류';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error('오류 메시지:', errorMessage);
+      }
+      
+      toast.error(`PDF 파일을 로드할 수 없습니다: ${errorMessage}`);
     }
   };
 
