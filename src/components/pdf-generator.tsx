@@ -225,79 +225,107 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
 };
 
 const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options: any) => {
-  // HTML 템플릿 생성
-  const createHTMLContent = () => {
-    return `
-      <div style="font-family: 'Noto Sans KR', sans-serif; margin: 20px; background: white; color: #1f2937; width: 800px;">
-        <div style="margin-bottom: 35px;">
-          <div style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">ARO 오답노트</div>
-          <div style="font-size: 12px; color: #6b7280; margin-bottom: 15px;">생성일: ${new Date().toLocaleDateString('ko-KR')}</div>
-          <div style="height: 2px; background: #3b82f6; width: 100%;"></div>
-        </div>
-        
-        ${notes.map((note, index) => `
-          <div style="margin-bottom: 40px; position: relative; padding-left: 15px; min-height: 80px;">
-            <div style="position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: #ef4444;"></div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <div style="font-size: 14px; font-weight: bold; color: #374151;">문제 ${index + 1}</div>
-              <div style="background: #fef2f2; color: #dc2626; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;">틀림</div>
-            </div>
-            <div style="font-size: 12px; line-height: 1.5; margin-bottom: 8px;">${note.question || ''}</div>
-            ${options.includeWrongAnswers && note.wrongAnswer ? 
-              `<div style="font-size: 10px; color: #dc2626; margin-bottom: 8px;">내 답변: ${note.wrongAnswer}</div>` : ''
-            }
-            <div style="background: #eff6ff; padding: 12px; border-radius: 6px; margin-top: 8px;">
-              <div style="font-size: 10px; font-weight: bold; color: #1e40af; margin-bottom: 6px;">정답:</div>
-              <div style="font-size: 10px; color: #1d4ed8; line-height: 1.4;">${note.correctAnswer || ''}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  };
-
-  // 임시 HTML 요소 생성 (화면에 보이게)
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = createHTMLContent();
-  tempDiv.style.position = 'fixed';
-  tempDiv.style.top = '0';
-  tempDiv.style.left = '0';
-  tempDiv.style.zIndex = '9999';
-  tempDiv.style.background = 'white';
-  tempDiv.style.padding = '20px';
-  document.body.appendChild(tempDiv);
-
-  // 잠시 대기 (렌더링 완료를 위해)
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  // PDF 생성 옵션
-  const opt = {
-    margin: 0.5,
-    filename: `ARO_오답노트_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.pdf`,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { 
-      scale: 2,
-      useCORS: true,
-      letterRendering: true
-    },
-    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-  };
-
-  try {
-    // PDF 생성
-    const pdf = await html2pdf().set(opt).from(tempDiv).save();
-    
-    // 임시 요소 제거
-    document.body.removeChild(tempDiv);
-    
-    return pdf;
-  } catch (error) {
-    // 임시 요소 제거 (에러 발생 시에도)
-    if (tempDiv.parentNode) {
-      document.body.removeChild(tempDiv);
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  let yPosition = 30;
+  
+  // 한글 지원을 위한 폰트 설정
+  pdf.setFont('helvetica', 'normal');
+  
+  // 헤더
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(31, 41, 55);
+  
+  // 한글 텍스트를 유니코드로 처리
+  const title = 'ARO 오답노트';
+  pdf.text(title, 20, yPosition);
+  
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(107, 114, 128);
+  
+  const dateText = `생성일: ${new Date().toLocaleDateString('ko-KR')}`;
+  pdf.text(dateText, 20, yPosition + 10);
+  
+  // 파란색 하단 보더
+  pdf.setDrawColor(59, 130, 246);
+  pdf.setLineWidth(2);
+  pdf.line(20, yPosition + 15, 190, yPosition + 15);
+  
+  yPosition += 35;
+  
+  // 오답 문제들
+  notes.forEach((note, index) => {
+    if (yPosition > 250) {
+      pdf.addPage();
+      pdf.setFont('helvetica', 'normal');
+      yPosition = 30;
     }
-    throw error;
-  }
+    
+    // 빨간색 세로선
+    pdf.setDrawColor(239, 68, 68);
+    pdf.setLineWidth(4);
+    pdf.line(20, yPosition, 20, yPosition + 60);
+    
+    // 문제 번호
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(55, 65, 81);
+    const questionNumber = `문제 ${index + 1}`;
+    pdf.text(questionNumber, 25, yPosition);
+    
+    // "틀림" 배지
+    pdf.setFillColor(254, 226, 226);
+    pdf.roundedRect(150, yPosition - 6, 25, 10, 2, 2, 'F');
+    pdf.setFontSize(8);
+    pdf.setTextColor(220, 38, 38);
+    const wrongLabel = '틀림';
+    pdf.text(wrongLabel, 162, yPosition - 1);
+    
+    // 문제 내용
+    pdf.setTextColor(31, 41, 55);
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    
+    // 텍스트 분할 (한글 고려)
+    const questionText = note.question || '';
+    const questionLines = pdf.splitTextToSize(questionText, 160);
+    
+    let questionHeight = questionLines.length * 5;
+    pdf.text(questionLines, 25, yPosition + 12);
+    
+    let currentY = yPosition + 12 + questionHeight;
+    
+    // 사용자 답변 (틀린 답변)
+    if (options.includeWrongAnswers && note.wrongAnswer) {
+      pdf.setFontSize(8);
+      pdf.setTextColor(220, 38, 38);
+      const userAnswerText = `내 답변: ${note.wrongAnswer}`;
+      pdf.text(userAnswerText, 25, currentY + 5);
+      currentY += 10;
+    }
+    
+    // 해설 박스
+    pdf.setFillColor(239, 246, 255);
+    pdf.roundedRect(25, currentY + 5, 160, 25, 3, 3, 'F');
+    
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(30, 64, 175);
+    const answerLabel = '정답:';
+    pdf.text(answerLabel, 30, currentY + 15);
+    
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(29, 78, 216);
+    
+    const correctText = note.correctAnswer || '';
+    const explanationLines = pdf.splitTextToSize(correctText, 145);
+    pdf.text(explanationLines, 30, currentY + 22);
+    
+    yPosition = currentY + 35;
+  });
+  
+  return pdf;
 };
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
