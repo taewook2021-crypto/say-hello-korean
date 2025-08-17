@@ -227,164 +227,65 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
 const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options: any) => {
   // HTML 템플릿 생성
   const createHTMLContent = () => {
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html lang="ko">
-      <head>
-        <meta charset="UTF-8">
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
-          
-          body {
-            font-family: 'Noto Sans KR', sans-serif;
-            margin: 20px;
-            background: white;
-            color: #1f2937;
-          }
-          
-          .header {
-            margin-bottom: 35px;
-          }
-          
-          .title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1f2937;
-            margin-bottom: 8px;
-          }
-          
-          .date {
-            font-size: 12px;
-            color: #6b7280;
-            margin-bottom: 15px;
-          }
-          
-          .border-line {
-            height: 2px;
-            background: #3b82f6;
-            width: 100%;
-          }
-          
-          .question-item {
-            margin-bottom: 40px;
-            position: relative;
-            padding-left: 15px;
-          }
-          
-          .red-line {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 4px;
-            height: 100%;
-            background: #ef4444;
-          }
-          
-          .question-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-          }
-          
-          .question-number {
-            font-size: 14px;
-            font-weight: bold;
-            color: #374151;
-          }
-          
-          .wrong-badge {
-            background: #fef2f2;
-            color: #dc2626;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: bold;
-          }
-          
-          .question-content {
-            font-size: 12px;
-            line-height: 1.5;
-            margin-bottom: 8px;
-          }
-          
-          .user-answer {
-            font-size: 10px;
-            color: #dc2626;
-            margin-bottom: 8px;
-          }
-          
-          .answer-box {
-            background: #eff6ff;
-            padding: 12px;
-            border-radius: 6px;
-            margin-top: 8px;
-          }
-          
-          .answer-label {
-            font-size: 10px;
-            font-weight: bold;
-            color: #1e40af;
-            margin-bottom: 6px;
-          }
-          
-          .answer-content {
-            font-size: 10px;
-            color: #1d4ed8;
-            line-height: 1.4;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">ARO 오답노트</div>
-          <div class="date">생성일: ${new Date().toLocaleDateString('ko-KR')}</div>
-          <div class="border-line"></div>
+    return `
+      <div style="font-family: 'Noto Sans KR', sans-serif; margin: 20px; background: white; color: #1f2937; width: 800px;">
+        <div style="margin-bottom: 35px;">
+          <div style="font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">ARO 오답노트</div>
+          <div style="font-size: 12px; color: #6b7280; margin-bottom: 15px;">생성일: ${new Date().toLocaleDateString('ko-KR')}</div>
+          <div style="height: 2px; background: #3b82f6; width: 100%;"></div>
         </div>
         
         ${notes.map((note, index) => `
-          <div class="question-item">
-            <div class="red-line"></div>
-            <div class="question-header">
-              <div class="question-number">문제 ${index + 1}</div>
-              <div class="wrong-badge">틀림</div>
+          <div style="margin-bottom: 40px; position: relative; padding-left: 15px; min-height: 80px;">
+            <div style="position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: #ef4444;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div style="font-size: 14px; font-weight: bold; color: #374151;">문제 ${index + 1}</div>
+              <div style="background: #fef2f2; color: #dc2626; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;">틀림</div>
             </div>
-            <div class="question-content">${note.question || ''}</div>
+            <div style="font-size: 12px; line-height: 1.5; margin-bottom: 8px;">${note.question || ''}</div>
             ${options.includeWrongAnswers && note.wrongAnswer ? 
-              `<div class="user-answer">내 답변: ${note.wrongAnswer}</div>` : ''
+              `<div style="font-size: 10px; color: #dc2626; margin-bottom: 8px;">내 답변: ${note.wrongAnswer}</div>` : ''
             }
-            <div class="answer-box">
-              <div class="answer-label">정답:</div>
-              <div class="answer-content">${note.correctAnswer || ''}</div>
+            <div style="background: #eff6ff; padding: 12px; border-radius: 6px; margin-top: 8px;">
+              <div style="font-size: 10px; font-weight: bold; color: #1e40af; margin-bottom: 6px;">정답:</div>
+              <div style="font-size: 10px; color: #1d4ed8; line-height: 1.4;">${note.correctAnswer || ''}</div>
             </div>
           </div>
         `).join('')}
-      </body>
-      </html>
+      </div>
     `;
-    return htmlContent;
   };
 
-  // 임시 HTML 요소 생성
+  // 임시 HTML 요소 생성 (화면에 보이게)
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = createHTMLContent();
-  tempDiv.style.position = 'absolute';
-  tempDiv.style.left = '-9999px';
-  tempDiv.style.top = '-9999px';
+  tempDiv.style.position = 'fixed';
+  tempDiv.style.top = '0';
+  tempDiv.style.left = '0';
+  tempDiv.style.zIndex = '9999';
+  tempDiv.style.background = 'white';
+  tempDiv.style.padding = '20px';
   document.body.appendChild(tempDiv);
+
+  // 잠시 대기 (렌더링 완료를 위해)
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   // PDF 생성 옵션
   const opt = {
-    margin: 1,
-    filename: `ARO_오답노트_${subject}_${book}_${chapter}_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.pdf`,
+    margin: 0.5,
+    filename: `ARO_오답노트_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
+    html2canvas: { 
+      scale: 2,
+      useCORS: true,
+      letterRendering: true
+    },
     jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
   };
 
   try {
     // PDF 생성
-    const pdf = await html2pdf().set(opt).from(tempDiv).toPdf().get('pdf');
+    const pdf = await html2pdf().set(opt).from(tempDiv).save();
     
     // 임시 요소 제거
     document.body.removeChild(tempDiv);
