@@ -385,32 +385,36 @@ const DrawingApp = () => {
               </div>
             </div>
           ) : (
-            <>
-              {/* PDF 모드 */}
-              {mode === 'pdf' && (
-                <iframe
-                  ref={iframeRef}
-                  src={pdfUrl}
-                  className="w-full h-full border-0"
-                  title="PDF 뷰어"
-                />
-              )}
+            // PDF와 Canvas 영역
+            <div className="relative w-full h-full">
+              {/* PDF iframe (항상 표시, 배경 역할) */}
+              <iframe
+                ref={iframeRef}
+                src={pdfUrl}
+                className="w-full h-full border-0"
+                title="PDF 뷰어"
+                style={{
+                  display: 'block',
+                  zIndex: 1
+                }}
+              />
 
-              {/* Canvas 모드 */}
-              {mode === 'canvas' && (
-                <div className="w-full h-full" style={{ backgroundColor: 'transparent' }}>
-                  <canvas
-                    ref={canvasRef}
-                    className="block"
-                    style={{
-                      backgroundColor: 'transparent',
-                      cursor: currentTool === 'pen' ? 'crosshair' : 
-                             currentTool === 'highlighter' ? 'cell' : 'grab'
-                    }}
-                  />
-                </div>
-              )}
-            </>
+              {/* Canvas 오버레이 (필기 모드일 때만 표시) */}
+              <canvas
+                ref={canvasRef}
+                className="absolute top-0 left-0 w-full h-full"
+                style={{
+                  display: mode === 'canvas' ? 'block' : 'none',
+                  zIndex: 20,
+                  pointerEvents: mode === 'canvas' ? 'auto' : 'none',
+                  touchAction: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: mode === 'canvas' ? 
+                    (currentTool === 'pen' ? 'crosshair' : 
+                     currentTool === 'highlighter' ? 'cell' : 'grab') : 'default'
+                }}
+              />
+            </div>
           )}
         </div>
       </div>
