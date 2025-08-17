@@ -108,9 +108,16 @@ const PDFAnnotator = () => {
 
     // 터치 이벤트 활성화
     canvas.allowTouchScrolling = false;
+    canvas.selection = false;
     
-    // 브러시 초기 설정
-    setupBrush(canvas);
+    // 즉시 브러시 설정
+    const brush = canvas.freeDrawingBrush;
+    if (brush) {
+      brush.width = brushSize[0];
+      brush.color = brushColor;
+      canvas.isDrawingMode = true;
+      console.log('브러시 즉시 설정 완료:', { width: brush.width, color: brush.color });
+    }
     
     // 그리기 이벤트 리스너 추가 (디버깅용)
     canvas.on('path:created', (e) => {
@@ -155,8 +162,19 @@ const PDFAnnotator = () => {
     };
   }, [pdfUrl]);
 
+  // 브러시 설정이 변경될 때마다 업데이트
+  useEffect(() => {
+    if (fabricCanvas) {
+      setupBrush(fabricCanvas);
+    }
+  }, [currentTool, brushSize, brushColor, fabricCanvas]);
+
   const setupBrush = (canvas: FabricCanvas) => {
-    const brush = new PencilBrush(canvas);
+    if (!canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush = new PencilBrush(canvas);
+    }
+    
+    const brush = canvas.freeDrawingBrush;
     brush.width = brushSize[0];
     brush.color = currentTool === 'highlighter' ? brushColor + '80' : brushColor;
     
@@ -165,10 +183,11 @@ const PDFAnnotator = () => {
     }
     
     // 더 부드러운 그리기를 위한 설정
-    brush.decimate = 0.4;
-    brush.drawStraightLine = false;
+    if (brush instanceof PencilBrush) {
+      brush.decimate = 0.4;
+      brush.drawStraightLine = false;
+    }
     
-    canvas.freeDrawingBrush = brush;
     canvas.isDrawingMode = currentTool !== 'eraser';
     
     console.log('브러시 설정 완료:', { 
