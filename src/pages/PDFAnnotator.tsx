@@ -127,12 +127,27 @@ const DrawingApp = () => {
 
   // 브러시 설정 업데이트
   useEffect(() => {
-    if (!fabricCanvas) return;
+    if (!fabricCanvas) {
+      console.log('브러시 설정 건너뜀: Fabric Canvas 없음');
+      return;
+    }
 
     const brush = fabricCanvas.freeDrawingBrush;
     if (brush) {
-      brush.width = currentTool === 'highlighter' ? brushSize[0] * 2 : brushSize[0];
-      brush.color = currentTool === 'highlighter' ? brushColor + '80' : brushColor;
+      const finalWidth = currentTool === 'highlighter' ? brushSize[0] * 2 : brushSize[0];
+      const finalColor = currentTool === 'highlighter' ? brushColor + '80' : brushColor;
+      
+      brush.width = finalWidth;
+      brush.color = finalColor;
+      
+      console.log('=== 브러시 설정 업데이트 ===');
+      console.log('도구:', currentTool);
+      console.log('원본 색상:', brushColor);
+      console.log('최종 색상:', finalColor);
+      console.log('원본 크기:', brushSize[0]);
+      console.log('최종 크기:', finalWidth);
+      console.log('그리기 모드:', currentTool !== 'eraser');
+      console.log('=======================');
     }
 
     fabricCanvas.isDrawingMode = currentTool !== 'eraser';
@@ -144,6 +159,7 @@ const DrawingApp = () => {
         if (e.target) {
           fabricCanvas.remove(e.target);
           fabricCanvas.renderAll();
+          console.log('객체 삭제됨');
         }
       });
     } else {
@@ -387,7 +403,7 @@ const DrawingApp = () => {
           ) : (
             // PDF와 Canvas 영역
             <div className="relative w-full h-full">
-              {/* PDF iframe (항상 표시, 배경 역할) */}
+              {/* PDF iframe (배경 역할, 터치 이벤트 차단) */}
               <iframe
                 ref={iframeRef}
                 src={pdfUrl}
@@ -395,7 +411,8 @@ const DrawingApp = () => {
                 title="PDF 뷰어"
                 style={{
                   display: 'block',
-                  zIndex: 1
+                  zIndex: 1,
+                  pointerEvents: mode === 'canvas' ? 'none' : 'auto' // 필기 모드에서는 터치 차단
                 }}
               />
 
@@ -405,8 +422,8 @@ const DrawingApp = () => {
                 className="absolute top-0 left-0 w-full h-full"
                 style={{
                   display: mode === 'canvas' ? 'block' : 'none',
-                  zIndex: 20,
-                  pointerEvents: mode === 'canvas' ? 'auto' : 'none',
+                  zIndex: 999, // 최대한 높게
+                  pointerEvents: mode === 'canvas' ? 'auto' : 'none', // 필기 모드에서만 터치 허용
                   touchAction: 'none',
                   backgroundColor: 'transparent',
                   cursor: mode === 'canvas' ? 
