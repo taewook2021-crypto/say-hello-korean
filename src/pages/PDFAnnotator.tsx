@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import * as pdfjsLib from 'pdfjs-dist';
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 
-// PDF.js worker 설정 - 로컬 public 폴더에서 로드
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+// PDF.js worker 설정 - 안정적인 CDN 사용
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.min.js';
 
 console.log('PDF.js worker 설정됨:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 
