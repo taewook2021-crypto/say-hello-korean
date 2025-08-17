@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush, Path } from 'fabric';
 
 const DrawingApp = () => {
+  const [mode, setMode] = useState<'pdf' | 'canvas'>('pdf');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string>('');
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
@@ -71,21 +72,21 @@ const DrawingApp = () => {
     console.log('Canvas 크기 조정 완료');
   };
 
-  // Fabric.js 캔버스 초기화 (PDF 로드 후에만)
+  // Fabric.js 캔버스 초기화 (필기 모드일 때만)
   useEffect(() => {
-    if (!canvasRef.current || !pdfUrl) {
-      console.log('Canvas 초기화 조건 미충족:', { canvasRef: !!canvasRef.current, pdfUrl: !!pdfUrl });
+    if (!canvasRef.current || mode !== 'canvas') {
+      console.log('Canvas 초기화 조건 미충족:', { canvasRef: !!canvasRef.current, mode });
       return;
     }
 
     console.log('Canvas 초기화 시작');
 
     const canvas = new FabricCanvas(canvasRef.current, {
-      width: 800,
-      height: 600,
+      width: window.innerWidth - 320, // 사이드바 너비 제외
+      height: window.innerHeight,
       isDrawingMode: true,
       selection: false,
-      backgroundColor: 'transparent' // 투명 배경
+      backgroundColor: '#ffffff' // 흰 배경
     });
 
     // 브러시 설정
@@ -122,7 +123,7 @@ const DrawingApp = () => {
       canvas.dispose();
       window.removeEventListener('resize', handleResize);
     };
-  }, [pdfUrl]);
+  }, [mode]); // mode가 변경될 때만
 
   // 브러시 설정 업데이트
   useEffect(() => {
@@ -206,232 +207,211 @@ const DrawingApp = () => {
   }, [pdfUrl]);
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* 좌측 도구 패널 */}
-      <div className="w-80 border-r border-border p-6 space-y-6 bg-background">
-        <h2 className="text-xl font-bold">PDF 필기 도구</h2>
-        
-        {/* PDF 업로드 */}
-        <Card className="p-4">
+    <div className="flex flex-col h-screen bg-background">
+      {/* 상단 토글 버튼 */}
+      <div className="border-b border-border p-4">
+        <div className="flex gap-2">
           <Button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full mb-2"
-            variant="outline"
+            variant={mode === 'pdf' ? 'default' : 'outline'}
+            onClick={() => setMode('pdf')}
+            disabled={!pdfUrl}
           >
-            <Upload className="w-4 h-4 mr-2" />
-            PDF 업로드
+            PDF 보기
           </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                handleFileUpload(file);
-              }
-            }}
-            className="hidden"
-          />
-          {pdfFile && (
-            <p className="text-xs text-muted-foreground mt-2 truncate" title={pdfFile.name}>
-              📄 {pdfFile.name}
-            </p>
-          )}
-        </Card>
-        
-        {/* 도구 선택 */}
-        <Card className="p-4">
-          <h3 className="font-medium mb-4">도구</h3>
-          <div className="space-y-3">
-            <Button
-              variant={currentTool === 'pen' ? 'default' : 'outline'}
-              onClick={() => handleToolChange('pen')}
-              className="w-full justify-start"
-            >
-              <Pen className="w-4 h-4 mr-2" />
-              펜
-            </Button>
-            <Button
-              variant={currentTool === 'highlighter' ? 'default' : 'outline'}
-              onClick={() => handleToolChange('highlighter')}
-              className="w-full justify-start"
-            >
-              <Highlighter className="w-4 h-4 mr-2" />
-              형광펜
-            </Button>
-            <Button
-              variant={currentTool === 'eraser' ? 'default' : 'outline'}
-              onClick={() => handleToolChange('eraser')}
-              className="w-full justify-start"
-            >
-              <Eraser className="w-4 h-4 mr-2" />
-              지우개
-            </Button>
-          </div>
-        </Card>
-
-        {/* 브러시 크기 */}
-        <Card className="p-4">
-          <h3 className="font-medium mb-4">브러시 크기: {brushSize[0]}px</h3>
-          <Slider
-            value={brushSize}
-            onValueChange={handleBrushSizeChange}
-            max={50}
-            min={1}
-            step={1}
-          />
-        </Card>
-
-        {/* 색상 선택 */}
-        <Card className="p-4">
-          <h3 className="font-medium mb-4">
-            {currentTool === 'highlighter' ? '형광펜 색상' : '펜 색상'}
-          </h3>
-          <div className="grid grid-cols-4 gap-3">
-            {(currentTool === 'highlighter' ? highlighterColors : colors).map((color) => (
-              <button
-                key={color}
-                className={`w-10 h-10 rounded-full border-2 transition-all hover:scale-110 ${
-                  brushColor === color
-                    ? 'border-foreground scale-110 shadow-lg'
-                    : 'border-muted hover:border-foreground/50'
-                }`}
-                style={{ backgroundColor: color }}
-                onClick={() => handleColorChange(color)}
-                title={`색상: ${color}`}
-              />
-            ))}
-          </div>
-        </Card>
-
-        {/* 전체 지우기 */}
-        <Card className="p-4">
           <Button
-            onClick={clearCanvas}
-            className="w-full"
-            variant="outline"
+            variant={mode === 'canvas' ? 'default' : 'outline'}
+            onClick={() => setMode('canvas')}
+            disabled={!pdfUrl}
           >
-            <RotateCcw className="w-4 h-4 mr-2" />
-            전체 지우기
+            필기 모드
           </Button>
-        </Card>
-
-        {/* 테스트 버튼 */}
-        <Card className="p-4">
-          <h3 className="font-medium mb-4">테스트</h3>
-          <Button
-            onClick={() => {
-              if (fabricCanvas) {
-                console.log('테스트 선 그리기 시작');
-                // 테스트용 선 그리기
-                const pathData = 'M 100 100 L 200 150 L 150 200';
-                const pathObj = new Path(pathData, {
-                  stroke: brushColor,
-                  strokeWidth: brushSize[0],
-                  fill: '',
-                  selectable: false
-                });
-                
-                fabricCanvas.add(pathObj);
-                fabricCanvas.renderAll();
-                console.log('테스트 선 추가됨, Canvas 객체 수:', fabricCanvas.getObjects().length);
-                toast.success('테스트 선이 그어졌습니다!');
-              } else {
-                console.log('Fabric Canvas가 없음');
-                toast.error('Canvas가 준비되지 않았습니다.');
-              }
-            }}
-            className="w-full mb-2"
-            variant="outline"
-            disabled={!fabricCanvas}
-          >
-            테스트 선 그리기
-          </Button>
-        </Card>
-
-        {/* 현재 도구 상태 */}
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div 
-              className="w-6 h-6 rounded-full border-2" 
-              style={{ backgroundColor: brushColor }}
-            ></div>
-            <div className="text-sm">
-              <div className="font-medium">
-                {currentTool === 'pen' ? '펜' : currentTool === 'highlighter' ? '형광펜' : '지우개'}
-              </div>
-              <div className="text-muted-foreground">
-                {brushSize[0]}px
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Canvas: {fabricCanvas ? '준비됨' : '대기중'}
-              </div>
-            </div>
-          </div>
-        </Card>
+        </div>
       </div>
 
-      {/* PDF 뷰어 + Canvas 오버레이 영역 */}
-      <div className="flex-1 overflow-hidden">
-        {!pdfUrl ? (
-          // PDF 업로드 대기 화면
-          <div
-            className={`h-full flex items-center justify-center border-2 border-dashed transition-colors ${
-              isDragging ? 'border-primary bg-primary/10' : 'border-muted'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <div className="text-center max-w-md">
-              <Upload className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">PDF 파일을 업로드하세요</h3>
-              <p className="text-muted-foreground mb-4">
-                파일을 드래그하여 놓거나 업로드 버튼을 클릭하세요
-              </p>
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                size="lg"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                파일 선택
-              </Button>
-            </div>
-          </div>
-        ) : (
-          // PDF + Canvas 오버레이
-          <div ref={containerRef} className="relative w-full h-full">
-            {/* PDF iframe (하단 레이어, z-index: 1) */}
-            <iframe
-              ref={iframeRef}
-              src={pdfUrl}
-              className="w-full h-full border-0 block"
-              style={{ zIndex: 1 }}
-              title="PDF 뷰어"
-              onLoad={() => {
-                console.log('PDF iframe 로드 완료');
-                setTimeout(resizeCanvas, 500);
-                setTimeout(resizeCanvas, 1500);
-              }}
-            />
+      {/* 메인 영역 */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* 좌측 툴바 (필기 모드일 때만 표시) */}
+        {mode === 'canvas' && (
+          <div className="w-80 border-r border-border p-6 space-y-6 bg-background overflow-y-auto">
+            <h2 className="text-xl font-bold">필기 도구</h2>
             
-            {/* Canvas 오버레이 (상단 레이어, z-index: 20) */}
-            <canvas
-              ref={canvasRef}
-              className="absolute top-0 left-0 w-full h-full"
-              style={{
-                zIndex: 20,
-                pointerEvents: 'auto',
-                touchAction: 'none',
-                background: 'transparent',
-                cursor: currentTool === 'pen' ? 'crosshair' : 
-                       currentTool === 'highlighter' ? 'cell' : 'grab'
-              }}
-            />
+            {/* 도구 선택 */}
+            <Card className="p-4">
+              <h3 className="font-medium mb-4">도구</h3>
+              <div className="space-y-3">
+                <Button
+                  variant={currentTool === 'pen' ? 'default' : 'outline'}
+                  onClick={() => handleToolChange('pen')}
+                  className="w-full justify-start"
+                >
+                  <Pen className="w-4 h-4 mr-2" />
+                  펜
+                </Button>
+                <Button
+                  variant={currentTool === 'highlighter' ? 'default' : 'outline'}
+                  onClick={() => handleToolChange('highlighter')}
+                  className="w-full justify-start"
+                >
+                  <Highlighter className="w-4 h-4 mr-2" />
+                  형광펜
+                </Button>
+                <Button
+                  variant={currentTool === 'eraser' ? 'default' : 'outline'}
+                  onClick={() => handleToolChange('eraser')}
+                  className="w-full justify-start"
+                >
+                  <Eraser className="w-4 h-4 mr-2" />
+                  지우개
+                </Button>
+              </div>
+            </Card>
+
+            {/* 브러시 크기 */}
+            <Card className="p-4">
+              <h3 className="font-medium mb-4">브러시 크기: {brushSize[0]}px</h3>
+              <Slider
+                value={brushSize}
+                onValueChange={handleBrushSizeChange}
+                max={50}
+                min={1}
+                step={1}
+              />
+            </Card>
+
+            {/* 색상 선택 */}
+            <Card className="p-4">
+              <h3 className="font-medium mb-4">
+                {currentTool === 'highlighter' ? '형광펜 색상' : '펜 색상'}
+              </h3>
+              <div className="grid grid-cols-4 gap-3">
+                {(currentTool === 'highlighter' ? highlighterColors : colors).map((color) => (
+                  <button
+                    key={color}
+                    className={`w-10 h-10 rounded-full border-2 transition-all hover:scale-110 ${
+                      brushColor === color
+                        ? 'border-foreground scale-110 shadow-lg'
+                        : 'border-muted hover:border-foreground/50'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    onClick={() => handleColorChange(color)}
+                    title={`색상: ${color}`}
+                  />
+                ))}
+              </div>
+            </Card>
+
+            {/* 전체 지우기 */}
+            <Card className="p-4">
+              <Button
+                onClick={clearCanvas}
+                className="w-full"
+                variant="outline"
+                disabled={!fabricCanvas}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                전체 지우기
+              </Button>
+            </Card>
+
+            {/* 테스트 버튼 */}
+            <Card className="p-4">
+              <h3 className="font-medium mb-4">테스트</h3>
+              <Button
+                onClick={() => {
+                  if (fabricCanvas) {
+                    console.log('테스트 선 그리기 시작');
+                    const pathData = 'M 100 100 L 200 150 L 150 200';
+                    const pathObj = new Path(pathData, {
+                      stroke: brushColor,
+                      strokeWidth: brushSize[0],
+                      fill: '',
+                      selectable: false
+                    });
+                    
+                    fabricCanvas.add(pathObj);
+                    fabricCanvas.renderAll();
+                    console.log('테스트 선 추가됨');
+                    toast.success('테스트 선이 그어졌습니다!');
+                  }
+                }}
+                className="w-full"
+                variant="outline"
+                disabled={!fabricCanvas}
+              >
+                테스트 선 그리기
+              </Button>
+            </Card>
           </div>
         )}
+
+        {/* 메인 콘텐츠 영역 */}
+        <div className="flex-1 overflow-hidden">
+          {!pdfUrl ? (
+            // PDF 업로드 대기 화면
+            <div
+              className={`h-full flex flex-col items-center justify-center border-2 border-dashed transition-colors ${
+                isDragging ? 'border-primary bg-primary/10' : 'border-muted'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <div className="text-center max-w-md">
+                <Upload className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-medium mb-2">PDF 파일을 업로드하세요</h3>
+                <p className="text-muted-foreground mb-4">
+                  파일을 드래그하여 놓거나 아래 버튼을 클릭하세요
+                </p>
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  size="lg"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  파일 선택
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleFileUpload(file);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* PDF 모드 */}
+              {mode === 'pdf' && (
+                <iframe
+                  ref={iframeRef}
+                  src={pdfUrl}
+                  className="w-full h-full border-0"
+                  title="PDF 뷰어"
+                />
+              )}
+
+              {/* Canvas 모드 */}
+              {mode === 'canvas' && (
+                <div className="w-full h-full bg-white">
+                  <canvas
+                    ref={canvasRef}
+                    className="block"
+                    style={{
+                      cursor: currentTool === 'pen' ? 'crosshair' : 
+                             currentTool === 'highlighter' ? 'cell' : 'grab'
+                    }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
