@@ -217,7 +217,6 @@ export default function Auth() {
                       />
                     </svg>
                     구글로 시작하기
-                    <span className="ml-2 text-xs text-muted-foreground">(일시 제한됨)</span>
                   </Button>
                   
                   <Button
@@ -323,7 +322,6 @@ export default function Auth() {
                       />
                     </svg>
                     구글로 시작하기
-                    <span className="ml-2 text-xs text-muted-foreground">(일시 제한됨)</span>
                   </Button>
                   
                   <Button
