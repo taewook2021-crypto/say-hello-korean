@@ -7,10 +7,13 @@ import { toast } from "sonner";
 import * as pdfjsLib from 'pdfjs-dist';
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 
-// PDF.js worker 설정 - 안정적인 CDN 사용
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://mozilla.github.io/pdf.js/build/pdf.worker.min.js';
+// PDF.js worker 완전 비활성화 - 메인 스레드에서 실행
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
-console.log('PDF.js worker 설정됨:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+// @ts-ignore - PDF.js 내부 설정으로 worker 비활성화
+(pdfjsLib as any).disableWorker = true;
+
+console.log('PDF.js worker 비활성화 완료. 메인 스레드에서 실행됩니다.');
 
 interface PDFPage {
   pageNumber: number;
