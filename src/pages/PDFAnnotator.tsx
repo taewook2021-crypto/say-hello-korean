@@ -33,23 +33,37 @@ const PDFAnnotator = () => {
 
   // 캔버스 크기 조정 함수
   const resizeCanvas = () => {
-    if (!containerRef.current || !canvasRef.current || !fabricCanvas) return;
+    if (!containerRef.current || !canvasRef.current || !fabricCanvas || !iframeRef.current) return;
     
     const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
+    const iframe = iframeRef.current;
     
-    // 캔버스 크기를 컨테이너에 맞게 조정
+    // iframe의 실제 크기 가져오기
+    const iframeRect = iframe.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    console.log('Container 크기:', containerRect.width, 'x', containerRect.height);
+    console.log('Iframe 크기:', iframeRect.width, 'x', iframeRect.height);
+    
+    // Canvas를 iframe과 정확히 같은 크기로 설정
     const canvas = canvasRef.current;
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    canvas.width = iframeRect.width;
+    canvas.height = iframeRect.height;
+    canvas.style.width = iframeRect.width + 'px';
+    canvas.style.height = iframeRect.height + 'px';
     
+    // Fabric Canvas 크기 설정
     fabricCanvas.setDimensions({
-      width: rect.width,
-      height: rect.height
+      width: iframeRect.width,
+      height: iframeRect.height
     });
     
+    // Canvas 위치를 iframe과 정확히 맞춤
+    canvas.style.left = '0px';
+    canvas.style.top = '0px';
+    
     fabricCanvas.renderAll();
-    console.log('캔버스 크기 조정:', rect.width, 'x', rect.height);
+    console.log('Canvas 크기 조정 완료:', iframeRect.width, 'x', iframeRect.height);
   };
 
   // PDF 파일 로드
@@ -86,11 +100,33 @@ const PDFAnnotator = () => {
       height: 600,
       isDrawingMode: true,
       selection: false,
-      backgroundColor: 'transparent'
+      backgroundColor: 'transparent',
+      // 터치 이벤트 지원 개선
+      enableRetinaScaling: false,
+      imageSmoothingEnabled: false
     });
 
+    // 터치 이벤트 활성화
+    canvas.allowTouchScrolling = false;
+    
     // 브러시 초기 설정
     setupBrush(canvas);
+    
+    // 그리기 이벤트 리스너 추가 (디버깅용)
+    canvas.on('path:created', (e) => {
+      console.log('그리기 완료:', e.path);
+      console.log('현재 캔버스 객체 수:', canvas.getObjects().length);
+    });
+    
+    canvas.on('mouse:down', (e) => {
+      console.log('마우스/터치 다운:', e.pointer);
+    });
+    
+    canvas.on('mouse:move', (e) => {
+      if (canvas.isDrawingMode) {
+        console.log('그리는 중:', e.pointer);
+      }
+    });
     
     setFabricCanvas(canvas);
     setIsCanvasReady(true);
@@ -109,7 +145,7 @@ const PDFAnnotator = () => {
     const timer = setTimeout(() => {
       console.log('초기 캔버스 크기 조정 실행');
       resizeCanvas();
-    }, 1000);
+    }, 1500);
 
     return () => {
       console.log('Fabric.js 캔버스 정리');
@@ -128,10 +164,19 @@ const PDFAnnotator = () => {
       brush.width = brushSize[0] * 2;
     }
     
+    // 더 부드러운 그리기를 위한 설정
+    brush.decimate = 0.4;
+    brush.drawStraightLine = false;
+    
     canvas.freeDrawingBrush = brush;
     canvas.isDrawingMode = currentTool !== 'eraser';
     
-    console.log('브러시 설정:', { tool: currentTool, size: brush.width, color: brush.color });
+    console.log('브러시 설정 완료:', { 
+      tool: currentTool, 
+      size: brush.width, 
+      color: brush.color,
+      isDrawingMode: canvas.isDrawingMode 
+    });
   };
 
   const handleToolChange = (tool: 'pen' | 'highlighter' | 'eraser') => {
@@ -455,13 +500,16 @@ const PDFAnnotator = () => {
             <iframe
               ref={iframeRef}
               src={pdfUrl}
-              className="w-full h-full border-0"
+              className="w-full h-full border-0 block"
               title="PDF 뷰어"
               onLoad={() => {
                 console.log('PDF iframe 로드 완료');
                 setTimeout(() => {
                   resizeCanvas();
-                }, 500);
+                }, 800);
+                setTimeout(() => {
+                  resizeCanvas();
+                }, 2000);
               }}
               onError={(e) => {
                 console.error('PDF iframe 로드 실패:', e);
@@ -472,10 +520,19 @@ const PDFAnnotator = () => {
             {/* 투명 필기 캔버스 오버레이 */}
             <canvas
               ref={canvasRef}
-              className="absolute top-0 left-0 pointer-events-auto cursor-crosshair"
+              className="absolute top-0 left-0 z-10"
               style={{
-                zIndex: 10,
+                pointerEvents: 'auto',
+                touchAction: 'none',
+                cursor: currentTool === 'pen' ? 'crosshair' : currentTool === 'highlighter' ? 'cell' : 'grab',
                 backgroundColor: 'transparent'
+              }}
+              onMouseDown={(e) => {
+                console.log('캔버스 마우스 다운:', e.clientX, e.clientY);
+              }}
+              onTouchStart={(e) => {
+                console.log('캔버스 터치 시작:', e.touches[0]?.clientX, e.touches[0]?.clientY);
+                e.preventDefault(); // 스크롤 방지
               }}
             />
             
@@ -501,6 +558,15 @@ const PDFAnnotator = () => {
                     {brushSize[0]}px
                   </span>
                 </div>
+              </div>
+            )}
+
+            {/* 디버깅 정보 */}
+            {isCanvasReady && fabricCanvas && (
+              <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 shadow-lg z-15 border text-xs">
+                <div>그린 객체 수: {fabricCanvas.getObjects().length}</div>
+                <div>그리기 모드: {fabricCanvas.isDrawingMode ? '활성' : '비활성'}</div>
+                <div>캔버스 크기: {fabricCanvas.width} x {fabricCanvas.height}</div>
               </div>
             )}
           </div>
