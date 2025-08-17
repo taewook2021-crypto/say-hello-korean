@@ -47,14 +47,22 @@ const PDFAnnotator = () => {
   }, [pages]);
 
   const handleFileUpload = async (file: File) => {
+    console.log('파일 업로드 시도:', file.name, file.type, file.size);
+    
     if (file.type !== 'application/pdf') {
+      console.error('PDF가 아닌 파일:', file.type);
       toast.error('PDF 파일만 업로드 가능합니다.');
       return;
     }
 
     try {
+      console.log('PDF 로딩 시작...');
       const arrayBuffer = await file.arrayBuffer();
+      console.log('ArrayBuffer 크기:', arrayBuffer.byteLength);
+      
       const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      console.log('PDF 로드 성공, 페이지 수:', pdf.numPages);
+      
       setPdfDoc(pdf);
       
       // 기존 페이지들 정리
@@ -66,7 +74,7 @@ const PDFAnnotator = () => {
       toast.success(`PDF 로드 완료 (${pdf.numPages} 페이지)`);
     } catch (error) {
       console.error('PDF 로드 실패:', error);
-      toast.error('PDF 파일을 로드할 수 없습니다.');
+      toast.error(`PDF 파일을 로드할 수 없습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     }
   };
 
@@ -206,7 +214,9 @@ const PDFAnnotator = () => {
     setIsDragging(false);
     
     const files = e.dataTransfer.files;
+    console.log('드롭된 파일들:', files);
     if (files.length > 0) {
+      console.log('첫 번째 파일 처리:', files[0].name, files[0].type);
       handleFileUpload(files[0]);
     }
   };
@@ -227,7 +237,10 @@ const PDFAnnotator = () => {
         {/* 파일 업로드 */}
         <Card className="p-4">
           <Button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              console.log('파일 업로드 버튼 클릭');
+              fileInputRef.current?.click();
+            }}
             className="w-full mb-2"
             variant="outline"
           >
@@ -237,8 +250,17 @@ const PDFAnnotator = () => {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf"
-            onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+            accept=".pdf,application/pdf"
+            onChange={(e) => {
+              console.log('파일 선택 이벤트:', e.target.files);
+              const file = e.target.files?.[0];
+              if (file) {
+                console.log('선택된 파일:', file.name, file.type);
+                handleFileUpload(file);
+              } else {
+                console.log('파일이 선택되지 않음');
+              }
+            }}
             className="hidden"
           />
         </Card>
@@ -388,7 +410,10 @@ const PDFAnnotator = () => {
               <p className="text-lg font-medium mb-2">PDF 파일을 드래그하거나</p>
               <p className="text-muted-foreground mb-4">업로드 버튼을 클릭하세요</p>
               <Button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  console.log('하단 파일 선택 버튼 클릭');
+                  fileInputRef.current?.click();
+                }}
                 variant="outline"
               >
                 파일 선택
