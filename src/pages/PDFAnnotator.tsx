@@ -1,33 +1,34 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { Upload, Pen, Highlighter, Eraser, Save, Download, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import * as pdfjsLib from 'pdfjs-dist';
+import { Document, Page, pdfjs } from 'react-pdf';
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
-// PDF.js worker 설정 - worker 없이 실행
-pdfjsLib.GlobalWorkerOptions.workerSrc = null;
+// PDF.js worker 설정 - 안정적인 CDN 사용
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-console.log('PDF.js worker 비활성화됨. 메인 스레드에서 실행합니다.');
-
-interface PDFPage {
+interface PDFPageData {
   pageNumber: number;
-  canvas: HTMLCanvasElement;
-  fabricCanvas: FabricCanvas;
+  fabricCanvas: FabricCanvas | null;
+  containerRef: React.RefObject<HTMLDivElement>;
 }
 
 const PDFAnnotator = () => {
-  const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
-  const [pages, setPages] = useState<PDFPage[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [numPages, setNumPages] = useState<number>(0);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pages, setPages] = useState<PDFPageData[]>([]);
   const [currentTool, setCurrentTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
   const [brushSize, setBrushSize] = useState([2]);
   const [brushColor, setBrushColor] = useState('#000000');
-  const [zoom, setZoom] = useState([1]);
+  const [scale, setScale] = useState([1]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', 
@@ -39,117 +40,78 @@ const PDFAnnotator = () => {
     '#FFA50080', '#FF00FF80', '#00FFFF80'
   ];
 
-  useEffect(() => {
-    return () => {
-      // 컴포넌트 언마운트 시 Fabric 캔버스들 정리
-      pages.forEach(page => {
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    console.log('PDF 로드 성공. 페이지 수:', numPages);
+    setNumPages(numPages);
+    setPageNumber(1);
+    
+    // 기존 캔버스들 정리
+    pages.forEach(page => {
+      if (page.fabricCanvas) {
         page.fabricCanvas.dispose();
-      });
-    };
-  }, [pages]);
-
-  const handleFileUpload = async (file: File) => {
-    console.log('=== PDF 파일 업로드 시작 ===');
-    console.log('파일 정보:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      lastModified: file.lastModified
+      }
     });
     
-    if (file.type !== 'application/pdf') {
-      console.error('❌ PDF가 아닌 파일 타입:', file.type);
-      toast.error('PDF 파일만 업로드 가능합니다.');
-      return;
-    }
-
-    console.log('✅ PDF 파일 타입 확인됨');
-    console.log('현재 worker 설정:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-
-    try {
-      console.log('📄 PDF 로딩 시작...');
-      const arrayBuffer = await file.arrayBuffer();
-      console.log('✅ ArrayBuffer 생성 완료. 크기:', arrayBuffer.byteLength, 'bytes');
-      
-      console.log('🔧 PDF.js getDocument 호출...');
-      const loadingTask = pdfjsLib.getDocument({
-        data: arrayBuffer,
-        cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
-        cMapPacked: true,
+    // 새 페이지 데이터 초기화
+    const newPages: PDFPageData[] = [];
+    for (let i = 1; i <= numPages; i++) {
+      newPages.push({
+        pageNumber: i,
+        fabricCanvas: null,
+        containerRef: React.createRef<HTMLDivElement>()
       });
-      
-      console.log('⏳ PDF 문서 로딩 대기 중...');
-      const pdf = await loadingTask.promise;
-      console.log('🎉 PDF 로드 성공! 페이지 수:', pdf.numPages);
-      
-      setPdfDoc(pdf);
-      
-      // 기존 페이지들 정리
-      console.log('🧹 기존 페이지 정리 중...');
-      pages.forEach(page => {
-        page.fabricCanvas.dispose();
-      });
-      
-      console.log('🎨 페이지 렌더링 시작...');
-      await renderAllPages(pdf);
-      console.log('✅ 모든 페이지 렌더링 완료');
-      toast.success(`PDF 로드 완료 (${pdf.numPages} 페이지)`);
-    } catch (error) {
-      console.error('❌ PDF 로드 실패. 상세 오류:', error);
-      console.error('오류 스택:', error instanceof Error ? error.stack : '스택 없음');
-      
-      let errorMessage = '알 수 없는 오류';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-        console.error('오류 메시지:', errorMessage);
-      }
-      
-      toast.error(`PDF 파일을 로드할 수 없습니다: ${errorMessage}`);
     }
+    setPages(newPages);
+    toast.success(`PDF 로드 완료 (${numPages} 페이지)`);
   };
 
-  const renderAllPages = async (pdf: pdfjsLib.PDFDocumentProxy) => {
-    const newPages: PDFPage[] = [];
+  const onDocumentLoadError = (error: Error) => {
+    console.error('PDF 로드 실패:', error);
+    toast.error(`PDF 파일을 로드할 수 없습니다: ${error.message}`);
+  };
+
+  const onPageLoadSuccess = (pageIndex: number) => {
+    console.log(`페이지 ${pageIndex + 1} 렌더링 완료`);
     
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: zoom[0] });
-      
-      // PDF 렌더링용 캔버스
-      const pdfCanvas = document.createElement('canvas');
-      const context = pdfCanvas.getContext('2d')!;
-      pdfCanvas.height = viewport.height;
-      pdfCanvas.width = viewport.width;
-      
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-        canvas: pdfCanvas
-      }).promise;
-      
-      // Fabric.js 캔버스 (필기용)
-      const fabricCanvasElement = document.createElement('canvas');
-      fabricCanvasElement.width = viewport.width;
-      fabricCanvasElement.height = viewport.height;
-      
-      const fabricCanvas = new FabricCanvas(fabricCanvasElement, {
-        width: viewport.width,
-        height: viewport.height,
-        isDrawingMode: true,
-        selection: false
-      });
-      
-      // 브러시 설정
-      setupBrush(fabricCanvas);
-      
-      newPages.push({
-        pageNumber: pageNum,
-        canvas: pdfCanvas,
-        fabricCanvas
-      });
-    }
-    
-    setPages(newPages);
+    // PDF 페이지가 렌더링된 후 Fabric.js 캔버스 초기화
+    setTimeout(() => {
+      const pageData = pages[pageIndex];
+      if (pageData && pageData.containerRef.current && !pageData.fabricCanvas) {
+        const pageElement = pageData.containerRef.current.querySelector('.react-pdf__Page');
+        if (pageElement) {
+          const rect = pageElement.getBoundingClientRect();
+          
+          // 캔버스 엘리먼트 생성
+          const canvasElement = document.createElement('canvas');
+          canvasElement.width = rect.width;
+          canvasElement.height = rect.height;
+          canvasElement.style.position = 'absolute';
+          canvasElement.style.top = '0';
+          canvasElement.style.left = '0';
+          canvasElement.style.pointerEvents = 'auto';
+          canvasElement.style.zIndex = '10';
+          
+          // 컨테이너에 캔버스 추가
+          pageData.containerRef.current.style.position = 'relative';
+          pageData.containerRef.current.appendChild(canvasElement);
+          
+          // Fabric.js 캔버스 초기화
+          const fabricCanvas = new FabricCanvas(canvasElement, {
+            width: rect.width,
+            height: rect.height,
+            isDrawingMode: true,
+            selection: false
+          });
+          
+          setupBrush(fabricCanvas);
+          
+          // 페이지 데이터 업데이트
+          const updatedPages = [...pages];
+          updatedPages[pageIndex].fabricCanvas = fabricCanvas;
+          setPages(updatedPages);
+        }
+      }
+    }, 100);
   };
 
   const setupBrush = (canvas: FabricCanvas) => {
@@ -165,29 +127,49 @@ const PDFAnnotator = () => {
     canvas.isDrawingMode = currentTool !== 'eraser';
   };
 
-  useEffect(() => {
-    pages.forEach(page => {
-      setupBrush(page.fabricCanvas);
-    });
-  }, [currentTool, brushSize, brushColor, pages]);
+  const handleFileUpload = (selectedFile: File) => {
+    console.log('파일 선택됨:', selectedFile.name, selectedFile.type);
+    
+    if (selectedFile.type !== 'application/pdf') {
+      toast.error('PDF 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    setFile(selectedFile);
+  };
 
   const handleToolChange = (tool: 'pen' | 'highlighter' | 'eraser') => {
     setCurrentTool(tool);
     
     if (tool === 'highlighter') {
-      setBrushColor(highlighterColors[0].slice(0, -2)); // 투명도 제거
+      setBrushColor(highlighterColors[0].slice(0, -2));
     } else if (tool === 'pen') {
       setBrushColor('#000000');
     }
+    
+    // 모든 캔버스의 브러시 업데이트
+    pages.forEach(page => {
+      if (page.fabricCanvas) {
+        setupBrush(page.fabricCanvas);
+      }
+    });
   };
 
   const handleColorChange = (color: string) => {
     setBrushColor(color);
+    
+    // 모든 캔버스의 브러시 색상 업데이트
+    pages.forEach(page => {
+      if (page.fabricCanvas) {
+        setupBrush(page.fabricCanvas);
+      }
+    });
   };
 
   const clearPage = (pageIndex: number) => {
-    if (pages[pageIndex]) {
-      pages[pageIndex].fabricCanvas.clear();
+    const pageData = pages[pageIndex];
+    if (pageData && pageData.fabricCanvas) {
+      pageData.fabricCanvas.clear();
       toast.success(`${pageIndex + 1}페이지 필기가 지워졌습니다.`);
     }
   };
@@ -195,8 +177,8 @@ const PDFAnnotator = () => {
   const saveAnnotations = () => {
     const annotations = pages.map(page => ({
       pageNumber: page.pageNumber,
-      data: JSON.stringify(page.fabricCanvas.toJSON())
-    }));
+      data: page.fabricCanvas ? JSON.stringify(page.fabricCanvas.toJSON()) : null
+    })).filter(annotation => annotation.data);
     
     const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -209,16 +191,17 @@ const PDFAnnotator = () => {
     toast.success('필기가 저장되었습니다.');
   };
 
-  const loadAnnotations = async (file: File) => {
+  const loadAnnotations = async (annotationFile: File) => {
     try {
-      const text = await file.text();
+      const text = await annotationFile.text();
       const annotations = JSON.parse(text);
       
       annotations.forEach((annotation: any) => {
         const pageIndex = annotation.pageNumber - 1;
-        if (pages[pageIndex]) {
-          pages[pageIndex].fabricCanvas.loadFromJSON(annotation.data, () => {
-            pages[pageIndex].fabricCanvas.renderAll();
+        const pageData = pages[pageIndex];
+        if (pageData && pageData.fabricCanvas && annotation.data) {
+          pageData.fabricCanvas.loadFromJSON(annotation.data, () => {
+            pageData.fabricCanvas!.renderAll();
           });
         }
       });
@@ -244,17 +227,8 @@ const PDFAnnotator = () => {
     setIsDragging(false);
     
     const files = e.dataTransfer.files;
-    console.log('드롭된 파일들:', files);
     if (files.length > 0) {
-      console.log('첫 번째 파일 처리:', files[0].name, files[0].type);
       handleFileUpload(files[0]);
-    }
-  };
-
-  const handleZoomChange = async (newZoom: number[]) => {
-    setZoom(newZoom);
-    if (pdfDoc) {
-      await renderAllPages(pdfDoc);
     }
   };
 
@@ -267,10 +241,7 @@ const PDFAnnotator = () => {
         {/* 파일 업로드 */}
         <Card className="p-4">
           <Button
-            onClick={() => {
-              console.log('파일 업로드 버튼 클릭');
-              fileInputRef.current?.click();
-            }}
+            onClick={() => fileInputRef.current?.click()}
             className="w-full mb-2"
             variant="outline"
           >
@@ -282,13 +253,9 @@ const PDFAnnotator = () => {
             type="file"
             accept=".pdf,application/pdf"
             onChange={(e) => {
-              console.log('파일 선택 이벤트:', e.target.files);
-              const file = e.target.files?.[0];
-              if (file) {
-                console.log('선택된 파일:', file.name, file.type);
-                handleFileUpload(file);
-              } else {
-                console.log('파일이 선택되지 않음');
+              const selectedFile = e.target.files?.[0];
+              if (selectedFile) {
+                handleFileUpload(selectedFile);
               }
             }}
             className="hidden"
@@ -331,7 +298,14 @@ const PDFAnnotator = () => {
           <h3 className="font-medium mb-3">브러시 크기: {brushSize[0]}px</h3>
           <Slider
             value={brushSize}
-            onValueChange={setBrushSize}
+            onValueChange={(value) => {
+              setBrushSize(value);
+              pages.forEach(page => {
+                if (page.fabricCanvas) {
+                  setupBrush(page.fabricCanvas);
+                }
+              });
+            }}
             max={20}
             min={1}
             step={1}
@@ -363,26 +337,26 @@ const PDFAnnotator = () => {
 
         {/* 줌 조절 */}
         <Card className="p-4">
-          <h3 className="font-medium mb-3">줌: {Math.round(zoom[0] * 100)}%</h3>
+          <h3 className="font-medium mb-3">줌: {Math.round(scale[0] * 100)}%</h3>
           <div className="flex items-center space-x-2 mb-2">
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleZoomChange([Math.max(0.5, zoom[0] - 0.1)])}
+              onClick={() => setScale([Math.max(0.5, scale[0] - 0.1)])}
             >
               <ZoomOut className="w-4 h-4" />
             </Button>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleZoomChange([Math.min(3, zoom[0] + 0.1)])}
+              onClick={() => setScale([Math.min(3, scale[0] + 0.1)])}
             >
               <ZoomIn className="w-4 h-4" />
             </Button>
           </div>
           <Slider
-            value={zoom}
-            onValueChange={handleZoomChange}
+            value={scale}
+            onValueChange={setScale}
             max={3}
             min={0.5}
             step={0.1}
@@ -397,7 +371,7 @@ const PDFAnnotator = () => {
               onClick={saveAnnotations}
               className="w-full justify-start"
               variant="outline"
-              disabled={!pdfDoc}
+              disabled={!file}
             >
               <Save className="w-4 h-4 mr-2" />
               필기 저장
@@ -408,14 +382,14 @@ const PDFAnnotator = () => {
                 input.type = 'file';
                 input.accept = '.json';
                 input.onchange = (e) => {
-                  const file = (e.target as HTMLInputElement).files?.[0];
-                  if (file) loadAnnotations(file);
+                  const annotationFile = (e.target as HTMLInputElement).files?.[0];
+                  if (annotationFile) loadAnnotations(annotationFile);
                 };
                 input.click();
               }}
               className="w-full justify-start"
               variant="outline"
-              disabled={!pdfDoc}
+              disabled={!file}
             >
               <Download className="w-4 h-4 mr-2" />
               필기 불러오기
@@ -426,7 +400,7 @@ const PDFAnnotator = () => {
 
       {/* PDF 뷰어 영역 */}
       <div className="flex-1 overflow-auto">
-        {!pdfDoc ? (
+        {!file ? (
           <div
             className={`h-full flex items-center justify-center border-2 border-dashed transition-colors ${
               isDragging ? 'border-primary bg-primary/10' : 'border-muted'
@@ -440,10 +414,7 @@ const PDFAnnotator = () => {
               <p className="text-lg font-medium mb-2">PDF 파일을 드래그하거나</p>
               <p className="text-muted-foreground mb-4">업로드 버튼을 클릭하세요</p>
               <Button
-                onClick={() => {
-                  console.log('하단 파일 선택 버튼 클릭');
-                  fileInputRef.current?.click();
-                }}
+                onClick={() => fileInputRef.current?.click()}
                 variant="outline"
               >
                 파일 선택
@@ -451,48 +422,46 @@ const PDFAnnotator = () => {
             </div>
           </div>
         ) : (
-          <div ref={containerRef} className="p-8 space-y-8">
-            {pages.map((page, index) => (
-              <div key={page.pageNumber} className="relative mx-auto" style={{ width: 'fit-content' }}>
-                <div className="relative shadow-lg">
-                  {/* PDF 배경 */}
-                  <div
-                    style={{
-                      backgroundImage: `url(${page.canvas.toDataURL()})`,
-                      width: page.canvas.width,
-                      height: page.canvas.height,
-                      backgroundSize: 'contain',
-                      backgroundRepeat: 'no-repeat'
-                    }}
-                  />
-                  
-                  {/* Fabric.js 캔버스 오버레이 */}
-                  <div
-                    className="absolute top-0 left-0"
-                    ref={(el) => {
-                      if (el && page.fabricCanvas && !el.contains(page.fabricCanvas.getElement())) {
-                        el.appendChild(page.fabricCanvas.getElement());
-                      }
-                    }}
-                  />
-                </div>
-                
-                {/* 페이지 번호 및 클리어 버튼 */}
-                <div className="absolute top-2 right-2 flex items-center space-x-2">
-                  <span className="bg-background/80 px-2 py-1 rounded text-sm">
-                    {page.pageNumber}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => clearPage(index)}
-                    className="bg-background/80"
-                  >
-                    지우기
-                  </Button>
-                </div>
+          <div className="p-8">
+            <Document
+              file={file}
+              onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={onDocumentLoadError}
+              loading={<div className="text-center p-8">PDF 로딩 중...</div>}
+            >
+              <div className="space-y-8">
+                {Array.from(new Array(numPages), (el, index) => (
+                  <div key={`page_${index + 1}`} className="mx-auto" style={{ width: 'fit-content' }}>
+                    <div 
+                      ref={pages[index]?.containerRef}
+                      className="relative shadow-lg"
+                    >
+                      <Page
+                        pageNumber={index + 1}
+                        scale={scale[0]}
+                        onLoadSuccess={() => onPageLoadSuccess(index)}
+                        loading={<div className="p-4">페이지 로딩 중...</div>}
+                      />
+                      
+                      {/* 페이지 번호 및 클리어 버튼 */}
+                      <div className="absolute top-2 right-2 flex items-center space-x-2">
+                        <span className="bg-background/80 px-2 py-1 rounded text-sm">
+                          {index + 1}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => clearPage(index)}
+                          className="bg-background/80"
+                        >
+                          지우기
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </Document>
           </div>
         )}
       </div>
