@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
+import { Canvas as FabricCanvas, PencilBrush, Path } from 'fabric';
 
 const DrawingApp = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -52,16 +52,33 @@ const DrawingApp = () => {
     if (!containerRef.current || !canvasRef.current || !fabricCanvas) return;
     
     const container = containerRef.current;
+    const canvas = canvasRef.current;
     const width = container.clientWidth;
     const height = container.clientHeight;
     
+    console.log('Canvas 크기 조정:', width, 'x', height);
+    
+    // HTML Canvas 크기 설정
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    
+    // Fabric Canvas 크기 설정
     fabricCanvas.setDimensions({ width, height });
     fabricCanvas.renderAll();
+    
+    console.log('Canvas 크기 조정 완료');
   };
 
   // Fabric.js 캔버스 초기화 (PDF 로드 후에만)
   useEffect(() => {
-    if (!canvasRef.current || !pdfUrl) return;
+    if (!canvasRef.current || !pdfUrl) {
+      console.log('Canvas 초기화 조건 미충족:', { canvasRef: !!canvasRef.current, pdfUrl: !!pdfUrl });
+      return;
+    }
+
+    console.log('Canvas 초기화 시작');
 
     const canvas = new FabricCanvas(canvasRef.current, {
       width: 800,
@@ -87,6 +104,7 @@ const DrawingApp = () => {
       toast.success('필기 완료!');
     });
 
+    console.log('Canvas 초기화 완료, Fabric Canvas 설정됨');
     setFabricCanvas(canvas);
 
     // 창 크기 변경 시 캔버스 크기 조정
@@ -299,6 +317,39 @@ const DrawingApp = () => {
           </Button>
         </Card>
 
+        {/* 테스트 버튼 */}
+        <Card className="p-4">
+          <h3 className="font-medium mb-4">테스트</h3>
+          <Button
+            onClick={() => {
+              if (fabricCanvas) {
+                console.log('테스트 선 그리기 시작');
+                // 테스트용 선 그리기
+                const pathData = 'M 100 100 L 200 150 L 150 200';
+                const pathObj = new Path(pathData, {
+                  stroke: brushColor,
+                  strokeWidth: brushSize[0],
+                  fill: '',
+                  selectable: false
+                });
+                
+                fabricCanvas.add(pathObj);
+                fabricCanvas.renderAll();
+                console.log('테스트 선 추가됨, Canvas 객체 수:', fabricCanvas.getObjects().length);
+                toast.success('테스트 선이 그어졌습니다!');
+              } else {
+                console.log('Fabric Canvas가 없음');
+                toast.error('Canvas가 준비되지 않았습니다.');
+              }
+            }}
+            className="w-full mb-2"
+            variant="outline"
+            disabled={!fabricCanvas}
+          >
+            테스트 선 그리기
+          </Button>
+        </Card>
+
         {/* 현재 도구 상태 */}
         <Card className="p-4">
           <div className="flex items-center gap-3">
@@ -312,6 +363,9 @@ const DrawingApp = () => {
               </div>
               <div className="text-muted-foreground">
                 {brushSize[0]}px
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Canvas: {fabricCanvas ? '준비됨' : '대기중'}
               </div>
             </div>
           </div>
