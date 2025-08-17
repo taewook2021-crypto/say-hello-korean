@@ -7,8 +7,11 @@ import { toast } from "sonner";
 import * as pdfjsLib from 'pdfjs-dist';
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 
-// PDF.js worker 설정
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+// PDF.js worker 설정 - Vite 환경에서 안정적인 worker 로드
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.js',
+  import.meta.url
+).toString();
 
 interface PDFPage {
   pageNumber: number;
