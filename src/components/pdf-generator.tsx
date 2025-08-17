@@ -225,107 +225,172 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
 };
 
 const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options: any) => {
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  let yPosition = 30;
-  
-  // 한글 지원을 위한 폰트 설정
-  pdf.setFont('helvetica', 'normal');
-  
-  // 헤더
-  pdf.setFontSize(18);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(31, 41, 55);
-  
-  // 한글 텍스트를 유니코드로 처리
-  const title = 'ARO 오답노트';
-  pdf.text(title, 20, yPosition);
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(107, 114, 128);
-  
-  const dateText = `생성일: ${new Date().toLocaleDateString('ko-KR')}`;
-  pdf.text(dateText, 20, yPosition + 10);
-  
-  // 파란색 하단 보더
-  pdf.setDrawColor(59, 130, 246);
-  pdf.setLineWidth(2);
-  pdf.line(20, yPosition + 15, 190, yPosition + 15);
-  
-  yPosition += 35;
-  
-  // 오답 문제들
-  notes.forEach((note, index) => {
-    if (yPosition > 250) {
-      pdf.addPage();
-      pdf.setFont('helvetica', 'normal');
-      yPosition = 30;
-    }
+  // HTML 콘텐츠 생성
+  const htmlContent = `
+    <div style="
+      font-family: 'Noto Sans KR', '맑은 고딕', 'Apple SD Gothic Neo', Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #1f2937;
+      padding: 20px;
+      background: white;
+      min-height: 100vh;
+    ">
+      <!-- 헤더 -->
+      <div style="margin-bottom: 30px;">
+        <h1 style="
+          font-size: 24px;
+          font-weight: bold;
+          color: #1f2937;
+          margin: 0 0 10px 0;
+        ">ARO 오답노트</h1>
+        <p style="
+          font-size: 12px;
+          color: #6b7280;
+          margin: 0 0 15px 0;
+        ">생성일: ${new Date().toLocaleDateString('ko-KR')}</p>
+        <div style="
+          height: 2px;
+          background-color: #3b82f6;
+          width: 100%;
+        "></div>
+      </div>
+
+      <!-- 오답 문제들 -->
+      ${notes.map((note, index) => `
+        <div style="
+          margin-bottom: 40px;
+          position: relative;
+          min-height: 80px;
+        ">
+          <!-- 빨간색 세로선 -->
+          <div style="
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #ef4444;
+          "></div>
+          
+          <!-- 내용 -->
+          <div style="margin-left: 15px;">
+            <!-- 문제 번호와 틀림 배지 -->
+            <div style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+            ">
+              <h3 style="
+                font-size: 16px;
+                font-weight: bold;
+                color: #374151;
+                margin: 0;
+              ">문제 ${index + 1}</h3>
+              <span style="
+                background-color: #fecaca;
+                color: #dc2626;
+                padding: 4px 12px;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: bold;
+              ">틀림</span>
+            </div>
+            
+            <!-- 문제 내용 -->
+            <div style="
+              margin-bottom: 15px;
+              line-height: 1.8;
+            ">${note.question || ''}</div>
+            
+            ${options.includeWrongAnswers && note.wrongAnswer ? `
+              <!-- 사용자 답변 (틀린 답변) -->
+              <div style="
+                margin-bottom: 15px;
+                font-size: 12px;
+                color: #dc2626;
+              ">내 답변: ${note.wrongAnswer}</div>
+            ` : ''}
+            
+            <!-- 해설 박스 -->
+            <div style="
+              background-color: #eff6ff;
+              padding: 15px;
+              border-radius: 6px;
+              border: 1px solid #dbeafe;
+            ">
+              <div style="
+                font-size: 12px;
+                font-weight: bold;
+                color: #1e40af;
+                margin-bottom: 8px;
+              ">정답:</div>
+              <div style="
+                color: #1d4ed8;
+                line-height: 1.6;
+              ">${note.correctAnswer || ''}</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // 임시 DOM 요소 생성
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = htmlContent;
+  tempDiv.style.position = 'absolute';
+  tempDiv.style.left = '-9999px';
+  tempDiv.style.top = '0';
+  tempDiv.style.width = '210mm';
+  tempDiv.style.background = 'white';
+  document.body.appendChild(tempDiv);
+
+  try {
+    // html2pdf 옵션 설정
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: 'aro-오답노트.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        allowTaint: false
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait',
+        compressPDF: true
+      }
+    };
+
+    // 렌더링 대기
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // PDF 생성
+    const pdf = await html2pdf().set(opt).from(tempDiv).outputPdf('blob');
     
-    // 빨간색 세로선
-    pdf.setDrawColor(239, 68, 68);
-    pdf.setLineWidth(4);
-    pdf.line(20, yPosition, 20, yPosition + 60);
-    
-    // 문제 번호
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(55, 65, 81);
-    const questionNumber = `문제 ${index + 1}`;
-    pdf.text(questionNumber, 25, yPosition);
-    
-    // "틀림" 배지
-    pdf.setFillColor(254, 226, 226);
-    pdf.roundedRect(150, yPosition - 6, 25, 10, 2, 2, 'F');
-    pdf.setFontSize(8);
-    pdf.setTextColor(220, 38, 38);
-    const wrongLabel = '틀림';
-    pdf.text(wrongLabel, 162, yPosition - 1);
-    
-    // 문제 내용
-    pdf.setTextColor(31, 41, 55);
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    
-    // 텍스트 분할 (한글 고려)
-    const questionText = note.question || '';
-    const questionLines = pdf.splitTextToSize(questionText, 160);
-    
-    let questionHeight = questionLines.length * 5;
-    pdf.text(questionLines, 25, yPosition + 12);
-    
-    let currentY = yPosition + 12 + questionHeight;
-    
-    // 사용자 답변 (틀린 답변)
-    if (options.includeWrongAnswers && note.wrongAnswer) {
-      pdf.setFontSize(8);
-      pdf.setTextColor(220, 38, 38);
-      const userAnswerText = `내 답변: ${note.wrongAnswer}`;
-      pdf.text(userAnswerText, 25, currentY + 5);
-      currentY += 10;
-    }
-    
-    // 해설 박스
-    pdf.setFillColor(239, 246, 255);
-    pdf.roundedRect(25, currentY + 5, 160, 25, 3, 3, 'F');
-    
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(30, 64, 175);
-    const answerLabel = '정답:';
-    pdf.text(answerLabel, 30, currentY + 15);
-    
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(29, 78, 216);
-    
-    const correctText = note.correctAnswer || '';
-    const explanationLines = pdf.splitTextToSize(correctText, 145);
-    pdf.text(explanationLines, 30, currentY + 22);
-    
-    yPosition = currentY + 35;
-  });
-  
-  return pdf;
+    // blob을 jsPDF 호환 형태로 변환
+    return {
+      output: () => pdf,
+      save: (filename: string) => {
+        const url = URL.createObjectURL(pdf);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    };
+  } finally {
+    // 임시 요소 제거
+    document.body.removeChild(tempDiv);
+  }
 };
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
