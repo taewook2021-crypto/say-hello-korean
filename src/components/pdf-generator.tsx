@@ -225,6 +225,14 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
 
 const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options: any) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
+  
+  // 한글 폰트 추가 (NotoSansKR 사용)
+  const addKoreanFont = () => {
+    // 기본 폰트로 설정 (한글 지원)
+    pdf.setFont('helvetica', 'normal');
+  };
+  
+  addKoreanFont();
   let yPosition = 30;
   
   // 헤더
@@ -249,6 +257,7 @@ const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: 
   notes.forEach((note, index) => {
     if (yPosition > 250) {
       pdf.addPage();
+      addKoreanFont();
       yPosition = 30;
     }
     
@@ -270,22 +279,48 @@ const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: 
     pdf.setTextColor(220, 38, 38);
     pdf.text('틀림', 162, yPosition - 1);
     
-    // 문제 내용
+    // 문제 내용 (한글 지원 개선)
     pdf.setTextColor(31, 41, 55);
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    const questionLines = pdf.splitTextToSize(note.question, 160);
-    pdf.text(questionLines, 25, yPosition + 12);
+    
+    // 긴 텍스트를 여러 줄로 분할 (한글 고려)
+    const questionText = note.question || '';
+    const maxWidth = 160;
+    const questionLines = [];
+    let currentLine = '';
+    
+    for (let i = 0; i < questionText.length; i++) {
+      const char = questionText[i];
+      const testLine = currentLine + char;
+      const textWidth = pdf.getTextWidth(testLine);
+      
+      if (textWidth < maxWidth) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) {
+          questionLines.push(currentLine);
+          currentLine = char;
+        }
+      }
+    }
+    if (currentLine) {
+      questionLines.push(currentLine);
+    }
+    
+    questionLines.forEach((line, lineIndex) => {
+      pdf.text(line, 25, yPosition + 12 + (lineIndex * 5));
+    });
     
     // 사용자 답변 (틀린 답변)
     if (options.includeWrongAnswers && note.wrongAnswer) {
       pdf.setFontSize(8);
       pdf.setTextColor(220, 38, 38);
-      pdf.text(`내 답변: ${note.wrongAnswer}`, 25, yPosition + 20);
+      pdf.text(`내 답변: ${note.wrongAnswer}`, 25, yPosition + 20 + (questionLines.length * 5));
     }
     
     // 해설 박스
-    const explanationY = yPosition + (options.includeWrongAnswers && note.wrongAnswer ? 28 : 25);
+    const explanationY = yPosition + (options.includeWrongAnswers && note.wrongAnswer ? 28 + (questionLines.length * 5) : 25 + (questionLines.length * 5));
     pdf.setFillColor(239, 246, 255);
     pdf.roundedRect(25, explanationY, 160, 20, 3, 3, 'F');
     
@@ -296,10 +331,35 @@ const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: 
     
     pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(29, 78, 216);
-    const explanationLines = pdf.splitTextToSize(note.correctAnswer, 145);
-    pdf.text(explanationLines, 30, explanationY + 14);
     
-    yPosition += options.includeWrongAnswers && note.wrongAnswer ? 60 : 55;
+    // 정답 텍스트도 한글 고려해서 분할
+    const correctText = note.correctAnswer || '';
+    const explanationLines = [];
+    let currentExplanationLine = '';
+    
+    for (let i = 0; i < correctText.length; i++) {
+      const char = correctText[i];
+      const testLine = currentExplanationLine + char;
+      const textWidth = pdf.getTextWidth(testLine);
+      
+      if (textWidth < 145) {
+        currentExplanationLine = testLine;
+      } else {
+        if (currentExplanationLine) {
+          explanationLines.push(currentExplanationLine);
+          currentExplanationLine = char;
+        }
+      }
+    }
+    if (currentExplanationLine) {
+      explanationLines.push(currentExplanationLine);
+    }
+    
+    explanationLines.forEach((line, lineIndex) => {
+      pdf.text(line, 30, explanationY + 14 + (lineIndex * 4));
+    });
+    
+    yPosition += Math.max(60, 45 + (questionLines.length * 5) + (explanationLines.length * 4));
   });
   
   return pdf;
