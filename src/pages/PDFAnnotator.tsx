@@ -86,7 +86,7 @@ const DrawingApp = () => {
       height: window.innerHeight,
       isDrawingMode: true,
       selection: false,
-      backgroundColor: '#ffffff' // 흰 배경
+      backgroundColor: 'transparent' // 투명 배경
     });
 
     // 브러시 설정
@@ -398,11 +398,12 @@ const DrawingApp = () => {
 
               {/* Canvas 모드 */}
               {mode === 'canvas' && (
-                <div className="w-full h-full bg-white">
+                <div className="w-full h-full" style={{ backgroundColor: 'transparent' }}>
                   <canvas
                     ref={canvasRef}
                     className="block"
                     style={{
+                      backgroundColor: 'transparent',
                       cursor: currentTool === 'pen' ? 'crosshair' : 
                              currentTool === 'highlighter' ? 'cell' : 'grab'
                     }}
