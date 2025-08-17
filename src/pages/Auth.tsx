@@ -104,15 +104,27 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/home`
+          redirectTo: `${window.location.origin}/home`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         }
       });
 
       if (error) {
-        toast.error(`${provider} 로그인 중 오류가 발생했습니다: ${error.message}`);
+        if (error.message.includes('unauthorized_client')) {
+          toast.error(`${provider} 로그인이 일시적으로 제한되었습니다. 이메일/패스워드로 로그인해주세요.`);
+        } else if (error.message.includes('access_denied')) {
+          toast.error('로그인이 취소되었습니다.');
+        } else {
+          toast.error(`${provider} 로그인 중 오류가 발생했습니다. 이메일/패스워드 로그인을 이용해주세요.`);
+        }
+        console.error(`${provider} login error:`, error);
       }
     } catch (error) {
-      toast.error(`${provider} 로그인 중 오류가 발생했습니다.`);
+      toast.error(`${provider} 로그인 중 오류가 발생했습니다. 이메일/패스워드 로그인을 이용해주세요.`);
+      console.error(`${provider} login error:`, error);
     }
   };
 
@@ -205,6 +217,7 @@ export default function Auth() {
                       />
                     </svg>
                     구글로 시작하기
+                    <span className="ml-2 text-xs text-muted-foreground">(일시 제한됨)</span>
                   </Button>
                   
                   <Button
@@ -310,6 +323,7 @@ export default function Auth() {
                       />
                     </svg>
                     구글로 시작하기
+                    <span className="ml-2 text-xs text-muted-foreground">(일시 제한됨)</span>
                   </Button>
                   
                   <Button
