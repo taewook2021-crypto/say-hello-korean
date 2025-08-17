@@ -8,7 +8,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 
 // PDF.js worker 설정
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
 
 interface PDFPage {
   pageNumber: number;
@@ -60,7 +60,14 @@ const PDFAnnotator = () => {
       const arrayBuffer = await file.arrayBuffer();
       console.log('ArrayBuffer 크기:', arrayBuffer.byteLength);
       
-      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      // PDF.js 로딩 옵션 추가
+      const loadingTask = pdfjsLib.getDocument({
+        data: arrayBuffer,
+        cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+        cMapPacked: true,
+      });
+      
+      const pdf = await loadingTask.promise;
       console.log('PDF 로드 성공, 페이지 수:', pdf.numPages);
       
       setPdfDoc(pdf);
