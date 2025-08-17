@@ -7,10 +7,8 @@ import { toast } from "sonner";
 import * as pdfjsLib from 'pdfjs-dist';
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 
-// PDF.js worker 설정 - Vite 환경을 위한 정적 worker 로드
-// 브라우저 캐시 무시를 위해 타임스탬프 추가
-const timestamp = Date.now();
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js?v=${timestamp}`;
+// PDF.js worker 설정 - 로컬 public 폴더에서 로드
+pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 console.log('PDF.js worker 설정됨:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 
