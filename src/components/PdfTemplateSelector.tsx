@@ -67,6 +67,13 @@ const templates: PdfTemplate[] = [
     category: 'paper',
     preview: 'bg-white border-2 border-green-200',
     description: 'Excel 스타일 표 형식'
+  },
+  {
+    id: 'minimal-aro',
+    name: '미니멀 ARO',
+    category: 'paper',
+    preview: 'bg-white border-2 border-blue-300',
+    description: '깔끔하고 미니멀한 ARO 디자인'
   }
 ];
 
@@ -123,6 +130,22 @@ export function PdfTemplateSelector({ onSelect, selectedCover, selectedPaper }: 
                   {[...Array(12)].map((_, i) => (
                     <div key={i} className="border border-green-300/60 bg-green-50/30 h-3" />
                   ))}
+                </div>
+              )}
+              {template.id === 'minimal-aro' && (
+                <div className="space-y-1">
+                  <div className="h-1 bg-blue-500 w-full" />
+                  <div className="space-y-0.5">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-1">
+                        <div className="w-0.5 h-4 bg-red-400" />
+                        <div className="flex-1 space-y-1">
+                          <div className="h-0.5 bg-gray-300" />
+                          <div className="h-2 bg-blue-100 rounded-sm" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

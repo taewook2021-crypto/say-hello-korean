@@ -223,12 +223,99 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
   return pdf;
 };
 
+const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options: any) => {
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  let yPosition = 30;
+  
+  // 헤더
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(31, 41, 55);
+  pdf.text('ARO 오답노트', 20, yPosition);
+  
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(107, 114, 128);
+  pdf.text(`생성일: ${new Date().toLocaleDateString('ko-KR')}`, 20, yPosition + 10);
+  
+  // 파란색 하단 보더
+  pdf.setDrawColor(59, 130, 246);
+  pdf.setLineWidth(2);
+  pdf.line(20, yPosition + 15, 190, yPosition + 15);
+  
+  yPosition += 35;
+  
+  // 오답 문제들
+  notes.forEach((note, index) => {
+    if (yPosition > 250) {
+      pdf.addPage();
+      yPosition = 30;
+    }
+    
+    // 빨간색 세로선
+    pdf.setDrawColor(239, 68, 68);
+    pdf.setLineWidth(4);
+    pdf.line(20, yPosition, 20, yPosition + 45);
+    
+    // 문제 번호
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(55, 65, 81);
+    pdf.text(`문제 ${index + 1}`, 25, yPosition);
+    
+    // "틀림" 배지
+    pdf.setFillColor(254, 226, 226);
+    pdf.roundedRect(150, yPosition - 6, 25, 10, 2, 2, 'F');
+    pdf.setFontSize(8);
+    pdf.setTextColor(220, 38, 38);
+    pdf.text('틀림', 162, yPosition - 1);
+    
+    // 문제 내용
+    pdf.setTextColor(31, 41, 55);
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'normal');
+    const questionLines = pdf.splitTextToSize(note.question, 160);
+    pdf.text(questionLines, 25, yPosition + 12);
+    
+    // 사용자 답변 (틀린 답변)
+    if (options.includeWrongAnswers && note.wrongAnswer) {
+      pdf.setFontSize(8);
+      pdf.setTextColor(220, 38, 38);
+      pdf.text(`내 답변: ${note.wrongAnswer}`, 25, yPosition + 20);
+    }
+    
+    // 해설 박스
+    const explanationY = yPosition + (options.includeWrongAnswers && note.wrongAnswer ? 28 : 25);
+    pdf.setFillColor(239, 246, 255);
+    pdf.roundedRect(25, explanationY, 160, 20, 3, 3, 'F');
+    
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(30, 64, 175);
+    pdf.text('정답:', 30, explanationY + 8);
+    
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(29, 78, 216);
+    const explanationLines = pdf.splitTextToSize(note.correctAnswer, 145);
+    pdf.text(explanationLines, 30, explanationY + 14);
+    
+    yPosition += options.includeWrongAnswers && note.wrongAnswer ? 60 : 55;
+  });
+  
+  return pdf;
+};
+
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
   console.log('PDF 생성 시작 - 선택된 템플릿:', options.paperTemplate);
   
   if (options.paperTemplate === 'excel-paper') {
     console.log('Excel 템플릿으로 PDF 생성');
     return generateExcelPDF(notes, subject, book, chapter, options);
+  }
+  
+  if (options.paperTemplate === 'minimal-aro') {
+    console.log('미니멀 ARO 템플릿으로 PDF 생성');
+    return generateMinimalAROPDF(notes, subject, book, chapter, options);
   }
   console.log('PDF 생성 시작 - 문제 단위 페이지 분할:', { notes: notes.length, subject, book, chapter, options });
   
