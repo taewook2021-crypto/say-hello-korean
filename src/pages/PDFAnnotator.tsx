@@ -7,12 +7,10 @@ import { toast } from "sonner";
 import * as pdfjsLib from 'pdfjs-dist';
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 
-// PDF.js worker 설정 - 버전 매칭된 jsDelivr CDN 사용
-const pdfVersion = pdfjsLib.version;
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfVersion}/build/pdf.worker.min.js`;
+// PDF.js worker 설정 - worker 없이 실행
+pdfjsLib.GlobalWorkerOptions.workerSrc = null;
 
-console.log('PDF.js 버전:', pdfVersion);
-console.log('Worker URL:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+console.log('PDF.js worker 비활성화됨. 메인 스레드에서 실행합니다.');
 
 interface PDFPage {
   pageNumber: number;
