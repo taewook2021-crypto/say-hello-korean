@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import html2pdf from 'html2pdf.js';
 
 interface WrongNote {
   id: string;
@@ -224,145 +225,178 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
 };
 
 const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options: any) => {
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  
-  // 한글 폰트 추가 (NotoSansKR 사용)
-  const addKoreanFont = () => {
-    // 기본 폰트로 설정 (한글 지원)
-    pdf.setFont('helvetica', 'normal');
+  // HTML 템플릿 생성
+  const createHTMLContent = () => {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="ko">
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+          
+          body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 20px;
+            background: white;
+            color: #1f2937;
+          }
+          
+          .header {
+            margin-bottom: 35px;
+          }
+          
+          .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+          }
+          
+          .date {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 15px;
+          }
+          
+          .border-line {
+            height: 2px;
+            background: #3b82f6;
+            width: 100%;
+          }
+          
+          .question-item {
+            margin-bottom: 40px;
+            position: relative;
+            padding-left: 15px;
+          }
+          
+          .red-line {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: #ef4444;
+          }
+          
+          .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+          }
+          
+          .question-number {
+            font-size: 14px;
+            font-weight: bold;
+            color: #374151;
+          }
+          
+          .wrong-badge {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+          }
+          
+          .question-content {
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+          }
+          
+          .user-answer {
+            font-size: 10px;
+            color: #dc2626;
+            margin-bottom: 8px;
+          }
+          
+          .answer-box {
+            background: #eff6ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+          }
+          
+          .answer-label {
+            font-size: 10px;
+            font-weight: bold;
+            color: #1e40af;
+            margin-bottom: 6px;
+          }
+          
+          .answer-content {
+            font-size: 10px;
+            color: #1d4ed8;
+            line-height: 1.4;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">ARO 오답노트</div>
+          <div class="date">생성일: ${new Date().toLocaleDateString('ko-KR')}</div>
+          <div class="border-line"></div>
+        </div>
+        
+        ${notes.map((note, index) => `
+          <div class="question-item">
+            <div class="red-line"></div>
+            <div class="question-header">
+              <div class="question-number">문제 ${index + 1}</div>
+              <div class="wrong-badge">틀림</div>
+            </div>
+            <div class="question-content">${note.question || ''}</div>
+            ${options.includeWrongAnswers && note.wrongAnswer ? 
+              `<div class="user-answer">내 답변: ${note.wrongAnswer}</div>` : ''
+            }
+            <div class="answer-box">
+              <div class="answer-label">정답:</div>
+              <div class="answer-content">${note.correctAnswer || ''}</div>
+            </div>
+          </div>
+        `).join('')}
+      </body>
+      </html>
+    `;
+    return htmlContent;
   };
-  
-  addKoreanFont();
-  let yPosition = 30;
-  
-  // 헤더
-  pdf.setFontSize(18);
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(31, 41, 55);
-  pdf.text('ARO 오답노트', 20, yPosition);
-  
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.setTextColor(107, 114, 128);
-  pdf.text(`생성일: ${new Date().toLocaleDateString('ko-KR')}`, 20, yPosition + 10);
-  
-  // 파란색 하단 보더
-  pdf.setDrawColor(59, 130, 246);
-  pdf.setLineWidth(2);
-  pdf.line(20, yPosition + 15, 190, yPosition + 15);
-  
-  yPosition += 35;
-  
-  // 오답 문제들
-  notes.forEach((note, index) => {
-    if (yPosition > 250) {
-      pdf.addPage();
-      addKoreanFont();
-      yPosition = 30;
+
+  // 임시 HTML 요소 생성
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = createHTMLContent();
+  tempDiv.style.position = 'absolute';
+  tempDiv.style.left = '-9999px';
+  tempDiv.style.top = '-9999px';
+  document.body.appendChild(tempDiv);
+
+  // PDF 생성 옵션
+  const opt = {
+    margin: 1,
+    filename: `ARO_오답노트_${subject}_${book}_${chapter}_${new Date().toLocaleDateString('ko-KR').replace(/\./g, '')}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+  };
+
+  try {
+    // PDF 생성
+    const pdf = await html2pdf().set(opt).from(tempDiv).toPdf().get('pdf');
+    
+    // 임시 요소 제거
+    document.body.removeChild(tempDiv);
+    
+    return pdf;
+  } catch (error) {
+    // 임시 요소 제거 (에러 발생 시에도)
+    if (tempDiv.parentNode) {
+      document.body.removeChild(tempDiv);
     }
-    
-    // 빨간색 세로선
-    pdf.setDrawColor(239, 68, 68);
-    pdf.setLineWidth(4);
-    pdf.line(20, yPosition, 20, yPosition + 45);
-    
-    // 문제 번호
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(55, 65, 81);
-    pdf.text(`문제 ${index + 1}`, 25, yPosition);
-    
-    // "틀림" 배지
-    pdf.setFillColor(254, 226, 226);
-    pdf.roundedRect(150, yPosition - 6, 25, 10, 2, 2, 'F');
-    pdf.setFontSize(8);
-    pdf.setTextColor(220, 38, 38);
-    pdf.text('틀림', 162, yPosition - 1);
-    
-    // 문제 내용 (한글 지원 개선)
-    pdf.setTextColor(31, 41, 55);
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    
-    // 긴 텍스트를 여러 줄로 분할 (한글 고려)
-    const questionText = note.question || '';
-    const maxWidth = 160;
-    const questionLines = [];
-    let currentLine = '';
-    
-    for (let i = 0; i < questionText.length; i++) {
-      const char = questionText[i];
-      const testLine = currentLine + char;
-      const textWidth = pdf.getTextWidth(testLine);
-      
-      if (textWidth < maxWidth) {
-        currentLine = testLine;
-      } else {
-        if (currentLine) {
-          questionLines.push(currentLine);
-          currentLine = char;
-        }
-      }
-    }
-    if (currentLine) {
-      questionLines.push(currentLine);
-    }
-    
-    questionLines.forEach((line, lineIndex) => {
-      pdf.text(line, 25, yPosition + 12 + (lineIndex * 5));
-    });
-    
-    // 사용자 답변 (틀린 답변)
-    if (options.includeWrongAnswers && note.wrongAnswer) {
-      pdf.setFontSize(8);
-      pdf.setTextColor(220, 38, 38);
-      pdf.text(`내 답변: ${note.wrongAnswer}`, 25, yPosition + 20 + (questionLines.length * 5));
-    }
-    
-    // 해설 박스
-    const explanationY = yPosition + (options.includeWrongAnswers && note.wrongAnswer ? 28 + (questionLines.length * 5) : 25 + (questionLines.length * 5));
-    pdf.setFillColor(239, 246, 255);
-    pdf.roundedRect(25, explanationY, 160, 20, 3, 3, 'F');
-    
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(30, 64, 175);
-    pdf.text('정답:', 30, explanationY + 8);
-    
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(29, 78, 216);
-    
-    // 정답 텍스트도 한글 고려해서 분할
-    const correctText = note.correctAnswer || '';
-    const explanationLines = [];
-    let currentExplanationLine = '';
-    
-    for (let i = 0; i < correctText.length; i++) {
-      const char = correctText[i];
-      const testLine = currentExplanationLine + char;
-      const textWidth = pdf.getTextWidth(testLine);
-      
-      if (textWidth < 145) {
-        currentExplanationLine = testLine;
-      } else {
-        if (currentExplanationLine) {
-          explanationLines.push(currentExplanationLine);
-          currentExplanationLine = char;
-        }
-      }
-    }
-    if (currentExplanationLine) {
-      explanationLines.push(currentExplanationLine);
-    }
-    
-    explanationLines.forEach((line, lineIndex) => {
-      pdf.text(line, 30, explanationY + 14 + (lineIndex * 4));
-    });
-    
-    yPosition += Math.max(60, 45 + (questionLines.length * 5) + (explanationLines.length * 4));
-  });
-  
-  return pdf;
+    throw error;
+  }
 };
 
 export const generatePDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options = { includeWrongAnswers: true, paperTemplate: 'lined-paper' }) => {
