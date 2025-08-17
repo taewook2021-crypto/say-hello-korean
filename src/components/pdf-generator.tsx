@@ -389,21 +389,13 @@ const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: 
     }
   };
 
-  // 임시 div 생성
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlContent;
-  tempDiv.style.position = 'absolute';
-  tempDiv.style.left = '-9999px';
-  tempDiv.style.top = '-9999px';
-  document.body.appendChild(tempDiv);
-
+  // 임시 div 생성하지 않고 직접 HTML 문자열 사용
   try {
-    // html2pdf로 변환
-    const pdf = await html2pdf().set(html2pdfOptions).from(tempDiv.querySelector('body')).toPdf().get('pdf');
-    document.body.removeChild(tempDiv);
+    // html2pdf로 변환 (HTML 문자열 직접 사용)
+    const pdf = await html2pdf().set(html2pdfOptions).from(htmlContent).toPdf().get('pdf');
     return pdf;
   } catch (error) {
-    document.body.removeChild(tempDiv);
+    console.error('html2pdf 에러:', error);
     throw error;
   }
 };
