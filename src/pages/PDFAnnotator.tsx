@@ -39,8 +39,9 @@ const PDFAnnotator = () => {
     const rect = container.getBoundingClientRect();
     
     // 캔버스 크기를 컨테이너에 맞게 조정
-    canvasRef.current.width = rect.width;
-    canvasRef.current.height = rect.height;
+    const canvas = canvasRef.current;
+    canvas.width = rect.width;
+    canvas.height = rect.height;
     
     fabricCanvas.setDimensions({
       width: rect.width,
@@ -48,11 +49,12 @@ const PDFAnnotator = () => {
     });
     
     fabricCanvas.renderAll();
+    console.log('캔버스 크기 조정:', rect.width, 'x', rect.height);
   };
 
   // PDF 파일 로드
   const handleFileUpload = (file: File) => {
-    console.log('PDF 파일 선택:', file.name, file.type);
+    console.log('PDF 파일 선택:', file.name, file.type, file.size);
     
     if (file.type !== 'application/pdf') {
       toast.error('PDF 파일만 업로드 가능합니다.');
@@ -64,17 +66,20 @@ const PDFAnnotator = () => {
       URL.revokeObjectURL(pdfUrl);
     }
     
-    // 새 PDF URL 생성
+    // 새 PDF blob URL 생성
     const url = URL.createObjectURL(file);
     setPdfFile(file);
     setPdfUrl(url);
     
+    console.log('PDF blob URL 생성:', url);
     toast.success('PDF 파일이 로드되었습니다.');
   };
 
   // Fabric.js 캔버스 초기화
   useEffect(() => {
     if (!canvasRef.current || !pdfUrl) return;
+
+    console.log('Fabric.js 캔버스 초기화 시작');
 
     const canvas = new FabricCanvas(canvasRef.current, {
       width: 800,
@@ -90,32 +95,29 @@ const PDFAnnotator = () => {
     setFabricCanvas(canvas);
     setIsCanvasReady(true);
 
+    console.log('Fabric.js 캔버스 초기화 완료');
+
     // 창 크기 변경 이벤트 리스너
     const handleResize = () => {
-      setTimeout(resizeCanvas, 100);
+      console.log('창 크기 변경 감지');
+      setTimeout(resizeCanvas, 200);
     };
     
     window.addEventListener('resize', handleResize);
     
-    // 초기 크기 조정
-    setTimeout(resizeCanvas, 500);
+    // 초기 크기 조정 (PDF 로드 대기)
+    const timer = setTimeout(() => {
+      console.log('초기 캔버스 크기 조정 실행');
+      resizeCanvas();
+    }, 1000);
 
     return () => {
+      console.log('Fabric.js 캔버스 정리');
       canvas.dispose();
       window.removeEventListener('resize', handleResize);
+      clearTimeout(timer);
     };
   }, [pdfUrl]);
-
-  // 캔버스 크기 조정 (PDF 로드 후)
-  useEffect(() => {
-    if (fabricCanvas && pdfUrl) {
-      const timer = setTimeout(() => {
-        resizeCanvas();
-      }, 1000); // PDF가 로드될 시간을 기다림
-
-      return () => clearTimeout(timer);
-    }
-  }, [fabricCanvas, pdfUrl]);
 
   const setupBrush = (canvas: FabricCanvas) => {
     const brush = new PencilBrush(canvas);
@@ -128,9 +130,12 @@ const PDFAnnotator = () => {
     
     canvas.freeDrawingBrush = brush;
     canvas.isDrawingMode = currentTool !== 'eraser';
+    
+    console.log('브러시 설정:', { tool: currentTool, size: brush.width, color: brush.color });
   };
 
   const handleToolChange = (tool: 'pen' | 'highlighter' | 'eraser') => {
+    console.log('도구 변경:', tool);
     setCurrentTool(tool);
     
     if (tool === 'highlighter') {
@@ -145,6 +150,7 @@ const PDFAnnotator = () => {
   };
 
   const handleColorChange = (color: string) => {
+    console.log('색상 변경:', color);
     setBrushColor(color);
     
     if (fabricCanvas) {
@@ -153,6 +159,7 @@ const PDFAnnotator = () => {
   };
 
   const handleBrushSizeChange = (size: number[]) => {
+    console.log('브러시 크기 변경:', size[0]);
     setBrushSize(size);
     
     if (fabricCanvas) {
@@ -163,6 +170,7 @@ const PDFAnnotator = () => {
   const clearCanvas = () => {
     if (fabricCanvas) {
       fabricCanvas.clear();
+      console.log('캔버스 지움');
       toast.success('필기가 지워졌습니다.');
     }
   };
@@ -173,16 +181,22 @@ const PDFAnnotator = () => {
       return;
     }
 
-    const annotationData = JSON.stringify(fabricCanvas.toJSON());
-    const blob = new Blob([annotationData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${pdfFile?.name || 'pdf'}_annotations.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toast.success('필기가 저장되었습니다.');
+    try {
+      const annotationData = JSON.stringify(fabricCanvas.toJSON());
+      const blob = new Blob([annotationData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${pdfFile?.name?.replace('.pdf', '') || 'pdf'}_annotations.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      console.log('필기 저장 완료');
+      toast.success('필기가 저장되었습니다.');
+    } catch (error) {
+      console.error('필기 저장 실패:', error);
+      toast.error('필기 저장에 실패했습니다.');
+    }
   };
 
   const loadAnnotations = async (file: File) => {
@@ -192,14 +206,17 @@ const PDFAnnotator = () => {
     }
 
     try {
+      console.log('필기 파일 로드 시작:', file.name);
       const text = await file.text();
       const data = JSON.parse(text);
       
       fabricCanvas.loadFromJSON(data, () => {
         fabricCanvas.renderAll();
+        console.log('필기 로드 완료');
         toast.success('필기가 불러와졌습니다.');
       });
     } catch (error) {
+      console.error('필기 로드 실패:', error);
       toast.error('필기 파일을 불러올 수 없습니다.');
     }
   };
@@ -228,10 +245,11 @@ const PDFAnnotator = () => {
   useEffect(() => {
     return () => {
       if (pdfUrl) {
+        console.log('PDF URL 정리:', pdfUrl);
         URL.revokeObjectURL(pdfUrl);
       }
     };
-  }, []);
+  }, [pdfUrl]);
 
   return (
     <div className="flex h-screen bg-background">
@@ -242,7 +260,10 @@ const PDFAnnotator = () => {
         {/* 파일 업로드 */}
         <Card className="p-4">
           <Button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              console.log('파일 업로드 버튼 클릭');
+              fileInputRef.current?.click();
+            }}
             className="w-full mb-2"
             variant="outline"
           >
@@ -262,8 +283,8 @@ const PDFAnnotator = () => {
             className="hidden"
           />
           {pdfFile && (
-            <p className="text-xs text-muted-foreground mt-2 truncate">
-              {pdfFile.name}
+            <p className="text-xs text-muted-foreground mt-2 truncate" title={pdfFile.name}>
+              📄 {pdfFile.name}
             </p>
           )}
         </Card>
@@ -324,16 +345,17 @@ const PDFAnnotator = () => {
             {(currentTool === 'highlighter' ? highlighterColors : colors).map((color) => (
               <button
                 key={color}
-                className={`w-8 h-8 rounded-full border-2 transition-colors ${
+                className={`w-8 h-8 rounded-full border-2 transition-colors hover:scale-110 ${
                   brushColor === (currentTool === 'highlighter' ? color.slice(0, -2) : color)
-                    ? 'border-foreground'
-                    : 'border-muted'
+                    ? 'border-foreground scale-110'
+                    : 'border-muted hover:border-foreground/50'
                 }`}
                 style={{ backgroundColor: color }}
                 onClick={() => handleColorChange(
                   currentTool === 'highlighter' ? color.slice(0, -2) : color
                 )}
                 disabled={!isCanvasReady}
+                title={`색상: ${color}`}
               />
             ))}
           </div>
@@ -381,6 +403,20 @@ const PDFAnnotator = () => {
             </Button>
           </div>
         </Card>
+
+        {/* 상태 표시 */}
+        <Card className="p-3">
+          <div className="text-xs space-y-1">
+            <div className={`flex items-center gap-2 ${pdfUrl ? 'text-green-600' : 'text-muted-foreground'}`}>
+              <div className={`w-2 h-2 rounded-full ${pdfUrl ? 'bg-green-500' : 'bg-muted'}`}></div>
+              PDF: {pdfUrl ? '로드됨' : '없음'}
+            </div>
+            <div className={`flex items-center gap-2 ${isCanvasReady ? 'text-green-600' : 'text-muted-foreground'}`}>
+              <div className={`w-2 h-2 rounded-full ${isCanvasReady ? 'bg-green-500' : 'bg-muted'}`}></div>
+              필기: {isCanvasReady ? '준비됨' : '대기중'}
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* PDF 뷰어 및 필기 영역 */}
@@ -394,20 +430,27 @@ const PDFAnnotator = () => {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <div className="text-center">
+            <div className="text-center max-w-md">
               <Upload className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">PDF 파일을 드래그하거나</p>
-              <p className="text-muted-foreground mb-4">업로드 버튼을 클릭하세요</p>
+              <h3 className="text-lg font-medium mb-2">PDF 파일을 업로드하세요</h3>
+              <p className="text-muted-foreground mb-4">
+                파일을 드래그하여 놓거나 업로드 버튼을 클릭하세요
+              </p>
               <Button
                 onClick={() => fileInputRef.current?.click()}
                 variant="outline"
+                size="lg"
               >
+                <Upload className="w-4 h-4 mr-2" />
                 파일 선택
               </Button>
+              <p className="text-xs text-muted-foreground mt-4">
+                브라우저 기본 PDF 뷰어를 사용합니다
+              </p>
             </div>
           </div>
         ) : (
-          <div ref={containerRef} className="relative w-full h-full">
+          <div ref={containerRef} className="relative w-full h-full bg-gray-50">
             {/* 브라우저 기본 PDF 뷰어 */}
             <iframe
               ref={iframeRef}
@@ -416,14 +459,20 @@ const PDFAnnotator = () => {
               title="PDF 뷰어"
               onLoad={() => {
                 console.log('PDF iframe 로드 완료');
-                setTimeout(resizeCanvas, 100);
+                setTimeout(() => {
+                  resizeCanvas();
+                }, 500);
+              }}
+              onError={(e) => {
+                console.error('PDF iframe 로드 실패:', e);
+                toast.error('PDF를 표시할 수 없습니다. 브라우저에서 PDF 뷰어를 지원하지 않을 수 있습니다.');
               }}
             />
             
             {/* 투명 필기 캔버스 오버레이 */}
             <canvas
               ref={canvasRef}
-              className="absolute top-0 left-0 pointer-events-auto"
+              className="absolute top-0 left-0 pointer-events-auto cursor-crosshair"
               style={{
                 zIndex: 10,
                 backgroundColor: 'transparent'
@@ -431,11 +480,26 @@ const PDFAnnotator = () => {
             />
             
             {/* 로딩 상태 표시 */}
-            {!isCanvasReady && (
+            {!isCanvasReady && pdfUrl && (
               <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
                   <p className="text-sm text-muted-foreground">필기 도구 준비 중...</p>
+                </div>
+              </div>
+            )}
+
+            {/* 도구 상태 표시 */}
+            {isCanvasReady && (
+              <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded-lg p-2 shadow-lg z-15 border">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: brushColor }}></div>
+                  <span className="font-medium">
+                    {currentTool === 'pen' ? '펜' : currentTool === 'highlighter' ? '형광펜' : '지우개'}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {brushSize[0]}px
+                  </span>
                 </div>
               </div>
             )}
