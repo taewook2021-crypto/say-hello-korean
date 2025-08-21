@@ -96,21 +96,24 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
     }
   };
 
-  const deleteNode = async () => {
+  const deleteArchive = async (archiveId: string, archiveTitle: string) => {
+    if (!confirm(`"${archiveTitle}" 아카이브를 삭제하시겠습니까?`)) {
+      return;
+    }
+
     try {
       const { error } = await supabase
-        .from('nodes')
-        .update({ is_active: false })
-        .eq('id', nodeId);
+        .from('node_archives')
+        .delete()
+        .eq('id', archiveId);
 
       if (error) throw error;
       
-      toast.success('노드가 삭제되었습니다.');
-      onNodeDeleted();
-      onClose();
+      toast.success('아카이브가 삭제되었습니다.');
+      loadArchives(); // 목록 새로고침
     } catch (error) {
-      console.error('노드 삭제 실패:', error);
-      toast.error('노드 삭제에 실패했습니다.');
+      console.error('아카이브 삭제 실패:', error);
+      toast.error('아카이브 삭제에 실패했습니다.');
     }
   };
 
@@ -165,16 +168,28 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
                         })}
                       </span>
                       
-                      {archive.conversation_id && (
+                      <div className="flex gap-2">
+                        {archive.conversation_id && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => viewConversation(archive.conversation_id!)}
+                          >
+                            <Eye size={14} className="mr-1" />
+                            대화보기
+                          </Button>
+                        )}
+                        
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => viewConversation(archive.conversation_id!)}
+                          onClick={() => deleteArchive(archive.id, archive.title)}
+                          className="text-destructive hover:text-destructive"
                         >
-                          <Eye size={14} className="mr-1" />
-                          대화보기
+                          <Trash2 size={14} className="mr-1" />
+                          삭제
                         </Button>
-                      )}
+                      </div>
                     </div>
                 </Card>
               ))}
@@ -182,15 +197,7 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
           )}
         </ScrollArea>
         
-        <div className="flex justify-between items-center pt-4">
-          <Button 
-            variant="destructive" 
-            size="sm"
-            onClick={deleteNode}
-          >
-            <Trash2 size={16} className="mr-2" />
-            노드 삭제
-          </Button>
+        <div className="flex justify-end pt-4">
           <Button onClick={onClose}>닫기</Button>
         </div>
 

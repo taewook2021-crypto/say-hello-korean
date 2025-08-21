@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Plus, Archive } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Archive, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -137,6 +137,27 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     setExpandedNodes(newExpanded);
   };
 
+  const deleteNode = async (nodeId: string, nodeName: string) => {
+    if (!confirm(`"${nodeName}" 노드를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('nodes')
+        .update({ is_active: false })
+        .eq('id', nodeId);
+
+      if (error) throw error;
+      
+      toast.success('노드가 삭제되었습니다.');
+      onNodeDeleted();
+    } catch (error) {
+      console.error('노드 삭제 실패:', error);
+      toast.error('노드 삭제에 실패했습니다.');
+    }
+  };
+
   const renderNode = (node: Node, level: number = 0) => {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedNodes.has(node.id);
@@ -175,6 +196,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 Archive
               </Button>
               
+              {/* + 버튼 */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -194,6 +216,16 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* - 버튼 (노드 삭제) */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => deleteNode(node.id, node.name)}
+                className="h-8 px-2 text-destructive hover:text-destructive"
+              >
+                <Minus size={14} />
+              </Button>
             </div>
           </div>
         </Card>
