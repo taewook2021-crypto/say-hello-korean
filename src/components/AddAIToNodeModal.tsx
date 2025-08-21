@@ -154,19 +154,7 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
   };
 
   const copyPromptToClipboard = async () => {
-    const promptText = `학습 내용을 다음 두 가지 형태로 동시에 정리해주세요:
-
-## 정리
-[학습한 내용을 체계적으로 정리: 제목, 소제목, 핵심 개념, 상세 설명]
-
-## Q&A
-Q. 질문내용
-A. 답변내용
-
-Q. 다음 질문  
-A. 다음 답변
-
-이렇게 하면 이해(정리글)와 암기(Q&A)를 동시에 지원할 수 있습니다.`;
+    const promptText = "평문만 주세요(마크다운 금지). 아래 형식 그대로:\n1. 정리(제목/소제목/핵심 개념/상세 설명/체크리스트/기록 팁)\n2. Q&A(각 줄 Q./A.로 시작)\n하이픈(-), 숫자만 사용. '**', '_', '`', '#', '[]', '()' 등 금지.\n결과는 START~END 사이에만 작성.\n===START===\n===END===";
 
     try {
       await navigator.clipboard.writeText(promptText);
