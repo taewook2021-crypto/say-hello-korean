@@ -557,6 +557,36 @@ export type Database = {
         }
         Relationships: []
       }
+      summaries: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          structure_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          structure_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          structure_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       wrong_notes: {
         Row: {
           book_name: string

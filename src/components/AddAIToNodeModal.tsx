@@ -12,7 +12,7 @@ import { Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { parseAROFormat, validateParsedData } from '@/utils/aroParser';
-import { ParsePreview } from '@/components/ParsePreview';
+import { SummaryAndQAPreview } from '@/components/SummaryAndQAPreview';
 import { toast } from 'sonner';
 
 interface AddAIToNodeModalProps {
@@ -47,11 +47,11 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
       const parsed = parseAROFormat(inputText);
       const errors = validateParsedData(parsed);
       
-      if (errors.length === 0 && parsed.qaPairs && parsed.qaPairs.length > 0) {
-        setParsedData(parsed.qaPairs);
+      if (errors.length === 0 && (parsed.summary || (parsed.qaPairs && parsed.qaPairs.length > 0))) {
+        setParsedData(parsed);
         setShowPreview(true);
       } else {
-        toast.error(errors.length > 0 ? errors.join('\n') : '유효한 Q&A 형식을 찾을 수 없습니다.');
+        toast.error(errors.length > 0 ? errors.join('\n') : '유효한 정리글 또는 Q&A 형식을 찾을 수 없습니다.');
       }
     } catch (error) {
       console.error('파싱 오류:', error);
@@ -78,36 +78,65 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
 
       if (convError) throw convError;
 
-      // 2. Q&A 쌍 저장
-      const qaInserts = parsedData.map((qa: any) => ({
-        conversation_id: conversation.id,
-        q_text: qa.question,
-        a_text: qa.answer,
-        tags: qa.tags,
-        difficulty: qa.level || 'basic',
-        importance: 'medium'
-      }));
+      let savedItemsCount = 0;
 
-      const { error: qaError } = await supabase
-        .from('qa_pairs')
-        .insert(qaInserts);
+      // 2. 정리글 저장 (있는 경우)
+      if (parsedData.summary) {
+        const { error: summaryError } = await supabase
+          .from('summaries')
+          .insert({
+            conversation_id: conversation.id,
+            title: parsedData.summary.title,
+            content: parsedData.summary.content,
+            structure_type: parsedData.summary.structure_type
+          });
 
-      if (qaError) throw qaError;
+        if (summaryError) throw summaryError;
+        savedItemsCount += 1;
+      }
 
-      // 3. 노드 아카이브에 추가
+      // 3. Q&A 쌍 저장 (있는 경우)
+      if (parsedData.qaPairs && parsedData.qaPairs.length > 0) {
+        const qaInserts = parsedData.qaPairs.map((qa: any) => ({
+          conversation_id: conversation.id,
+          q_text: qa.question,
+          a_text: qa.answer,
+          tags: qa.tags,
+          difficulty: qa.level || 'basic',
+          importance: 'medium'
+        }));
+
+        const { error: qaError } = await supabase
+          .from('qa_pairs')
+          .insert(qaInserts);
+
+        if (qaError) throw qaError;
+        savedItemsCount += parsedData.qaPairs.length;
+      }
+
+      // 4. 노드 아카이브에 추가
+      let contentSummary = '';
+      if (parsedData.summary && parsedData.qaPairs?.length > 0) {
+        contentSummary = `정리글 + ${parsedData.qaPairs.length}개의 Q&A`;
+      } else if (parsedData.summary) {
+        contentSummary = '학습 정리글';
+      } else if (parsedData.qaPairs?.length > 0) {
+        contentSummary = `${parsedData.qaPairs.length}개의 Q&A 쌍`;
+      }
+
       const { error: archiveError } = await supabase
         .from('node_archives')
         .insert({
           node_id: nodeId,
           conversation_id: conversation.id,
           title: archiveTitle || `AI 대화 - ${new Date().toLocaleDateString()}`,
-          content_summary: `${parsedData.length}개의 Q&A 쌍`,
+          content_summary: contentSummary,
           archive_type: 'conversation'
         });
 
       if (archiveError) throw archiveError;
 
-      toast.success(`${parsedData.length}개의 Q&A가 노드에 저장되었습니다.`);
+      toast.success(`${contentSummary}가 노드에 저장되었습니다.`);
       
       // 초기화
       setInputText('');
@@ -125,15 +154,19 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
   };
 
   const copyPromptToClipboard = async () => {
-    const promptText = `오늘 학습한 내용을 ARO에서 정리하려고 합니다. 아래 형식으로 Q&A를 정리해주세요:
+    const promptText = `학습 내용을 다음 두 가지 형태로 동시에 정리해주세요:
 
+## 정리
+[학습한 내용을 체계적으로 정리: 제목, 소제목, 핵심 개념, 상세 설명]
+
+## Q&A
 Q. 질문내용
 A. 답변내용
 
-Q. 다음 질문
+Q. 다음 질문  
 A. 다음 답변
 
-여러 개의 Q&A 쌍을 한 번에 작성해주시면 됩니다. 각 질문은 Q. 또는 Q:로, 각 답변은 A. 또는 A:로 시작해주세요.`;
+이렇게 하면 이해(정리글)와 암기(Q&A)를 동시에 지원할 수 있습니다.`;
 
     try {
       await navigator.clipboard.writeText(promptText);
@@ -187,7 +220,7 @@ A. 다음 답변
                 id="aiContent"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="AI에게 위 프롬프트를 보내고 받은 Q&A 형식 답변을 여기에 붙여넣기 하세요"
+                placeholder="AI에게 위 프롬프트를 보내고 받은 정리글과 Q&A 답변을 여기에 붙여넣기 하세요"
                 rows={12}
                 className="font-mono text-sm"
               />
@@ -200,7 +233,7 @@ A. 다음 답변
               </div>
               <p className="text-muted-foreground text-xs leading-relaxed">
                 ChatGPT, Claude, Perplexity 등 어떤 AI든 사용 가능해요!<br/>
-                모바일에서는 간단히 "ARO 정리용으로 Q&A 형태로 요약해줘"라고 요청해보세요.
+                모바일에서는 "정리글과 Q&A 카드로 동시에 만들어줘"라고 요청해보세요.
               </p>
             </div>
             
@@ -215,10 +248,10 @@ A. 다음 답변
           </div>
         ) : (
           <div className="space-y-4">
-            <ParsePreview 
-              qaPairs={parsedData} 
-              detectedFormat="qa_pattern"
-              totalCount={parsedData.length}
+            <SummaryAndQAPreview 
+              summary={parsedData.summary}
+              qaPairs={parsedData.qaPairs || []} 
+              detectedFormat={parsedData.detectedFormat}
               onSave={handleSaveToNode}
               onCancel={handleClosePreview}
             />

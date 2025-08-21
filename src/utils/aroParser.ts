@@ -7,57 +7,149 @@ export interface ParsedQA {
   level: string;
 }
 
+export interface ParsedSummary {
+  title: string;
+  content: string;
+  structure_type: string;
+}
+
 export interface ParsedConversation {
   qaPairs: ParsedQA[];
+  summary?: ParsedSummary;
   totalCount: number;
-  detectedFormat: 'aro_block' | 'qa_pattern' | 'mixed';
+  detectedFormat: string;
 }
 
 /**
- * ARO 포맷 텍스트를 파싱하여 Q&A 쌍으로 변환
- * 
- * 지원 포맷:
- * 1. ARO 블록 포맷:
- *    ###
- *    Q: 질문내용
- *    A: 답변내용
- *    TAGS: 태그1, 태그2, 태그3
- *    LEVEL: basic|intermediate|advanced
- * 
- * 2. Q&A 패턴 포맷:
- *    **Q. 질문내용?
- *    A. 답변내용
+ * ARO 포맷 텍스트를 파싱하여 정리글과 Q&A 쌍으로 변환
  */
 export const parseAROFormat = (rawText: string): ParsedConversation => {
-  // 먼저 어떤 포맷인지 감지
-  const hasAROBlocks = rawText.includes('###');
-  const hasQAPattern = /Q\.\s/.test(rawText) || /\*\*Q\.\s/.test(rawText);
+  const text = rawText.trim();
   
-  let detectedFormat: 'aro_block' | 'qa_pattern' | 'mixed' = 'aro_block';
-  if (hasQAPattern && !hasAROBlocks) {
-    detectedFormat = 'qa_pattern';
-  } else if (hasQAPattern && hasAROBlocks) {
-    detectedFormat = 'mixed';
+  if (!text) {
+    return { qaPairs: [], totalCount: 0, detectedFormat: 'empty' };
+  }
+
+  // 정리글과 Q&A 구분하기
+  const summarySection = extractSummarySection(text);
+  const qaSection = extractQASection(text);
+  
+  let summary: ParsedSummary | undefined;
+  let qaPairs: ParsedQA[] = [];
+  
+  // 정리글 파싱
+  if (summarySection) {
+    summary = parseSummarySection(summarySection);
   }
   
-  console.log(`포맷 감지: ${detectedFormat}, Q패턴: ${hasQAPattern}, ARO블록: ${hasAROBlocks}`);
-  
-  // 포맷에 따라 적절한 파서 호출
-  if (detectedFormat === 'qa_pattern') {
-    return parseQAPattern(rawText);
-  } else if (detectedFormat === 'mixed') {
-    // 혼합 포맷의 경우 두 방식 모두 시도해서 병합
-    const aroResult = parseAROBlocks(rawText);
-    const qaResult = parseQAPattern(rawText);
-    
-    return {
-      qaPairs: [...aroResult.qaPairs, ...qaResult.qaPairs],
-      totalCount: aroResult.totalCount + qaResult.totalCount,
-      detectedFormat: 'mixed'
-    };
+  // Q&A 파싱
+  if (qaSection) {
+    // ARO 블록 형식 감지 (###으로 구분된 블록들)
+    if (qaSection.includes('###')) {
+      const aroResult = parseAROBlocks(qaSection);
+      qaPairs = aroResult.qaPairs;
+    } else {
+      // 단순 Q&A 패턴 감지
+      const qaPattern = /^[Qq][\.\:]|\n[Qq][\.\:]/;
+      if (qaPattern.test(qaSection)) {
+        const qaResult = parseQAPattern(qaSection);
+        qaPairs = qaResult.qaPairs;
+      }
+    }
   } else {
-    return parseAROBlocks(rawText);
+    // 기존 로직 (Q&A만 있는 경우)
+    if (text.includes('###')) {
+      const aroResult = parseAROBlocks(text);
+      qaPairs = aroResult.qaPairs;
+    } else {
+      const qaPattern = /^[Qq][\.\:]|\n[Qq][\.\:]/;
+      if (qaPattern.test(text)) {
+        const qaResult = parseQAPattern(text);
+        qaPairs = qaResult.qaPairs;
+      }
+    }
   }
+
+  const detectedFormat = summary && qaPairs.length > 0 ? 'summary_and_qa' : 
+                        summary ? 'summary_only' : 
+                        qaPairs.length > 0 ? 'qa_only' : 'unknown';
+
+  return { 
+    qaPairs, 
+    summary,
+    totalCount: qaPairs.length, 
+    detectedFormat 
+  };
+};
+
+// 정리글 섹션 추출
+const extractSummarySection = (text: string): string | null => {
+  // "## 정리" 또는 "# 정리" 등으로 시작하는 섹션 찾기
+  const summaryMarkers = [
+    /## 정리[\s\S]*?(?=\n## Q&A|$)/i,
+    /# 정리[\s\S]*?(?=\n# Q&A|$)/i,
+    /## 요약[\s\S]*?(?=\n## Q&A|$)/i,
+    /# 요약[\s\S]*?(?=\n# Q&A|$)/i,
+    /## 학습 정리[\s\S]*?(?=\n## Q&A|$)/i,
+    /## 내용 정리[\s\S]*?(?=\n## Q&A|$)/i
+  ];
+  
+  for (const marker of summaryMarkers) {
+    const match = text.match(marker);
+    if (match) {
+      return match[0];
+    }
+  }
+  
+  // Q&A 섹션이 없다면 전체를 정리글로 간주 (Q. A. 패턴이 없는 경우)
+  const hasQAPattern = /^[Qq][\.\:]|\n[Qq][\.\:]/m.test(text);
+  if (!hasQAPattern && !text.includes('###')) {
+    return text;
+  }
+  
+  return null;
+};
+
+// Q&A 섹션 추출
+const extractQASection = (text: string): string | null => {
+  // "## Q&A" 또는 "# Q&A" 등으로 시작하는 섹션 찾기
+  const qaMarkers = [
+    /## Q&A[\s\S]*$/i,
+    /# Q&A[\s\S]*$/i,
+    /## 문제[\s\S]*$/i,
+    /## 퀴즈[\s\S]*$/i
+  ];
+  
+  for (const marker of qaMarkers) {
+    const match = text.match(marker);
+    if (match) {
+      return match[0];
+    }
+  }
+  
+  // Q&A 패턴이 있으면 해당 부분을 반환
+  const hasQAPattern = /^[Qq][\.\:]|\n[Qq][\.\:]/m.test(text);
+  if (hasQAPattern || text.includes('###')) {
+    return text;
+  }
+  
+  return null;
+};
+
+// 정리글 파싱
+const parseSummarySection = (summaryText: string): ParsedSummary => {
+  const cleanText = summaryText.replace(/^##?\s*(정리|요약|학습\s*정리|내용\s*정리)?\s*/i, '').trim();
+  
+  // 제목 추출 (첫 번째 # 헤딩 또는 첫 번째 줄)
+  const titleMatch = cleanText.match(/^#\s*(.+)/m);
+  const title = titleMatch ? titleMatch[1].trim() : 
+                cleanText.split('\n')[0].trim() || '학습 정리';
+  
+  return {
+    title,
+    content: cleanText,
+    structure_type: 'markdown'
+  };
 };
 
 /**
@@ -82,13 +174,12 @@ function parseQAPattern(rawText: string): ParsedConversation {
       if (sectionMatch) {
         currentSection = sectionMatch[1].trim();
         sectionTags = [currentSection];
-        console.log(`섹션 감지: ${currentSection}`);
       }
       continue;
     }
     
     // Q. 패턴 찾기
-    const questionMatch = line.match(/Q\.\s*(.+?)(?:\s+A\.\s*(.+))?$/);
+    const questionMatch = line.match(/[Qq][\.\:]\s*(.+?)(?:\s+[Aa][\.\:]\s*(.+))?$/);
     if (questionMatch) {
       const question = questionMatch[1].trim();
       let answer = questionMatch[2] ? questionMatch[2].trim() : '';
@@ -99,7 +190,7 @@ function parseQAPattern(rawText: string): ParsedConversation {
           const nextLine = lines[j].trim();
           if (!nextLine) continue;
           
-          const answerMatch = nextLine.match(/A\.\s*(.+)$/);
+          const answerMatch = nextLine.match(/[Aa][\.\:]\s*(.+)$/);
           if (answerMatch) {
             answer = answerMatch[1].trim();
             i = j; // 인덱스 업데이트
@@ -107,7 +198,7 @@ function parseQAPattern(rawText: string): ParsedConversation {
           }
           
           // 다음 Q.가 나오면 중단
-          if (nextLine.match(/Q\.\s/)) {
+          if (nextLine.match(/[Qq][\.\:]\s/)) {
             break;
           }
         }
@@ -121,12 +212,9 @@ function parseQAPattern(rawText: string): ParsedConversation {
           tags: [...sectionTags],
           level: 'basic'
         });
-        console.log(`Q&A 추출: "${question}" -> "${answer}"`);
       }
     }
   }
-  
-  console.log(`Q&A 패턴 파싱 완료: ${qaPairs.length}개 추출`);
   
   return {
     qaPairs,
@@ -265,18 +353,20 @@ function saveField(
 export const validateParsedData = (parsed: ParsedConversation): string[] => {
   const errors: string[] = [];
   
-  if (parsed.qaPairs.length === 0) {
-    errors.push("유효한 Q&A 쌍이 발견되지 않았습니다.");
+  if (!parsed.summary && (!parsed.qaPairs || parsed.qaPairs.length === 0)) {
+    errors.push('정리글 또는 Q&A 중 하나는 있어야 합니다.');
   }
   
-  parsed.qaPairs.forEach((qa, index) => {
-    if (!qa.question.trim()) {
-      errors.push(`${index + 1}번째 블록: 질문이 비어있습니다.`);
-    }
-    if (!qa.answer.trim()) {
-      errors.push(`${index + 1}번째 블록: 답변이 비어있습니다.`);
-    }
-  });
+  if (parsed.qaPairs) {
+    parsed.qaPairs.forEach((qa, index) => {
+      if (!qa.question || qa.question.trim() === '') {
+        errors.push(`${index + 1}번째 질문이 비어있습니다.`);
+      }
+      if (!qa.answer || qa.answer.trim() === '') {
+        errors.push(`${index + 1}번째 답변이 비어있습니다.`);
+      }
+    });
+  }
   
   return errors;
 };
