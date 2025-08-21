@@ -2,26 +2,23 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuthMock';
 
 export const TestDataButton: React.FC = () => {
   const { user } = useAuth();
 
   const createTestData = async () => {
-    if (!user) {
-      toast.error('로그인이 필요합니다.');
-      return;
-    }
-
+    const mockUserId = 'ebcc4eaf-7b16-4a2b-b3ab-4105ba5ff92c';
+    
     console.log('=== 테스트 데이터 생성 시작 ===');
-    console.log('현재 사용자 ID:', user.id);
+    console.log('현재 사용자 ID (임시):', mockUserId);
 
     try {
       // 1. 테스트 대화 생성
       const testConversationData = {
         subject: '테스트 대화',
         raw_text: '이것은 테스트용 대화입니다.',
-        user_id: user.id,
+        user_id: mockUserId,
         lang: 'ko'
       };
 
@@ -95,29 +92,18 @@ export const TestDataButton: React.FC = () => {
     console.log('=== 사용자 인증 상태 확인 ===');
     
     try {
-      // 1. useAuth에서 가져온 사용자 정보
-      console.log('1. useAuth에서 가져온 사용자:', user);
+      // 1. useAuth에서 가져온 사용자 정보 (임시 mock)
+      console.log('1. useAuth에서 가져온 사용자 (임시):', user);
       
-      // 2. Supabase에서 직접 가져온 사용자 정보
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      console.log('2. supabase.auth.getUser() 결과:', { authUser, authError });
-      
-      // 3. 현재 세션 정보
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('3. 현재 세션:', { session, sessionError });
-      
-      if (!authUser) {
-        console.error('❌ 사용자가 로그인되어 있지 않음');
-        toast.error('로그인이 필요합니다.');
-        return;
-      }
+      const mockUserId = 'ebcc4eaf-7b16-4a2b-b3ab-4105ba5ff92c';
+      console.log('2. 사용할 사용자 ID (임시):', mockUserId);
 
       // 4. 해당 사용자 ID로 저장된 모든 대화 조회
-      console.log('4. 사용자 ID로 대화 조회:', authUser.id);
+      console.log('4. 사용자 ID로 대화 조회:', mockUserId);
       const { data: allConversations, error: allError } = await supabase
         .from('conversations')
         .select('*')
-        .eq('user_id', authUser.id)
+        .eq('user_id', mockUserId)
         .order('created_at', { ascending: false })
         .limit(5);
 

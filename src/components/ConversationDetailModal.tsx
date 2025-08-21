@@ -70,10 +70,9 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
     
     setLoading(true);
     try {
-      // 현재 사용자 정보 확인
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('현재 로그인 사용자:', user?.id);
-      if (userError) console.error('사용자 정보 조회 오류:', userError);
+      // 현재 사용자 정보 확인 (임시로 고정값 사용)
+      const mockUserId = 'ebcc4eaf-7b16-4a2b-b3ab-4105ba5ff92c';
+      console.log('현재 사용자 ID (임시):', mockUserId);
 
       // 먼저 node_archives에서 해당 conversation_id가 있는지 확인
       console.log('1. node_archives에서 conversation 확인...');

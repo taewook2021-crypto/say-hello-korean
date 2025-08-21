@@ -5,12 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { TestDataButton } from "@/components/TestDataButton";
-import Landing from "./pages/Landing";
+import Home from "./pages/Home";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
-import Home from "./pages/Home";
-import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
@@ -31,8 +29,7 @@ const App = () => (
           <TestDataButton />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<Home />} />
               <Route path="/home" element={<Home />} />
               <Route path="/account" element={<Account />} />
               <Route path="/subject/:subjectName" element={<Subject />} />
