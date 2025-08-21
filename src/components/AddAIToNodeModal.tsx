@@ -62,59 +62,98 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
   const handleSaveToNode = async () => {
     if (!parsedData || !user) return;
 
+    console.log('=== 저장 과정 시작 ===');
+    console.log('사용자 ID:', user.id);
+    console.log('노드 ID:', nodeId);
+    console.log('파싱된 데이터:', parsedData);
+
     setIsLoading(true);
     try {
       // 1. 대화 생성
+      console.log('1. 대화 생성 중...');
+      const conversationData = {
+        subject: nodeName,
+        raw_text: inputText,
+        user_id: user.id,
+        lang: 'ko'
+      };
+      console.log('대화 데이터:', conversationData);
+
       const { data: conversation, error: convError } = await supabase
         .from('conversations')
-        .insert({
-          subject: nodeName,
-          raw_text: inputText,
-          user_id: user.id,
-          lang: 'ko'
-        })
+        .insert(conversationData)
         .select()
         .single();
 
-      if (convError) throw convError;
+      if (convError) {
+        console.error('대화 생성 실패:', convError);
+        throw convError;
+      }
 
+      console.log('✅ 대화 생성 성공:', conversation);
       let savedItemsCount = 0;
 
       // 2. 정리글 저장 (있는 경우)
       if (parsedData.summary) {
-        const { error: summaryError } = await supabase
-          .from('summaries')
-          .insert({
-            conversation_id: conversation.id,
-            title: parsedData.summary.title,
-            content: parsedData.summary.content,
-            structure_type: parsedData.summary.structure_type
-          });
+        console.log('2. 정리글 저장 중...');
+        const summaryData = {
+          conversation_id: conversation.id,
+          title: parsedData.summary.title,
+          content: parsedData.summary.content,
+          structure_type: parsedData.summary.structure_type || 'plain'
+        };
+        console.log('정리글 데이터:', summaryData);
 
-        if (summaryError) throw summaryError;
+        const { data: summaryResult, error: summaryError } = await supabase
+          .from('summaries')
+          .insert(summaryData)
+          .select();
+
+        if (summaryError) {
+          console.error('정리글 저장 실패:', summaryError);
+          throw summaryError;
+        }
+
+        console.log('✅ 정리글 저장 성공:', summaryResult);
         savedItemsCount += 1;
+      } else {
+        console.log('2. 정리글 없음 - 건너뛰기');
       }
 
       // 3. Q&A 쌍 저장 (있는 경우)
       if (parsedData.qaPairs && parsedData.qaPairs.length > 0) {
-        const qaInserts = parsedData.qaPairs.map((qa: any) => ({
-          conversation_id: conversation.id,
-          q_text: qa.question,
-          a_text: qa.answer,
-          tags: qa.tags,
-          difficulty: qa.level || 'basic',
-          importance: 'medium'
-        }));
+        console.log('3. Q&A 쌍 저장 중...');
+        const qaInserts = parsedData.qaPairs.map((qa: any, index: number) => {
+          const qaData = {
+            conversation_id: conversation.id,
+            q_text: qa.question,
+            a_text: qa.answer,
+            tags: qa.tags || [],
+            difficulty: qa.level || 'basic',
+            importance: 'medium'
+          };
+          console.log(`Q&A ${index + 1} 데이터:`, qaData);
+          return qaData;
+        });
 
-        const { error: qaError } = await supabase
+        const { data: qaResults, error: qaError } = await supabase
           .from('qa_pairs')
-          .insert(qaInserts);
+          .insert(qaInserts)
+          .select();
 
-        if (qaError) throw qaError;
+        if (qaError) {
+          console.error('Q&A 저장 실패:', qaError);
+          throw qaError;
+        }
+
+        console.log('✅ Q&A 저장 성공:', qaResults);
         savedItemsCount += parsedData.qaPairs.length;
+      } else {
+        console.log('3. Q&A 없음 - 건너뛰기');
       }
 
       // 4. 노드 아카이브에 추가
+      console.log('4. 노드 아카이브 생성 중...');
       let contentSummary = '';
       if (parsedData.summary && parsedData.qaPairs?.length > 0) {
         contentSummary = `정리글 + ${parsedData.qaPairs.length}개의 Q&A`;
@@ -124,17 +163,28 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
         contentSummary = `${parsedData.qaPairs.length}개의 Q&A 쌍`;
       }
 
-      const { error: archiveError } = await supabase
-        .from('node_archives')
-        .insert({
-          node_id: nodeId,
-          conversation_id: conversation.id,
-          title: archiveTitle || `AI 대화 - ${new Date().toLocaleDateString()}`,
-          content_summary: contentSummary,
-          archive_type: 'conversation'
-        });
+      const archiveData = {
+        node_id: nodeId,
+        conversation_id: conversation.id,
+        title: archiveTitle || `AI 대화 - ${new Date().toLocaleDateString()}`,
+        content_summary: contentSummary,
+        archive_type: 'conversation'
+      };
+      console.log('아카이브 데이터:', archiveData);
 
-      if (archiveError) throw archiveError;
+      const { data: archiveResult, error: archiveError } = await supabase
+        .from('node_archives')
+        .insert(archiveData)
+        .select();
+
+      if (archiveError) {
+        console.error('아카이브 저장 실패:', archiveError);
+        throw archiveError;
+      }
+
+      console.log('✅ 아카이브 저장 성공:', archiveResult);
+      console.log('=== 저장 과정 완료 ===');
+      console.log(`총 저장된 항목: ${savedItemsCount}개`);
 
       toast.success(`${contentSummary}가 노드에 저장되었습니다.`);
       
@@ -146,7 +196,7 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
       onContentAdded();
       onClose();
     } catch (error) {
-      console.error('저장 실패:', error);
+      console.error('❌ 저장 실패:', error);
       toast.error('AI 대화 저장에 실패했습니다.');
     } finally {
       setIsLoading(false);

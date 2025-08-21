@@ -52,6 +52,9 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
   }, [isOpen, nodeId]);
 
   const loadArchives = async () => {
+    console.log('=== 아카이브 목록 불러오기 ===');
+    console.log('노드 ID:', nodeId);
+    
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -60,7 +63,13 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
         .eq('node_id', nodeId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ 아카이브 조회 오류:', error);
+        throw error;
+      }
+      
+      console.log('✅ 아카이브 목록 조회 성공:', data);
+      console.log(`- 총 ${data?.length || 0}개의 아카이브 발견`);
       setArchives(data || []);
     } catch (error) {
       console.error('아카이브 로딩 실패:', error);
@@ -118,6 +127,10 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
   };
 
   const viewConversation = (conversationId: string) => {
+    console.log('=== 대화보기 클릭 ===');
+    console.log('선택된 conversation ID:', conversationId);
+    console.log('해당 아카이브 정보:', archives.find(a => a.conversation_id === conversationId));
+    
     setSelectedConversationId(conversationId);
     setShowConversationDetail(true);
   };

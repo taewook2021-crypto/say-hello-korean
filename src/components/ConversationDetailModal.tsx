@@ -62,8 +62,26 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
   }, [isOpen, conversationId]);
 
   const loadConversation = async () => {
+    console.log('=== 대화 불러오기 시작 ===');
+    console.log('conversation ID:', conversationId);
+    
     setLoading(true);
     try {
+      // 먼저 node_archives에서 해당 conversation_id가 있는지 확인
+      console.log('1. node_archives에서 conversation 확인...');
+      const { data: archiveData, error: archiveError } = await supabase
+        .from('node_archives')
+        .select('*')
+        .eq('conversation_id', conversationId);
+
+      if (archiveError) {
+        console.error('아카이브 조회 오류:', archiveError);
+      } else {
+        console.log('아카이브 데이터:', archiveData);
+      }
+
+      // 대화 데이터 조회
+      console.log('2. 대화 데이터 조회 중...');
       const { data, error } = await supabase
         .from('conversations')
         .select(`
@@ -74,16 +92,27 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
         .eq('id', conversationId)
         .maybeSingle();
 
+      console.log('조회 쿼리 결과:', { data, error });
+
       if (error) {
-        console.error('대화 조회 오류:', error);
+        console.error('❌ 대화 조회 오류:', error);
+        if (error.code === 'PGRST116') {
+          console.log('오류 원인: 해당 ID의 대화를 찾을 수 없음');
+          setConversation(null);
+          return;
+        }
         throw error;
       }
       
       if (!data) {
-        console.log('대화를 찾을 수 없음:', conversationId);
+        console.log('❌ 대화 데이터 없음 - conversation_id가 존재하지 않거나 접근 권한이 없음');
         setConversation(null);
         return;
       }
+
+      console.log('✅ 대화 데이터 조회 성공:', data);
+      console.log('- 정리글 개수:', data.summaries?.length || 0);
+      console.log('- Q&A 개수:', data.qa_pairs?.length || 0);
       
       // 데이터 구조 정리
       const conversation: Conversation = {
@@ -95,10 +124,23 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
         summaries: Array.isArray(data.summaries) ? data.summaries : []
       };
       
+      console.log('✅ 최종 conversation 객체:', conversation);
+      console.log('=== 대화 불러오기 완료 ===');
       setConversation(conversation);
     } catch (error) {
-      console.error('대화 로딩 실패:', error);
-      toast.error('대화를 불러오는데 실패했습니다.');
+      console.error('❌ 대화 로딩 실패:', error);
+      let errorMessage = '대화를 불러오는데 실패했습니다.';
+      
+      if (error?.code === 'PGRST116') {
+        errorMessage = '해당 대화를 찾을 수 없습니다.';
+      } else if (error?.code === 'PGRST301') {
+        errorMessage = '대화에 접근할 권한이 없습니다.';
+      } else if (error?.message?.includes('network')) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      }
+      
+      console.log('사용자에게 표시할 오류:', errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
