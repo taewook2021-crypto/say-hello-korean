@@ -22,10 +22,11 @@ interface WrongNote {
 
 interface SubjectiveQuizProps {
   notes: WrongNote[];
+  aiCards?: any[]; // 임시로 any 사용 (추후 확장 가능)
   onComplete: () => void;
 }
 
-export function SubjectiveQuiz({ notes, onComplete }: SubjectiveQuizProps) {
+export function SubjectiveQuiz({ notes, aiCards = [], onComplete }: SubjectiveQuizProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState<string>("");
   const [showAnswer, setShowAnswer] = useState(false);

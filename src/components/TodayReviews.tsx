@@ -12,15 +12,20 @@ import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 
 interface ReviewItem {
   id: string;
-  wrong_note_id: string;
+  wrong_note_id?: string; // optional for AI cards
+  card_id?: string; // optional for AI cards
   next_review_date: string;
   review_count: number;
   interval_days: number;
   question: string;
   correct_answer: string;
   subject_name: string;
-  book_name: string;
-  chapter_name: string;
+  book_name?: string; // optional for AI cards
+  chapter_name?: string; // optional for AI cards
+  source_type: 'wrong_note' | 'ai_card'; // 구분자
+  ease_factor?: number; // for AI cards
+  tags?: string[]; // for AI cards
+  difficulty?: string; // for AI cards
 }
 
 interface WrongNote {
@@ -35,6 +40,25 @@ interface WrongNote {
   is_resolved: boolean;
 }
 
+interface AICard {
+  id: string;
+  front: string;
+  back: string;
+  next_review_date: string;
+  ease_factor: number;
+  interval_days: number;
+  reviewed_count: number;
+  qa_pairs: {
+    q_text: string;
+    a_text: string;
+    tags: string[];
+    difficulty: string;
+    conversations: {
+      subject: string;
+    };
+  };
+}
+
 export function TodayReviews() {
   const [todayReviews, setTodayReviews] = useState<ReviewItem[]>([]);
   const [upcomingReviews, setUpcomingReviews] = useState<ReviewItem[]>([]);
@@ -42,6 +66,7 @@ export function TodayReviews() {
   const [studyMode, setStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
   const [showStudyModeSelector, setShowStudyModeSelector] = useState(false);
   const [reviewNotes, setReviewNotes] = useState<WrongNote[]>([]);
+  const [aiCards, setAiCards] = useState<AICard[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,8 +85,15 @@ export function TodayReviews() {
       const nextWeek = new Date(today);
       nextWeek.setDate(nextWeek.getDate() + 7);
 
-      // 오늘 복습할 문제들 (현재 시간 이전 또는 오늘 안에 예정된 것들)
-      const { data: todayData, error: todayError } = await supabase
+      // 현재 사용자 확인
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      // 1. 기존 wrong_notes 기반 복습 데이터
+      const { data: todayWrongNotesData, error: todayWrongNotesError } = await supabase
         .from('review_schedule')
         .select(`
           id,
@@ -80,10 +112,37 @@ export function TodayReviews() {
         .lte('next_review_date', today.toISOString())
         .eq('is_completed', false);
 
-      if (todayError) throw todayError;
+      if (todayWrongNotesError) throw todayWrongNotesError;
 
-      // 향후 7일간 복습할 문제들
-      const { data: upcomingData, error: upcomingError } = await supabase
+      // 2. 새로운 AI cards 기반 복습 데이터
+      const { data: todayAICardsData, error: todayAICardsError } = await supabase
+        .from('cards')
+        .select(`
+          id,
+          front,
+          back,
+          next_review_date,
+          ease_factor,
+          interval_days,
+          reviewed_count,
+          qa_pairs!inner (
+            q_text,
+            a_text,
+            tags,
+            difficulty,
+            conversations!inner (
+              subject,
+              user_id
+            )
+          )
+        `)
+        .lte('next_review_date', today.toISOString())
+        .eq('qa_pairs.conversations.user_id', user.id);
+
+      if (todayAICardsError) throw todayAICardsError;
+
+      // 3. 향후 7일간 복습할 문제들 (기존 wrong_notes)
+      const { data: upcomingWrongNotesData, error: upcomingWrongNotesError } = await supabase
         .from('review_schedule')
         .select(`
           id,
@@ -104,9 +163,39 @@ export function TodayReviews() {
         .eq('is_completed', false)
         .order('next_review_date', { ascending: true });
 
-      if (upcomingError) throw upcomingError;
+      if (upcomingWrongNotesError) throw upcomingWrongNotesError;
 
-      const formatReviewData = (data: any[]): ReviewItem[] => {
+      // 4. 향후 7일간 복습할 AI 카드들
+      const { data: upcomingAICardsData, error: upcomingAICardsError } = await supabase
+        .from('cards')
+        .select(`
+          id,
+          front,
+          back,
+          next_review_date,
+          ease_factor,
+          interval_days,
+          reviewed_count,
+          qa_pairs!inner (
+            q_text,
+            a_text,
+            tags,
+            difficulty,
+            conversations!inner (
+              subject,
+              user_id
+            )
+          )
+        `)
+        .gt('next_review_date', today.toISOString())
+        .lte('next_review_date', nextWeek.toISOString())
+        .eq('qa_pairs.conversations.user_id', user.id)
+        .order('next_review_date', { ascending: true });
+
+      if (upcomingAICardsError) throw upcomingAICardsError;
+
+      // 데이터 포맷팅 함수들
+      const formatWrongNotesData = (data: any[]): ReviewItem[] => {
         return data.map(item => ({
           id: item.id,
           wrong_note_id: item.wrong_note_id,
@@ -118,11 +207,42 @@ export function TodayReviews() {
           subject_name: item.wrong_notes.subject_name,
           book_name: item.wrong_notes.book_name,
           chapter_name: item.wrong_notes.chapter_name,
+          source_type: 'wrong_note' as const,
         }));
       };
 
-      setTodayReviews(formatReviewData(todayData || []));
-      setUpcomingReviews(formatReviewData(upcomingData || []));
+      const formatAICardsData = (data: any[]): ReviewItem[] => {
+        return data.map(item => ({
+          id: item.id,
+          card_id: item.id,
+          next_review_date: item.next_review_date,
+          review_count: item.reviewed_count,
+          interval_days: item.interval_days,
+          question: item.front,
+          correct_answer: item.back,
+          subject_name: item.qa_pairs.conversations.subject,
+          source_type: 'ai_card' as const,
+          ease_factor: item.ease_factor,
+          tags: item.qa_pairs.tags,
+          difficulty: item.qa_pairs.difficulty,
+        }));
+      };
+
+      // 오늘 복습할 항목들 (기존 + AI 카드 통합)
+      const todayWrongNotesFormatted = formatWrongNotesData(todayWrongNotesData || []);
+      const todayAICardsFormatted = formatAICardsData(todayAICardsData || []);
+      const allTodayReviews = [...todayWrongNotesFormatted, ...todayAICardsFormatted];
+
+      // 향후 복습할 항목들 (기존 + AI 카드 통합)
+      const upcomingWrongNotesFormatted = formatWrongNotesData(upcomingWrongNotesData || []);
+      const upcomingAICardsFormatted = formatAICardsData(upcomingAICardsData || []);
+      const allUpcomingReviews = [...upcomingWrongNotesFormatted, ...upcomingAICardsFormatted];
+
+      // 날짜순 정렬
+      allUpcomingReviews.sort((a, b) => new Date(a.next_review_date).getTime() - new Date(b.next_review_date).getTime());
+
+      setTodayReviews(allTodayReviews);
+      setUpcomingReviews(allUpcomingReviews);
 
     } catch (error) {
       console.error('Error loading reviews:', error);
@@ -133,17 +253,51 @@ export function TodayReviews() {
 
   const startQuickReview = async () => {
     try {
-      // 오늘 복습할 문제들의 오답노트 정보 가져오기
-      const noteIds = todayReviews.map(review => review.wrong_note_id);
+      // 기존 오답노트와 AI 카드 분리해서 처리
+      const wrongNoteIds = todayReviews
+        .filter(review => review.source_type === 'wrong_note')
+        .map(review => review.wrong_note_id)
+        .filter(id => id !== undefined);
       
-      const { data: notes, error } = await supabase
-        .from('wrong_notes')
-        .select('*')
-        .in('id', noteIds);
+      const aiCardReviews = todayReviews
+        .filter(review => review.source_type === 'ai_card');
+
+      let notes: WrongNote[] = [];
+      let cards: AICard[] = [];
+
+      // 오답노트 데이터 가져오기
+      if (wrongNoteIds.length > 0) {
+        const { data: notesData, error: notesError } = await supabase
+          .from('wrong_notes')
+          .select('*')
+          .in('id', wrongNoteIds);
+        
+        if (notesError) throw notesError;
+        notes = notesData || [];
+      }
+
+      // AI 카드 데이터는 이미 todayReviews에 있으므로 변환만 필요
+      cards = aiCardReviews.map(review => ({
+        id: review.card_id!,
+        front: review.question,
+        back: review.correct_answer,
+        next_review_date: review.next_review_date,
+        ease_factor: review.ease_factor!,
+        interval_days: review.interval_days,
+        reviewed_count: review.review_count,
+        qa_pairs: {
+          q_text: review.question,
+          a_text: review.correct_answer,
+          tags: review.tags || [],
+          difficulty: review.difficulty || 'basic',
+          conversations: {
+            subject: review.subject_name
+          }
+        }
+      }));
       
-      if (error) throw error;
-      
-      setReviewNotes(notes || []);
+      setReviewNotes(notes);
+      setAiCards(cards);
       setShowStudyModeSelector(true);
     } catch (error) {
       console.error('Error loading review notes:', error);
@@ -205,7 +359,7 @@ export function TodayReviews() {
           <h2 className="text-lg font-semibold">빠른 복습</h2>
         </div>
         <StudyModeSelector 
-          noteCount={reviewNotes.length} 
+          noteCount={reviewNotes.length + aiCards.length} 
           onModeSelect={handleModeSelect} 
         />
       </div>
@@ -222,7 +376,11 @@ export function TodayReviews() {
           </Button>
           <h2 className="text-lg font-semibold">플래시카드 복습</h2>
         </div>
-        <FlashCard notes={reviewNotes} onComplete={handleStudyComplete} />
+        <FlashCard 
+          notes={reviewNotes} 
+          aiCards={aiCards}
+          onComplete={handleStudyComplete} 
+        />
       </div>
     );
   }
@@ -237,7 +395,11 @@ export function TodayReviews() {
           </Button>
           <h2 className="text-lg font-semibold">객관식 퀴즈</h2>
         </div>
-        <Quiz notes={reviewNotes} onComplete={handleStudyComplete} />
+        <Quiz 
+          notes={reviewNotes} 
+          aiCards={aiCards}
+          onComplete={handleStudyComplete} 
+        />
       </div>
     );
   }
@@ -252,7 +414,11 @@ export function TodayReviews() {
           </Button>
           <h2 className="text-lg font-semibold">주관식 퀴즈</h2>
         </div>
-        <SubjectiveQuiz notes={reviewNotes} onComplete={handleStudyComplete} />
+        <SubjectiveQuiz 
+          notes={reviewNotes} 
+          aiCards={aiCards}
+          onComplete={handleStudyComplete} 
+        />
       </div>
     );
   }
