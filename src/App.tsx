@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { TestDataButton } from "@/components/TestDataButton";
 import Home from "./pages/Home";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
@@ -26,7 +25,6 @@ const App = () => (
         <div className="min-h-screen">
           <Toaster />
           <Sonner />
-          <TestDataButton />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Home />} />
