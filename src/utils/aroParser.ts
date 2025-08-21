@@ -31,7 +31,7 @@ export interface ParsedConversation {
 export const parseAROFormat = (rawText: string): ParsedConversation => {
   // 먼저 어떤 포맷인지 감지
   const hasAROBlocks = rawText.includes('###');
-  const hasQAPattern = /\*\*Q\.\s/.test(rawText);
+  const hasQAPattern = /Q\.\s/.test(rawText) || /\*\*Q\.\s/.test(rawText);
   
   let detectedFormat: 'aro_block' | 'qa_pattern' | 'mixed' = 'aro_block';
   if (hasQAPattern && !hasAROBlocks) {
@@ -40,7 +40,7 @@ export const parseAROFormat = (rawText: string): ParsedConversation => {
     detectedFormat = 'mixed';
   }
   
-  console.log(`포맷 감지: ${detectedFormat}`);
+  console.log(`포맷 감지: ${detectedFormat}, Q패턴: ${hasQAPattern}, ARO블록: ${hasAROBlocks}`);
   
   // 포맷에 따라 적절한 파서 호출
   if (detectedFormat === 'qa_pattern') {
@@ -67,159 +67,94 @@ function parseQAPattern(rawText: string): ParsedConversation {
   const qaPairs: ParsedQA[] = [];
   const lines = rawText.split('\n');
   
-  let currentQuestion = '';
-  let currentAnswer = '';
   let currentSection = '';
   let sectionTags: string[] = [];
-  let isInAnswer = false;
+  let i = 0;
   
-  for (let i = 0; i < lines.length; i++) {
+  while (i < lines.length) {
     const line = lines[i].trim();
     
-    // 빈 줄은 건너뛰기
-    if (!line) continue;
+    // 빈 줄 건너뛰기
+    if (!line) {
+      i++;
+      continue;
+    }
     
-    // 섹션 제목 감지 (### 또는 ## 또는 # 로 시작)
+    // 섹션 제목 감지
     if (line.match(/^#{1,3}\s+(.+)/)) {
-      // 이전 Q&A 저장
-      if (currentQuestion && currentAnswer) {
-        qaPairs.push({
-          question: currentQuestion.trim(),
-          answer: currentAnswer.trim(),
-          tags: [...sectionTags],
-          level: 'basic'
-        });
-        currentQuestion = '';
-        currentAnswer = '';
-        isInAnswer = false;
-      }
-      
       const sectionMatch = line.match(/^#{1,3}\s+(.+)/);
       if (sectionMatch) {
         currentSection = sectionMatch[1].trim();
         sectionTags = [currentSection];
         console.log(`섹션 감지: ${currentSection}`);
       }
+      i++;
       continue;
     }
     
-    // 다양한 질문 패턴 감지
-    const questionPatterns = [
-      /^\*\*Q[.:]?\s*(.+)/i,  // **Q. 또는 **Q: 
-      /^Q[.:]?\s*(.+)/i,      // Q. 또는 Q:
-      /^질문[.:]?\s*(.+)/i,    // 질문. 또는 질문:
-      /^문제[.:]?\s*(.+)/i,    // 문제. 또는 문제:
-      /^(.+\?)\s*$/,          // 물음표로 끝나는 문장
-    ];
-    
-    let isQuestion = false;
-    let questionText = '';
-    
-    for (const pattern of questionPatterns) {
-      const match = line.match(pattern);
-      if (match) {
-        // 이전 Q&A 저장
-        if (currentQuestion && currentAnswer) {
-          qaPairs.push({
-            question: currentQuestion.trim(),
-            answer: currentAnswer.trim(),
-            tags: [...sectionTags],
-            level: 'basic'
-          });
+    // Q. 패턴으로 시작하는 질문 찾기
+    const questionMatch = line.match(/^Q\.\s*(.+)/);
+    if (questionMatch) {
+      const question = questionMatch[1].trim();
+      let answer = '';
+      
+      // 다음 줄부터 A. 패턴 찾기
+      i++;
+      while (i < lines.length) {
+        const nextLine = lines[i].trim();
+        
+        // 빈 줄이면 건너뛰기
+        if (!nextLine) {
+          i++;
+          continue;
         }
         
-        questionText = match[1].trim();
-        isQuestion = true;
-        break;
-      }
-    }
-    
-    if (isQuestion) {
-      currentQuestion = questionText;
-      currentAnswer = '';
-      isInAnswer = false;
-      continue;
-    }
-    
-    // 다양한 답변 패턴 감지
-    const answerPatterns = [
-      /^A[.:]?\s*(.+)/i,      // A. 또는 A:
-      /^답[.:]?\s*(.+)/i,      // 답. 또는 답:
-      /^답변[.:]?\s*(.+)/i,    // 답변. 또는 답변:
-      /^해답[.:]?\s*(.+)/i,    // 해답. 또는 해답:
-    ];
-    
-    let isAnswerStart = false;
-    let answerText = '';
-    
-    for (const pattern of answerPatterns) {
-      const match = line.match(pattern);
-      if (match) {
-        answerText = match[1].trim();
-        isAnswerStart = true;
-        break;
-      }
-    }
-    
-    if (isAnswerStart && currentQuestion) {
-      currentAnswer = answerText;
-      isInAnswer = true;
-      continue;
-    }
-    
-    // 질문이 있고 아직 답변이 시작되지 않았다면, 이 줄을 답변으로 간주
-    if (currentQuestion && !currentAnswer && !isInAnswer) {
-      currentAnswer = line;
-      isInAnswer = true;
-      continue;
-    }
-    
-    // 답변 연속 라인 추가
-    if (currentQuestion && isInAnswer && line) {
-      // 다음 질문이 아닌지 확인
-      let isNextQuestion = false;
-      for (const pattern of questionPatterns) {
-        if (pattern.test(line)) {
-          isNextQuestion = true;
+        // A. 패턴 찾기
+        const answerMatch = nextLine.match(/^A\.\s*(.+)/);
+        if (answerMatch) {
+          answer = answerMatch[1].trim();
+          
+          // A. 다음 줄들도 답변에 포함 (다음 Q.가 나올 때까지)
+          i++;
+          while (i < lines.length) {
+            const continueLine = lines[i].trim();
+            
+            // 다음 Q. 패턴이 나오면 중단
+            if (continueLine.match(/^Q\.\s/)) {
+              break;
+            }
+            
+            // 빈 줄이 아니면 답변에 추가
+            if (continueLine) {
+              answer += '\n' + continueLine;
+            }
+            
+            i++;
+          }
+          
+          // Q&A 쌍 저장
+          if (question && answer) {
+            qaPairs.push({
+              question: question.trim(),
+              answer: answer.trim(),
+              tags: [...sectionTags],
+              level: 'basic'
+            });
+            console.log(`Q&A 추출: Q="${question.slice(0, 20)}..." A="${answer.slice(0, 20)}..."`);
+          }
+          
+          // i는 이미 다음 Q. 위치이므로 continue로 다시 처리
           break;
         }
+        
+        i++;
       }
       
-      if (!isNextQuestion) {
-        currentAnswer += '\n' + line;
-      } else {
-        // 다음 질문이므로 현재 Q&A 저장하고 이 줄을 다시 처리
-        if (currentQuestion && currentAnswer) {
-          qaPairs.push({
-            question: currentQuestion.trim(),
-            answer: currentAnswer.trim(),
-            tags: [...sectionTags],
-            level: 'basic'
-          });
-        }
-        
-        // 이 줄을 질문으로 처리
-        for (const pattern of questionPatterns) {
-          const match = line.match(pattern);
-          if (match) {
-            currentQuestion = match[1].trim();
-            currentAnswer = '';
-            isInAnswer = false;
-            break;
-          }
-        }
-      }
+      // A.를 찾지 못한 경우에도 i를 증가시켜 무한루프 방지
+      continue;
     }
-  }
-  
-  // 마지막 Q&A 저장
-  if (currentQuestion && currentAnswer) {
-    qaPairs.push({
-      question: currentQuestion.trim(),
-      answer: currentAnswer.trim(),
-      tags: [...sectionTags],
-      level: 'basic'
-    });
+    
+    i++;
   }
   
   console.log(`Q&A 패턴 파싱 완료: ${qaPairs.length}개 추출`);
