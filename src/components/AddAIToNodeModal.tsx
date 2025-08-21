@@ -31,6 +31,7 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [inputText, setInputText] = useState('');
+  const [archiveTitle, setArchiveTitle] = useState('');
   const [parsedData, setParsedData] = useState<any>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,7 +99,7 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
         .insert({
           node_id: nodeId,
           conversation_id: conversation.id,
-          title: `AI 대화 - ${new Date().toLocaleDateString()}`,
+          title: archiveTitle || `AI 대화 - ${new Date().toLocaleDateString()}`,
           content_summary: `${parsedData.length}개의 Q&A 쌍`,
           archive_type: 'conversation'
         });
@@ -109,6 +110,7 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
       
       // 초기화
       setInputText('');
+      setArchiveTitle('');
       setParsedData(null);
       setShowPreview(false);
       onContentAdded();
@@ -137,6 +139,18 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
         
         {!showPreview ? (
           <div className="space-y-4">
+            <div>
+              <Label htmlFor="archiveTitle">아카이브 제목</Label>
+              <input
+                id="archiveTitle"
+                type="text"
+                value={archiveTitle}
+                onChange={(e) => setArchiveTitle(e.target.value)}
+                placeholder="아카이브 제목을 입력하세요 (선택사항)"
+                className="w-full p-2 border border-input bg-background rounded-md"
+              />
+            </div>
+            
             <div>
               <Label htmlFor="aiContent">AI 대화 내용</Label>
               <Textarea
