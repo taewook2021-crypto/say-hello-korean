@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuthMock";
 import { useNavigate } from "react-router-dom";
 import { NodeTree } from "@/components/NodeTree";
 import { CreateNodeModal } from "@/components/CreateNodeModal";
@@ -54,10 +54,11 @@ const Home = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  if (!user) {
-    navigate('/auth');
-    return null;
-  }
+  // 임시로 인증 체크 비활성화
+  // if (!user) {
+  //   navigate('/auth');
+  //   return null;
+  // }
 
   return (
     <div className="min-h-screen bg-background">
