@@ -1,5 +1,5 @@
 import { useProfile } from "@/hooks/useProfile";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuthMock";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Mail, Calendar, Crown } from "lucide-react";

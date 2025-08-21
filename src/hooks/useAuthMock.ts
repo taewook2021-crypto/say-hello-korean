@@ -9,6 +9,7 @@ interface MockUser {
 interface MockAuthReturn {
   user: MockUser | null;
   loading: boolean;
+  signOut: () => Promise<void>;
 }
 
 export const useAuth = (): MockAuthReturn => {
@@ -18,8 +19,14 @@ export const useAuth = (): MockAuthReturn => {
     email: 'test@example.com'
   };
 
+  const signOut = async () => {
+    // 임시로 아무것도 하지 않음
+    console.log('Mock signOut called');
+  };
+
   return {
     user: mockUser,
-    loading: false
+    loading: false,
+    signOut
   };
 };
