@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageSquare, ChevronDown, ChevronUp, FileText, HelpCircle } from 'lucide-react';
 
 interface QAPair {
   id: string;
@@ -192,8 +192,9 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
                   </div>
                 ) : (
                   <Card className="p-6 text-center text-muted-foreground">
-                    <p>정리글이 없습니다.</p>
-                    <p className="text-sm mt-2">Q&A 카드만 생성된 대화입니다.</p>
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">저장된 정리글이 없습니다</p>
+                    <p className="text-sm mt-2">Q&A 카드만 생성된 대화이거나 데이터가 없습니다.</p>
                   </Card>
                 )}
               </ScrollArea>
@@ -279,8 +280,9 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
                   </div>
                 ) : (
                   <Card className="p-6 text-center text-muted-foreground">
-                    <p>Q&A 카드가 없습니다.</p>
-                    <p className="text-sm mt-2">정리글만 생성된 대화입니다.</p>
+                    <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">저장된 Q&A 카드가 없습니다</p>
+                    <p className="text-sm mt-2">정리글만 생성된 대화이거나 데이터가 없습니다.</p>
                   </Card>
                 )}
               </ScrollArea>

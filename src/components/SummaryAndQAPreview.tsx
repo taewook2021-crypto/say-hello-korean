@@ -64,28 +64,30 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
       </Card>
 
       {/* 좌우 분할 레이아웃 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[60vh]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[65vh]">
         {/* 왼쪽: 정리글 */}
-        <Card className="flex flex-col">
-          <CardHeader className="pb-3">
+        <Card className="flex flex-col border-2">
+          <CardHeader className="pb-3 border-b">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="h-4 w-4" />
               학습 정리글
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 p-4 h-[50vh]">
+          <CardContent className="flex-1 p-0">
             {summary ? (
-              <ScrollArea className="h-full w-full">
-                <div className="prose prose-sm max-w-none pr-4">
-                  <h3 className="text-lg font-semibold mb-3 sticky top-0 bg-background">{summary.title}</h3>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {summary.content}
+              <div className="h-[55vh] border border-border/50 rounded-md m-3">
+                <ScrollArea className="h-full w-full">
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold mb-4 sticky top-0 bg-background border-b pb-2">{summary.title}</h3>
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed pr-4">
+                      {summary.content}
+                    </div>
                   </div>
-                </div>
-              </ScrollArea>
+                </ScrollArea>
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-32 text-muted-foreground">
-                <div className="text-center">
+              <div className="h-[55vh] border border-border/50 rounded-md m-3 flex items-center justify-center">
+                <div className="text-center text-muted-foreground">
                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">정리글이 없습니다</p>
                 </div>
@@ -95,62 +97,64 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
         </Card>
 
         {/* 오른쪽: Q&A 카드들 */}
-        <Card className="flex flex-col">
-          <CardHeader className="pb-3">
+        <Card className="flex flex-col border-2">
+          <CardHeader className="pb-3 border-b">
             <CardTitle className="text-base flex items-center gap-2">
               <HelpCircle className="h-4 w-4" />
               Q&A 카드 ({qaPairs.length}개)
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 p-4 h-[50vh]">
+          <CardContent className="flex-1 p-0">
             {qaPairs.length > 0 ? (
-              <ScrollArea className="h-full w-full">
-                <div className="space-y-3 pr-4">
-                  {qaPairs.map((qa, index) => (
-                    <div key={index} className="border rounded-lg p-3 bg-muted/30">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm mb-1">
-                            Q{index + 1}. {qa.question}
+              <div className="h-[55vh] border border-border/50 rounded-md m-3">
+                <ScrollArea className="h-full w-full">
+                  <div className="p-4 space-y-3">
+                    {qaPairs.map((qa, index) => (
+                      <div key={index} className="border rounded-lg p-3 bg-muted/30">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm mb-1">
+                              Q{index + 1}. {qa.question}
+                            </div>
+                            
+                            {expandedCards.has(index) && (
+                              <div className="text-sm text-muted-foreground mt-2 pl-2 border-l-2 border-primary/20">
+                                {qa.answer}
+                              </div>
+                            )}
+                            
+                            {qa.tags && qa.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {qa.tags.map((tag, tagIndex) => (
+                                  <Badge key={tagIndex} variant="outline" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           
-                          {expandedCards.has(index) && (
-                            <div className="text-sm text-muted-foreground mt-2 pl-2 border-l-2 border-primary/20">
-                              {qa.answer}
-                            </div>
-                          )}
-                          
-                          {qa.tags && qa.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {qa.tags.map((tag, tagIndex) => (
-                                <Badge key={tagIndex} variant="outline" className="text-xs">
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleExpanded(index)}
+                            className="h-6 w-6 p-0 shrink-0"
+                          >
+                            {expandedCards.has(index) ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                          </Button>
                         </div>
-                        
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleExpanded(index)}
-                          className="h-6 w-6 p-0 shrink-0"
-                        >
-                          {expandedCards.has(index) ? (
-                            <ChevronUp className="h-3 w-3" />
-                          ) : (
-                            <ChevronDown className="h-3 w-3" />
-                          )}
-                        </Button>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
             ) : (
-              <div className="flex items-center justify-center h-32 text-muted-foreground">
-                <div className="text-center">
+              <div className="h-[55vh] border border-border/50 rounded-md m-3 flex items-center justify-center">
+                <div className="text-center text-muted-foreground">
                   <HelpCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Q&A 카드가 없습니다</p>
                 </div>
