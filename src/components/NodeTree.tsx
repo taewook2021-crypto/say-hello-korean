@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Plus, Archive, Eye, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -18,14 +19,16 @@ interface Node {
 
 interface NodeTreeProps {
   onAddAI: (nodeId: string) => void;
-  onViewArchives: (nodeId: string) => void;
+  onViewArchives: (nodeId: string, nodeName: string) => void;
   onCreateSubNode: (parentId: string) => void;
+  onNodeDeleted: () => void;
 }
 
 export const NodeTree: React.FC<NodeTreeProps> = ({
   onAddAI,
   onViewArchives,
-  onCreateSubNode
+  onCreateSubNode,
+  onNodeDeleted
 }) => {
   const { user } = useAuth();
   const [nodes, setNodes] = useState<Node[]>([]);
@@ -99,23 +102,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     setExpandedNodes(newExpanded);
   };
 
-  const deleteNode = async (nodeId: string) => {
-    try {
-      const { error } = await supabase
-        .from('nodes')
-        .update({ is_active: false })
-        .eq('id', nodeId);
-
-      if (error) throw error;
-      
-      toast.success('노드가 삭제되었습니다.');
-      loadNodes();
-    } catch (error) {
-      console.error('노드 삭제 실패:', error);
-      toast.error('노드 삭제에 실패했습니다.');
-    }
-  };
-
   const renderNode = (node: Node, level: number = 0) => {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedNodes.has(node.id);
@@ -147,42 +133,32 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => onViewArchives(node.id)}
+                onClick={() => onViewArchives(node.id, node.name)}
                 className="h-8 px-2"
               >
                 <Archive size={14} className="mr-1" />
-                A확인
+                Archive
               </Button>
               
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onAddAI(node.id)}
-                className="h-8 px-2"
-              >
-                <Plus size={14} className="mr-1" />
-                A+
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => deleteNode(node.id)}
-                className="h-8 px-2"
-              >
-                <Trash2 size={14} className="mr-1" />
-                A-
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onCreateSubNode(node.id)}
-                className="h-8 px-2"
-              >
-                <Eye size={14} className="mr-1" />
-                세부생성
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2"
+                  >
+                    <Plus size={14} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-background border shadow-md z-50">
+                  <DropdownMenuItem onClick={() => onAddAI(node.id)}>
+                    Archive 추가
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onCreateSubNode(node.id)}>
+                    Node 추가
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </Card>

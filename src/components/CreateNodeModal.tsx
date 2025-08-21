@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -30,7 +29,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
   const { user } = useAuth();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [nodeType, setNodeType] = useState('project');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +63,7 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
           description: description.trim() || null,
           parent_id: parentId,
           user_id: user?.id,
-          node_type: nodeType,
+          node_type: parentId ? 'node' : 'project',
           display_order: nextOrder
         });
 
@@ -74,7 +72,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
       toast.success('노드가 생성되었습니다.');
       setName('');
       setDescription('');
-      setNodeType('project');
       onNodeCreated();
       onClose();
     } catch (error) {
@@ -101,7 +98,7 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="예: 주식 투자, 영어 학습, 프로그래밍 등"
+              placeholder="예: 주식 투자, 영어 학습, 데이터 분석 등"
               required
             />
           </div>
@@ -115,21 +112,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
               placeholder="노드에 대한 간단한 설명을 입력하세요 (선택사항)"
               rows={3}
             />
-          </div>
-
-          <div>
-            <Label htmlFor="nodeType">노드 타입</Label>
-            <Select value={nodeType} onValueChange={setNodeType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="project">프로젝트</SelectItem>
-                <SelectItem value="category">카테고리</SelectItem>
-                <SelectItem value="topic">주제</SelectItem>
-                <SelectItem value="subtopic">세부 주제</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

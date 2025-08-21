@@ -31,9 +31,9 @@ const Home = () => {
     setShowAddAIModal(true);
   };
 
-  const handleViewArchives = (nodeId: string) => {
+  const handleViewArchives = (nodeId: string, nodeName: string) => {
     setSelectedNodeId(nodeId);
-    setSelectedNodeName('선택된 노드');
+    setSelectedNodeName(nodeName);
     setShowArchivesModal(true);
   };
 
@@ -47,6 +47,10 @@ const Home = () => {
   };
 
   const handleContentAdded = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleNodeDeleted = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -73,6 +77,7 @@ const Home = () => {
               onAddAI={handleAddAI}
               onViewArchives={handleViewArchives}
               onCreateSubNode={handleCreateSubNode}
+              onNodeDeleted={handleNodeDeleted}
             />
           </TabsContent>
 
@@ -94,6 +99,7 @@ const Home = () => {
           onClose={() => setShowArchivesModal(false)}
           nodeId={selectedNodeId}
           nodeName={selectedNodeName}
+          onNodeDeleted={handleNodeDeleted}
         />
 
         <AddAIToNodeModal

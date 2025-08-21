@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { Trash2 } from 'lucide-react';
 
 interface Archive {
   id: string;
@@ -28,13 +29,15 @@ interface NodeArchivesModalProps {
   onClose: () => void;
   nodeId: string;
   nodeName: string;
+  onNodeDeleted: () => void;
 }
 
 export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
   isOpen,
   onClose,
   nodeId,
-  nodeName
+  nodeName,
+  onNodeDeleted
 }) => {
   const [archives, setArchives] = useState<Archive[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,6 +90,24 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
         return '노트';
       default:
         return type;
+    }
+  };
+
+  const deleteNode = async () => {
+    try {
+      const { error } = await supabase
+        .from('nodes')
+        .update({ is_active: false })
+        .eq('id', nodeId);
+
+      if (error) throw error;
+      
+      toast.success('노드가 삭제되었습니다.');
+      onNodeDeleted();
+      onClose();
+    } catch (error) {
+      console.error('노드 삭제 실패:', error);
+      toast.error('노드 삭제에 실패했습니다.');
     }
   };
 
@@ -155,7 +176,15 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
           )}
         </ScrollArea>
         
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-between items-center pt-4">
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={deleteNode}
+          >
+            <Trash2 size={16} className="mr-2" />
+            노드 삭제
+          </Button>
           <Button onClick={onClose}>닫기</Button>
         </div>
       </DialogContent>
