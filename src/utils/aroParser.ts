@@ -145,19 +145,10 @@ const extractQASection = (text: string): string | null => {
 
 // 정리글 파싱
 const parseSummarySection = (summaryText: string): ParsedSummary => {
-  // 마크다운 특수문자 정리 및 정리글 헤더 제거
+  // 정리글 헤더만 제거하고 나머지는 원본 그대로 유지
   let cleanText = summaryText
     .replace(/^##?\s*(정리|요약|학습\s*정리|내용\s*정리)?\s*/i, '')
     .trim();
-  
-  // 마크다운 굵기/기울임꼴 문법을 일반 텍스트로 변환 (과도한 특수문자 제거)
-  cleanText = cleanText
-    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')  // ***text*** -> text
-    .replace(/\*\*(.+?)\*\*/g, '$1')      // **text** -> text  
-    .replace(/\*(.+?)\*/g, '$1')          // *text* -> text
-    .replace(/__(.+?)__/g, '$1')          // __text__ -> text
-    .replace(/_(.+?)_/g, '$1')            // _text_ -> text
-    .replace(/~~(.+?)~~/g, '$1');         // ~~text~~ -> text
   
   // 제목 추출 (첫 번째 # 헤딩 또는 첫 번째 줄)
   const titleMatch = cleanText.match(/^#\s*(.+)/m);
@@ -166,7 +157,7 @@ const parseSummarySection = (summaryText: string): ParsedSummary => {
   
   return {
     title,
-    content: cleanText,
+    content: cleanText, // 원본 텍스트 그대로 저장
     structure_type: 'markdown'
   };
 };
@@ -223,11 +214,11 @@ function parseQAPattern(rawText: string): ParsedConversation {
         }
       }
       
-      // Q&A 쌍 저장
+      // Q&A 쌍 저장 (원본 텍스트 그대로)
       if (question && answer) {
         qaPairs.push({
-          question: question,
-          answer: answer,
+          question: question, // 원본 그대로
+          answer: answer,     // 원본 그대로
           tags: [...sectionTags],
           level: 'basic'
         });
@@ -319,11 +310,11 @@ function parseAROBlocks(rawText: string): ParsedConversation {
       level = result.level;
     }
     
-    // 유효한 Q&A 쌍인지 확인
+    // 유효한 Q&A 쌍인지 확인 (원본 텍스트 그대로 저장)
     if (question.trim() && answer.trim()) {
       qaPairs.push({
-        question: question.trim(),
-        answer: answer.trim(),
+        question: question.trim(), // 앞뒤 공백만 제거
+        answer: answer.trim(),     // 앞뒤 공백만 제거
         tags,
         level
       });
