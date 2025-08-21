@@ -57,6 +57,9 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
 
   useEffect(() => {
     if (isOpen && conversationId) {
+      console.log('=== ConversationDetailModal 열림 ===');
+      console.log('props - conversationId:', conversationId);
+      console.log('props - isOpen:', isOpen);
       loadConversation();
     }
   }, [isOpen, conversationId]);
@@ -67,6 +70,11 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
     
     setLoading(true);
     try {
+      // 현재 사용자 정보 확인
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      console.log('현재 로그인 사용자:', user?.id);
+      if (userError) console.error('사용자 정보 조회 오류:', userError);
+
       // 먼저 node_archives에서 해당 conversation_id가 있는지 확인
       console.log('1. node_archives에서 conversation 확인...');
       const { data: archiveData, error: archiveError } = await supabase
@@ -80,8 +88,36 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
         console.log('아카이브 데이터:', archiveData);
       }
 
-      // 대화 데이터 조회
-      console.log('2. 대화 데이터 조회 중...');
+      // conversation만 먼저 조회
+      console.log('2. conversation 기본 정보 조회...');
+      const { data: conversationOnly, error: convOnlyError } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('id', conversationId)
+        .maybeSingle();
+
+      console.log('conversation 기본 정보:', { conversationOnly, convOnlyError });
+
+      // summaries 별도 조회
+      console.log('3. summaries 조회...');
+      const { data: summariesData, error: summariesError } = await supabase
+        .from('summaries')
+        .select('*')
+        .eq('conversation_id', conversationId);
+
+      console.log('summaries 결과:', { summariesData, summariesError });
+
+      // qa_pairs 별도 조회
+      console.log('4. qa_pairs 조회...');
+      const { data: qaPairsData, error: qaPairsError } = await supabase
+        .from('qa_pairs')
+        .select('*')
+        .eq('conversation_id', conversationId);
+
+      console.log('qa_pairs 결과:', { qaPairsData, qaPairsError });
+
+      // 대화 데이터 조회 (조인 쿼리)
+      console.log('5. 전체 조인 쿼리 실행...');
       const { data, error } = await supabase
         .from('conversations')
         .select(`
