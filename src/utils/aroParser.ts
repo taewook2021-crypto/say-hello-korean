@@ -10,19 +10,136 @@ export interface ParsedQA {
 export interface ParsedConversation {
   qaPairs: ParsedQA[];
   totalCount: number;
+  detectedFormat: 'aro_block' | 'qa_pattern' | 'mixed';
 }
 
 /**
  * ARO 포맷 텍스트를 파싱하여 Q&A 쌍으로 변환
  * 
- * 예상 포맷:
- * ###
- * Q: 질문내용
- * A: 답변내용
- * TAGS: 태그1, 태그2, 태그3
- * LEVEL: basic|intermediate|advanced
+ * 지원 포맷:
+ * 1. ARO 블록 포맷:
+ *    ###
+ *    Q: 질문내용
+ *    A: 답변내용
+ *    TAGS: 태그1, 태그2, 태그3
+ *    LEVEL: basic|intermediate|advanced
+ * 
+ * 2. Q&A 패턴 포맷:
+ *    **Q. 질문내용?
+ *    A. 답변내용
  */
 export const parseAROFormat = (rawText: string): ParsedConversation => {
+  // 먼저 어떤 포맷인지 감지
+  const hasAROBlocks = rawText.includes('###');
+  const hasQAPattern = /\*\*Q\.\s/.test(rawText);
+  
+  let detectedFormat: 'aro_block' | 'qa_pattern' | 'mixed' = 'aro_block';
+  if (hasQAPattern && !hasAROBlocks) {
+    detectedFormat = 'qa_pattern';
+  } else if (hasQAPattern && hasAROBlocks) {
+    detectedFormat = 'mixed';
+  }
+  
+  console.log(`포맷 감지: ${detectedFormat}`);
+  
+  // 포맷에 따라 적절한 파서 호출
+  if (detectedFormat === 'qa_pattern') {
+    return parseQAPattern(rawText);
+  } else if (detectedFormat === 'mixed') {
+    // 혼합 포맷의 경우 두 방식 모두 시도해서 병합
+    const aroResult = parseAROBlocks(rawText);
+    const qaResult = parseQAPattern(rawText);
+    
+    return {
+      qaPairs: [...aroResult.qaPairs, ...qaResult.qaPairs],
+      totalCount: aroResult.totalCount + qaResult.totalCount,
+      detectedFormat: 'mixed'
+    };
+  } else {
+    return parseAROBlocks(rawText);
+  }
+};
+
+/**
+ * **Q. ...? A. ... 패턴 파싱
+ */
+function parseQAPattern(rawText: string): ParsedConversation {
+  const qaPairs: ParsedQA[] = [];
+  const lines = rawText.split('\n');
+  
+  let currentQuestion = '';
+  let currentAnswer = '';
+  let currentSection = '';
+  let sectionTags: string[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // 섹션 제목 감지 (### 또는 ## 또는 # 로 시작)
+    if (line.match(/^#{1,3}\s+(.+)/)) {
+      const sectionMatch = line.match(/^#{1,3}\s+(.+)/);
+      if (sectionMatch) {
+        currentSection = sectionMatch[1].trim();
+        sectionTags = [currentSection];
+        console.log(`섹션 감지: ${currentSection}`);
+      }
+      continue;
+    }
+    
+    // 질문 감지 (**Q. 로 시작)
+    if (line.match(/^\*\*Q\.\s+(.+)/)) {
+      // 이전 Q&A 저장
+      if (currentQuestion && currentAnswer) {
+        qaPairs.push({
+          question: currentQuestion.trim(),
+          answer: currentAnswer.trim(),
+          tags: [...sectionTags],
+          level: 'basic'
+        });
+      }
+      
+      const questionMatch = line.match(/^\*\*Q\.\s+(.+)/);
+      currentQuestion = questionMatch ? questionMatch[1] : '';
+      currentAnswer = '';
+      continue;
+    }
+    
+    // 답변 시작 감지 (A. 로 시작)
+    if (line.match(/^A\.\s+(.+)/)) {
+      const answerMatch = line.match(/^A\.\s+(.+)/);
+      currentAnswer = answerMatch ? answerMatch[1] : '';
+      continue;
+    }
+    
+    // 답변 연속 라인 (질문이 설정되어 있고, A. 다음 라인들)
+    if (currentQuestion && currentAnswer && line && !line.match(/^\*\*Q\.\s/)) {
+      currentAnswer += '\n' + line;
+    }
+  }
+  
+  // 마지막 Q&A 저장
+  if (currentQuestion && currentAnswer) {
+    qaPairs.push({
+      question: currentQuestion.trim(),
+      answer: currentAnswer.trim(),
+      tags: [...sectionTags],
+      level: 'basic'
+    });
+  }
+  
+  console.log(`Q&A 패턴 파싱 완료: ${qaPairs.length}개 추출`);
+  
+  return {
+    qaPairs,
+    totalCount: qaPairs.length,
+    detectedFormat: 'qa_pattern'
+  };
+}
+
+/**
+ * 기존 ARO 블록 포맷 파싱 (### 블록)
+ */
+function parseAROBlocks(rawText: string): ParsedConversation {
   const qaPairs: ParsedQA[] = [];
   
   // ### 로 구분된 블록들을 분리
@@ -109,9 +226,10 @@ export const parseAROFormat = (rawText: string): ParsedConversation => {
   
   return {
     qaPairs,
-    totalCount: qaPairs.length
+    totalCount: qaPairs.length,
+    detectedFormat: 'aro_block'
   };
-};
+}
 
 // 필드 값을 저장하는 헬퍼 함수
 function saveField(

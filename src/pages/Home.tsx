@@ -14,7 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useProfile } from "@/hooks/useProfile";
-import { parseAROFormat, validateParsedData } from "@/utils/aroParser";
+import { parseAROFormat, validateParsedData, ParsedQA } from "@/utils/aroParser";
+import { ParsePreview } from "@/components/ParsePreview";
 import { User } from "lucide-react";
 
 const Home = () => {
@@ -57,12 +58,18 @@ const Home = () => {
   const [aiSubject, setAiSubject] = useState("");
   const [aiRawText, setAiRawText] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showParsePreview, setShowParsePreview] = useState(false);
+  const [parsedData, setParsedData] = useState<{
+    qaPairs: ParsedQA[];
+    detectedFormat: string;
+    totalCount: number;
+  } | null>(null);
   
   const { toast } = useToast();
   const { profile, isPremiumUser } = useProfile();
 
-  // AI 대화 추가 함수
-  const addAIConversation = async () => {
+  // AI 대화 파싱 프리뷰 함수
+  const handleParsePreview = async () => {
     if (!aiSubject.trim() || !aiRawText.trim()) return;
 
     try {
@@ -79,6 +86,31 @@ const Home = () => {
         return;
       }
 
+      console.log(`파싱 완료: ${parsed.detectedFormat} 포맷, ${parsed.totalCount}개 Q&A`);
+      
+      // 파싱 결과 저장하고 미리보기 표시
+      setParsedData({
+        qaPairs: parsed.qaPairs,
+        detectedFormat: parsed.detectedFormat,
+        totalCount: parsed.totalCount
+      });
+      setShowParsePreview(true);
+      
+    } catch (error) {
+      console.error('Error parsing AI conversation:', error);
+      toast({
+        title: "파싱 오류",
+        description: "텍스트 파싱에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 실제 DB 저장 함수
+  const handleSaveToDatabase = async () => {
+    if (!parsedData) return;
+
+    try {
       // 2. 현재 사용자 ID 가져오기
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -113,7 +145,7 @@ const Home = () => {
       }
 
       // 4. qa_pairs 테이블에 저장
-      const qaInserts = parsed.qaPairs.map(qa => ({
+      const qaInserts = parsedData.qaPairs.map(qa => ({
         conversation_id: conversation.id,
         q_text: qa.question,
         a_text: qa.answer,
@@ -163,26 +195,35 @@ const Home = () => {
       }
 
       toast({
-        title: "AI 대화 추가 완료! 🎉", 
-        description: `${aiSubject} 과목에 ${parsed.totalCount}개의 Q&A가 추가되었습니다.`,
+        title: "AI 대화 저장 완료! 🎉", 
+        description: `${aiSubject} 과목에 ${parsedData.totalCount}개의 Q&A가 저장되었습니다.`,
       });
       
+      // 상태 초기화
       setAiSubject("");
       setAiRawText("");
       setShowAIDialog(false);
+      setShowParsePreview(false);
+      setParsedData(null);
       
       // 화면 새로고침
       loadSubjects();
-      setRefreshTrigger(prev => prev + 1); // AI 대화 목록 새로고침
+      setRefreshTrigger(prev => prev + 1);
       
     } catch (error) {
-      console.error('Error adding AI conversation:', error);
+      console.error('Error saving to database:', error);
       toast({
         title: "오류",
-        description: "AI 대화 추가에 실패했습니다.",
+        description: "데이터베이스 저장에 실패했습니다.",
         variant: "destructive",
       });
     }
+  };
+
+  // 미리보기 취소
+  const handleCancelPreview = () => {
+    setShowParsePreview(false);
+    setParsedData(null);
   };
 
   useEffect(() => {
@@ -292,148 +333,159 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Today's Reviews */}
-        <div className="mb-8">
-          <TodayReviews />
-        </div>
+        {/* 미리보기 화면 */}
+        {showParsePreview && parsedData ? (
+          <ParsePreview
+            qaPairs={parsedData.qaPairs}
+            detectedFormat={parsedData.detectedFormat}
+            totalCount={parsedData.totalCount}
+            onSave={handleSaveToDatabase}
+            onCancel={handleCancelPreview}
+          />
+        ) : (
+          <>
+            {/* Today's Reviews */}
+            <div className="mb-8">
+              <TodayReviews />
+            </div>
 
-        {/* AI 학습 아카이브 */}
-        <div className="mb-8">
-          <AIConversationList refreshTrigger={refreshTrigger} />
-        </div>
+            {/* AI 학습 아카이브 */}
+            <div className="mb-8">
+              <AIConversationList refreshTrigger={refreshTrigger} />
+            </div>
 
-        {/* Subjects Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-          {loading ? (
-            Array.from({ length: 6 }).map((_, index) => (
-              <Card key={index} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-6 bg-muted rounded"></div>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-20 bg-muted rounded"></div>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <>
-              {subjects.map((subject) => (
-                <Card key={subject} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center justify-between text-lg">
-                      <span>{subject}</span>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleSubject(subject)}
-                        >
-                          {expandedSubject === subject ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {expandedSubject === subject && (
-                      <div className="space-y-2">
-                        {booksLoading[subject] ? (
-                          <div className="animate-pulse">
-                            <div className="h-4 bg-muted rounded mb-2"></div>
-                            <div className="h-4 bg-muted rounded"></div>
+            {/* Subjects Grid */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
+              {loading ? (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <Card key={index} className="animate-pulse">
+                    <CardHeader>
+                      <div className="h-6 bg-muted rounded"></div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-20 bg-muted rounded"></div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <>
+                  {subjects.map((subject) => (
+                    <Card key={subject} className="hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center justify-between text-lg">
+                          <span>{subject}</span>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleSubject(subject)}
+                            >
+                              {expandedSubject === subject ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
                           </div>
-                        ) : (
-                          <div className="space-y-1">
-                            {subjectBooks[subject]?.map((book) => (
-                              <div key={book}>
-                                <Link
-                                  to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
-                                  className="flex items-center justify-between p-2 rounded hover:bg-muted group"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <BookOpen className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm">{book}</span>
-                                  </div>
-                                  <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </Link>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {expandedSubject === subject && (
+                          <div className="space-y-2">
+                            {booksLoading[subject] ? (
+                              <div className="animate-pulse">
+                                <div className="h-4 bg-muted rounded mb-2"></div>
+                                <div className="h-4 bg-muted rounded"></div>
                               </div>
-                            ))}
-                            {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
-                              <p className="text-sm text-muted-foreground italic">
-                                등록된 책이 없습니다
-                              </p>
+                            ) : (
+                              <div className="space-y-1">
+                                {subjectBooks[subject]?.map((book) => (
+                                  <div key={book}>
+                                    <Link
+                                      to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
+                                      className="flex items-center justify-between p-2 rounded hover:bg-muted group"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm">{book}</span>
+                                      </div>
+                                      <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </Link>
+                                  </div>
+                                ))}
+                                {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
+                                  <p className="text-sm text-muted-foreground italic">
+                                    등록된 책이 없습니다
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  {/* Add Subject Card */}
+                  <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+                    <DialogTrigger asChild>
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer border-dashed border-2 hover:border-primary/50">
+                        <CardContent className="flex flex-col items-center justify-center h-32">
+                          <Plus className="h-8 w-8 text-muted-foreground mb-2" />
+                          <span className="text-sm text-muted-foreground">새 과목 추가</span>
+                        </CardContent>
+                      </Card>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>새 과목 추가</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Input
+                          placeholder="과목명을 입력하세요"
+                          value={newSubject}
+                          onChange={(e) => setNewSubject(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && addSubject()}
+                        />
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                            취소
+                          </Button>
+                          <Button onClick={addSubject} disabled={!newSubject.trim()}>
+                            추가
+                          </Button>
+                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </DialogContent>
+                  </Dialog>
 
-              {/* Add Subject Card */}
-              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogTrigger asChild>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer border-dashed border-2 hover:border-primary/50">
-                    <CardContent className="flex flex-col items-center justify-center h-32">
-                      <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-                      <span className="text-sm text-muted-foreground">새 과목 추가</span>
-                    </CardContent>
-                  </Card>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>새 과목 추가</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Input
-                      placeholder="과목명을 입력하세요"
-                      value={newSubject}
-                      onChange={(e) => setNewSubject(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && addSubject()}
-                    />
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                        취소
-                      </Button>
-                      <Button onClick={addSubject} disabled={!newSubject.trim()}>
-                        추가
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              {/* 🤖 AI 대화 추가 Card */}
-              <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-                <DialogTrigger asChild>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer border-dashed border-2 hover:border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
-                    <CardContent className="flex flex-col items-center justify-center h-32">
-                      <Bot className="h-8 w-8 text-blue-500 mb-2" />
-                      <span className="text-sm text-blue-600 dark:text-blue-400">🤖 AI 대화 추가</span>
-                    </CardContent>
-                  </Card>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>🤖 AI 대화 추가</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">과목명</label>
-                      <Input
-                        placeholder="과목명을 입력하세요 (예: 수학, 영어, 물리학)"
-                        value={aiSubject}
-                        onChange={(e) => setAiSubject(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">AI 대화 내용</label>
-                      <Textarea
-                        placeholder={`ARO 포맷으로 정리된 Q&A를 붙여넣어 주세요:
+                  {/* 🤖 AI 대화 추가 Card */}
+                  <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+                    <DialogTrigger asChild>
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer border-dashed border-2 hover:border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
+                        <CardContent className="flex flex-col items-center justify-center h-32">
+                          <Bot className="h-8 w-8 text-blue-500 mb-2" />
+                          <span className="text-sm text-blue-600 dark:text-blue-400">🤖 AI 대화 추가</span>
+                        </CardContent>
+                      </Card>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>🤖 AI 대화 추가</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">과목명</label>
+                          <Input
+                            placeholder="과목명을 입력하세요 (예: 수학, 영어, 물리학)"
+                            value={aiSubject}
+                            onChange={(e) => setAiSubject(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">AI 대화 내용</label>
+                          <Textarea
+                            placeholder={`ARO 포맷으로 정리된 Q&A를 붙여넣어 주세요:
 
 ###
 Q: 미적분의 기본 정리는 무엇인가요?
@@ -445,34 +497,40 @@ LEVEL: basic
 Q: 다음 질문...
 A: 답변...
 TAGS: 태그1, 태그2
-LEVEL: intermediate`}
-                        value={aiRawText}
-                        onChange={(e) => setAiRawText(e.target.value)}
-                        className="min-h-[300px] font-mono text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        💡 ChatGPT나 Claude에게 "ARO 정리용으로 Q&A 형태로 요약해줘"라고 요청한 후 붙여넣어 주세요
-                      </p>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="outline" onClick={() => setShowAIDialog(false)}>
-                        취소
-                      </Button>
-                      <Button 
-                        onClick={addAIConversation} 
-                        disabled={!aiSubject.trim() || !aiRawText.trim()}
-                        className="bg-blue-500 hover:bg-blue-600"
-                      >
-                        <Bot className="h-4 w-4 mr-2" />
-                        추가하기
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
-        </div>
+LEVEL: intermediate
+
+또는 Q&A 패턴 포맷:
+**Q. HBM이란 무엇인가?
+A. 기존 DRAM을 수직 적층해 초고속·저전력 성능을 구현한 메모리 반도체`}
+                            value={aiRawText}
+                            onChange={(e) => setAiRawText(e.target.value)}
+                            className="min-h-[300px] font-mono text-sm"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            💡 두 가지 포맷 모두 지원: ### ARO 블록 또는 **Q. A. 패턴
+                          </p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setShowAIDialog(false)}>
+                            취소
+                          </Button>
+                          <Button 
+                            onClick={handleParsePreview} 
+                            disabled={!aiSubject.trim() || !aiRawText.trim()}
+                            className="bg-blue-500 hover:bg-blue-600"
+                          >
+                            <Bot className="h-4 w-4 mr-2" />
+                            파싱 미리보기
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
