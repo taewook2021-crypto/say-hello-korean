@@ -63,7 +63,7 @@ const Home = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-primary">학습 관리 대시보드</h1>
+          <h1 className="text-3xl font-bold text-primary">ARO</h1>
         </div>
 
         <Tabs defaultValue="nodes" className="space-y-6">

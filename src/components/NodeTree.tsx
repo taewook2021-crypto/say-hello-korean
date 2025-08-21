@@ -35,6 +35,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('NodeTree useEffect 실행:', { user: user?.id });
     if (user) {
       loadNodes();
     } else {
@@ -44,6 +45,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
   }, [user]);
 
   const loadNodes = async () => {
+    console.log('노드 로딩 시작:', { userId: user?.id });
     try {
       const { data, error } = await supabase
         .from('nodes')
@@ -54,7 +56,9 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
 
       if (error) throw error;
 
+      console.log('로드된 노드 데이터:', data);
       const nodeTree = buildTree(data || []);
+      console.log('빌드된 노드 트리:', nodeTree);
       setNodes(nodeTree);
     } catch (error) {
       console.error('노드 로딩 실패:', error);
