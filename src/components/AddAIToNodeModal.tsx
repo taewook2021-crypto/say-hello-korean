@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { parseAROFormat, validateParsedData } from '@/utils/aroParser';
@@ -123,6 +124,32 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
     }
   };
 
+  const copyPromptToClipboard = async () => {
+    const promptText = `안녕하세요! 학습한 내용을 Q&A 형식으로 정리해 주세요.
+
+다음 형식을 정확히 따라주세요:
+Q. 질문내용?
+A. 답변내용
+
+Q: 다음 질문은?
+A: 다음 답변
+
+규칙:
+- 질문은 'Q.' 또는 'Q:'로 시작
+- 답변은 'A.' 또는 'A:'로 시작  
+- 각 Q&A 쌍 사이에 빈 줄 추가
+- 가능한 많은 Q&A 쌍으로 만들어 주세요
+
+학습 내용: [여기에 학습한 내용을 입력하세요]`;
+
+    try {
+      await navigator.clipboard.writeText(promptText);
+      toast.success('프롬프트가 클립보드에 복사되었습니다!');
+    } catch (error) {
+      toast.error('복사에 실패했습니다.');
+    }
+  };
+
   const handleClosePreview = () => {
     setShowPreview(false);
     setParsedData(null);
@@ -163,9 +190,22 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
               />
             </div>
             
-            <div className="text-sm text-muted-foreground">
-              <p>• Q. 또는 Q: 으로 시작하는 질문과 A. 또는 A: 으로 시작하는 답변을 인식합니다.</p>
-              <p>• 여러 개의 Q&A 쌍을 한 번에 입력할 수 있습니다.</p>
+            <div className="bg-muted/50 p-4 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-sm">AI에게 Q&A 정리 요청하기</h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyPromptToClipboard}
+                  className="h-8 px-2"
+                >
+                  <Copy size={14} className="mr-1" />
+                  복사
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                학습한 내용을 AI에게 보내고 위 버튼을 눌러 프롬프트를 복사한 후, AI에게 Q&A 형식으로 정리해달라고 요청하세요.
+              </p>
             </div>
             
             <div className="flex justify-end gap-2 pt-4">
