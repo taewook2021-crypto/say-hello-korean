@@ -35,6 +35,9 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
   useEffect(() => {
     if (user) {
       loadNodes();
+    } else {
+      console.log('사용자가 로그인되지 않음');
+      setLoading(false);
     }
   }, [user]);
 
@@ -193,6 +196,14 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
       </div>
     );
   };
+
+  if (!user) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-muted-foreground">로그인이 필요합니다.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="p-4">노드를 불러오는 중...</div>;
