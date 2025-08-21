@@ -61,7 +61,7 @@ export const parseAROFormat = (rawText: string): ParsedConversation => {
 };
 
 /**
- * **Q. ...? A. ... 패턴 파싱
+ * 유연한 Q&A 패턴 파싱 - 다양한 질문-답변 구조 지원
  */
 function parseQAPattern(rawText: string): ParsedConversation {
   const qaPairs: ParsedQA[] = [];
@@ -71,12 +71,29 @@ function parseQAPattern(rawText: string): ParsedConversation {
   let currentAnswer = '';
   let currentSection = '';
   let sectionTags: string[] = [];
+  let isInAnswer = false;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
+    // 빈 줄은 건너뛰기
+    if (!line) continue;
+    
     // 섹션 제목 감지 (### 또는 ## 또는 # 로 시작)
     if (line.match(/^#{1,3}\s+(.+)/)) {
+      // 이전 Q&A 저장
+      if (currentQuestion && currentAnswer) {
+        qaPairs.push({
+          question: currentQuestion.trim(),
+          answer: currentAnswer.trim(),
+          tags: [...sectionTags],
+          level: 'basic'
+        });
+        currentQuestion = '';
+        currentAnswer = '';
+        isInAnswer = false;
+      }
+      
       const sectionMatch = line.match(/^#{1,3}\s+(.+)/);
       if (sectionMatch) {
         currentSection = sectionMatch[1].trim();
@@ -86,34 +103,112 @@ function parseQAPattern(rawText: string): ParsedConversation {
       continue;
     }
     
-    // 질문 감지 (**Q. 로 시작)
-    if (line.match(/^\*\*Q\.\s+(.+)/)) {
-      // 이전 Q&A 저장
-      if (currentQuestion && currentAnswer) {
-        qaPairs.push({
-          question: currentQuestion.trim(),
-          answer: currentAnswer.trim(),
-          tags: [...sectionTags],
-          level: 'basic'
-        });
+    // 다양한 질문 패턴 감지
+    const questionPatterns = [
+      /^\*\*Q[.:]?\s*(.+)/i,  // **Q. 또는 **Q: 
+      /^Q[.:]?\s*(.+)/i,      // Q. 또는 Q:
+      /^질문[.:]?\s*(.+)/i,    // 질문. 또는 질문:
+      /^문제[.:]?\s*(.+)/i,    // 문제. 또는 문제:
+      /^(.+\?)\s*$/,          // 물음표로 끝나는 문장
+    ];
+    
+    let isQuestion = false;
+    let questionText = '';
+    
+    for (const pattern of questionPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        // 이전 Q&A 저장
+        if (currentQuestion && currentAnswer) {
+          qaPairs.push({
+            question: currentQuestion.trim(),
+            answer: currentAnswer.trim(),
+            tags: [...sectionTags],
+            level: 'basic'
+          });
+        }
+        
+        questionText = match[1].trim();
+        isQuestion = true;
+        break;
+      }
+    }
+    
+    if (isQuestion) {
+      currentQuestion = questionText;
+      currentAnswer = '';
+      isInAnswer = false;
+      continue;
+    }
+    
+    // 다양한 답변 패턴 감지
+    const answerPatterns = [
+      /^A[.:]?\s*(.+)/i,      // A. 또는 A:
+      /^답[.:]?\s*(.+)/i,      // 답. 또는 답:
+      /^답변[.:]?\s*(.+)/i,    // 답변. 또는 답변:
+      /^해답[.:]?\s*(.+)/i,    // 해답. 또는 해답:
+    ];
+    
+    let isAnswerStart = false;
+    let answerText = '';
+    
+    for (const pattern of answerPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        answerText = match[1].trim();
+        isAnswerStart = true;
+        break;
+      }
+    }
+    
+    if (isAnswerStart && currentQuestion) {
+      currentAnswer = answerText;
+      isInAnswer = true;
+      continue;
+    }
+    
+    // 질문이 있고 아직 답변이 시작되지 않았다면, 이 줄을 답변으로 간주
+    if (currentQuestion && !currentAnswer && !isInAnswer) {
+      currentAnswer = line;
+      isInAnswer = true;
+      continue;
+    }
+    
+    // 답변 연속 라인 추가
+    if (currentQuestion && isInAnswer && line) {
+      // 다음 질문이 아닌지 확인
+      let isNextQuestion = false;
+      for (const pattern of questionPatterns) {
+        if (pattern.test(line)) {
+          isNextQuestion = true;
+          break;
+        }
       }
       
-      const questionMatch = line.match(/^\*\*Q\.\s+(.+)/);
-      currentQuestion = questionMatch ? questionMatch[1] : '';
-      currentAnswer = '';
-      continue;
-    }
-    
-    // 답변 시작 감지 (A. 로 시작)
-    if (line.match(/^A\.\s+(.+)/)) {
-      const answerMatch = line.match(/^A\.\s+(.+)/);
-      currentAnswer = answerMatch ? answerMatch[1] : '';
-      continue;
-    }
-    
-    // 답변 연속 라인 (질문이 설정되어 있고, A. 다음 라인들)
-    if (currentQuestion && currentAnswer && line && !line.match(/^\*\*Q\.\s/)) {
-      currentAnswer += '\n' + line;
+      if (!isNextQuestion) {
+        currentAnswer += '\n' + line;
+      } else {
+        // 다음 질문이므로 현재 Q&A 저장하고 이 줄을 다시 처리
+        if (currentQuestion && currentAnswer) {
+          qaPairs.push({
+            question: currentQuestion.trim(),
+            answer: currentAnswer.trim(),
+            tags: [...sectionTags],
+            level: 'basic'
+          });
+        }
+        
+        // 이 줄을 질문으로 처리
+        for (const pattern of questionPatterns) {
+          const match = line.match(pattern);
+          if (match) {
+            currentQuestion = match[1].trim();
+            currentAnswer = '';
+            isInAnswer = false;
+            break;
+          }
+        }
+      }
     }
   }
   
