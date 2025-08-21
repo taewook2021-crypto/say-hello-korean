@@ -63,7 +63,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
           description: description.trim() || null,
           parent_id: parentId,
           user_id: user?.id,
-          node_type: parentId ? 'node' : 'project',
           display_order: nextOrder
         });
 

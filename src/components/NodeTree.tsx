@@ -12,7 +12,6 @@ interface Node {
   name: string;
   parent_id: string | null;
   description?: string;
-  node_type: string;
   display_order: number;
   children?: Node[];
 }

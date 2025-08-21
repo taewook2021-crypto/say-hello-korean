@@ -308,7 +308,6 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
-          node_type: string
           parent_id: string | null
           updated_at: string
           user_id: string
@@ -320,7 +319,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
-          node_type?: string
           parent_id?: string | null
           updated_at?: string
           user_id: string
@@ -332,7 +330,6 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
-          node_type?: string
           parent_id?: string | null
           updated_at?: string
           user_id?: string
