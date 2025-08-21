@@ -86,12 +86,17 @@ export const parseAROFormat = (rawText: string): ParsedConversation => {
 const extractSummarySection = (text: string): string | null => {
   // "## 정리" 또는 "# 정리" 등으로 시작하는 섹션 찾기
   const summaryMarkers = [
-    /## 정리[\s\S]*?(?=\n## Q&A|$)/i,
-    /# 정리[\s\S]*?(?=\n# Q&A|$)/i,
-    /## 요약[\s\S]*?(?=\n## Q&A|$)/i,
-    /# 요약[\s\S]*?(?=\n# Q&A|$)/i,
-    /## 학습 정리[\s\S]*?(?=\n## Q&A|$)/i,
-    /## 내용 정리[\s\S]*?(?=\n## Q&A|$)/i
+    /## 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
+    /# 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
+    /## 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
+    /# 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
+    /## 학습 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
+    /## 내용 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
+    // 더 포괄적인 패턴들 추가
+    /정리[\s\S]*?(?=Q\.|q\.|\n## Q&A|\n# Q&A|$)/i,
+    /요약[\s\S]*?(?=Q\.|q\.|\n## Q&A|\n# Q&A|$)/i,
+    // Q&A 이전까지의 모든 내용을 정리로 간주
+    /^[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.)(?!\n)/im
   ];
   
   for (const marker of summaryMarkers) {
@@ -101,7 +106,7 @@ const extractSummarySection = (text: string): string | null => {
     }
   }
   
-  // Q&A 섹션이 없다면 전체를 정리글로 간주 (Q. A. 패턴이 없는 경우)
+  // Q&A 패턴이 없다면 전체를 정리글로 간주
   const hasQAPattern = /^[Qq][\.\:]|\n[Qq][\.\:]/m.test(text);
   if (!hasQAPattern && !text.includes('###')) {
     return text;
