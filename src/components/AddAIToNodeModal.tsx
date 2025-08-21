@@ -125,26 +125,19 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
   };
 
   const copyPromptToClipboard = async () => {
-    const promptText = `안녕하세요! 학습한 내용을 Q&A 형식으로 정리해 주세요.
+    const promptText = `오늘 학습한 내용을 ARO에서 정리하려고 합니다. 아래 형식으로 Q&A를 정리해주세요:
 
-다음 형식을 정확히 따라주세요:
-Q. 질문내용?
+Q. 질문내용
 A. 답변내용
 
-Q: 다음 질문은?
-A: 다음 답변
+Q. 다음 질문
+A. 다음 답변
 
-규칙:
-- 질문은 'Q.' 또는 'Q:'로 시작
-- 답변은 'A.' 또는 'A:'로 시작  
-- 각 Q&A 쌍 사이에 빈 줄 추가
-- 가능한 많은 Q&A 쌍으로 만들어 주세요
-
-학습 내용: [여기에 학습한 내용을 입력하세요]`;
+여러 개의 Q&A 쌍을 한 번에 작성해주시면 됩니다. 각 질문은 Q. 또는 Q:로, 각 답변은 A. 또는 A:로 시작해주세요.`;
 
     try {
       await navigator.clipboard.writeText(promptText);
-      toast.success('프롬프트가 클립보드에 복사되었습니다!');
+      toast.success('복사완료! 이제 AI에게 붙여넣기 하세요 📋');
     } catch (error) {
       toast.error('복사에 실패했습니다.');
     }
@@ -179,32 +172,35 @@ A: 다음 답변
             </div>
             
             <div>
-              <Label htmlFor="aiContent">AI 대화 내용</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="aiContent">AI 대화 내용</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyPromptToClipboard}
+                  className="h-8 px-3"
+                >
+                  📋 프롬프트 복사
+                </Button>
+              </div>
               <Textarea
                 id="aiContent"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Q. 질문내용?&#10;A. 답변내용.&#10;&#10;Q. 다음 질문?&#10;A. 다음 답변."
+                placeholder="AI에게 위 프롬프트를 보내고 받은 Q&A 형식 답변을 여기에 붙여넣기 하세요"
                 rows={12}
                 className="font-mono text-sm"
               />
             </div>
             
-            <div className="bg-muted/50 p-4 rounded-lg border">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-sm">AI에게 Q&A 정리 요청하기</h4>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyPromptToClipboard}
-                  className="h-8 px-2"
-                >
-                  <Copy size={14} className="mr-1" />
-                  복사
-                </Button>
+            <div className="bg-muted/50 p-3 rounded-lg border text-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <span>💡</span>
+                <span className="font-medium">팁</span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                학습한 내용을 AI에게 보내고 위 버튼을 눌러 프롬프트를 복사한 후, AI에게 Q&A 형식으로 정리해달라고 요청하세요.
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                ChatGPT, Claude, Perplexity 등 어떤 AI든 사용 가능해요!<br/>
+                모바일에서는 간단히 "ARO 정리용으로 Q&A 형태로 요약해줘"라고 요청해보세요.
               </p>
             </div>
             
