@@ -202,11 +202,13 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
         </div>
 
         {/* 대화 상세보기 모달 */}
-        <ConversationDetailModal
-          isOpen={showConversationDetail}
-          onClose={() => setShowConversationDetail(false)}
-          conversationId={selectedConversationId}
-        />
+        {showConversationDetail && (
+          <ConversationDetailModal
+            isOpen={showConversationDetail}
+            onClose={() => setShowConversationDetail(false)}
+            conversationId={selectedConversationId}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

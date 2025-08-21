@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown, ChevronUp, FileText, HelpCircle } from 'lucide-react';
 import type { ParsedQA, ParsedSummary } from '@/utils/aroParser';
 
@@ -72,14 +73,16 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
               학습 정리글
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto">
+          <CardContent className="flex-1 overflow-hidden">
             {summary ? (
-              <div className="prose prose-sm max-w-none">
-                <h3 className="text-lg font-semibold mb-3">{summary.title}</h3>
-                <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {summary.content}
+              <ScrollArea className="h-full">
+                <div className="prose prose-sm max-w-none pr-4">
+                  <h3 className="text-lg font-semibold mb-3">{summary.title}</h3>
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {summary.content}
+                  </div>
                 </div>
-              </div>
+              </ScrollArea>
             ) : (
               <div className="flex items-center justify-center h-32 text-muted-foreground">
                 <div className="text-center">
@@ -99,50 +102,52 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
               Q&A 카드 ({qaPairs.length}개)
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto">
+          <CardContent className="flex-1 overflow-hidden">
             {qaPairs.length > 0 ? (
-              <div className="space-y-3 h-full overflow-y-auto">
-                {qaPairs.map((qa, index) => (
-                  <div key={index} className="border rounded-lg p-3 bg-muted/30">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <div className="font-medium text-sm mb-1">
-                          Q{index + 1}. {qa.question}
+              <ScrollArea className="h-full">
+                <div className="space-y-3 pr-4">
+                  {qaPairs.map((qa, index) => (
+                    <div key={index} className="border rounded-lg p-3 bg-muted/30">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm mb-1">
+                            Q{index + 1}. {qa.question}
+                          </div>
+                          
+                          {expandedCards.has(index) && (
+                            <div className="text-sm text-muted-foreground mt-2 pl-2 border-l-2 border-primary/20">
+                              {qa.answer}
+                            </div>
+                          )}
+                          
+                          {qa.tags && qa.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {qa.tags.map((tag, tagIndex) => (
+                                <Badge key={tagIndex} variant="outline" className="text-xs">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         
-                        {expandedCards.has(index) && (
-                          <div className="text-sm text-muted-foreground mt-2 pl-2 border-l-2 border-primary/20">
-                            {qa.answer}
-                          </div>
-                        )}
-                        
-                        {qa.tags && qa.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {qa.tags.map((tag, tagIndex) => (
-                              <Badge key={tagIndex} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpanded(index)}
+                          className="h-6 w-6 p-0 shrink-0"
+                        >
+                          {expandedCards.has(index) ? (
+                            <ChevronUp className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3" />
+                          )}
+                        </Button>
                       </div>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleExpanded(index)}
-                        className="h-6 w-6 p-0 shrink-0"
-                      >
-                        {expandedCards.has(index) ? (
-                          <ChevronUp className="h-3 w-3" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3" />
-                        )}
-                      </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </ScrollArea>
             ) : (
               <div className="flex items-center justify-center h-32 text-muted-foreground">
                 <div className="text-center">
