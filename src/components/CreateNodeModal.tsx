@@ -1,0 +1,147 @@
+import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+
+interface CreateNodeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  parentId: string | null;
+  onNodeCreated: () => void;
+}
+
+export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
+  isOpen,
+  onClose,
+  parentId,
+  onNodeCreated
+}) => {
+  const { user } = useAuth();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [nodeType, setNodeType] = useState('project');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!name.trim()) {
+      toast.error('노드 이름을 입력해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // 같은 레벨에서 display_order 계산
+      const { data: siblingNodes } = await supabase
+        .from('nodes')
+        .select('display_order')
+        .eq('user_id', user?.id)
+        .eq('parent_id', parentId)
+        .eq('is_active', true)
+        .order('display_order', { ascending: false })
+        .limit(1);
+
+      const nextOrder = siblingNodes && siblingNodes.length > 0 
+        ? siblingNodes[0].display_order + 1 
+        : 0;
+
+      const { error } = await supabase
+        .from('nodes')
+        .insert({
+          name: name.trim(),
+          description: description.trim() || null,
+          parent_id: parentId,
+          user_id: user?.id,
+          node_type: nodeType,
+          display_order: nextOrder
+        });
+
+      if (error) throw error;
+
+      toast.success('노드가 생성되었습니다.');
+      setName('');
+      setDescription('');
+      setNodeType('project');
+      onNodeCreated();
+      onClose();
+    } catch (error) {
+      console.error('노드 생성 실패:', error);
+      toast.error('노드 생성에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {parentId ? '하위 노드 생성' : '새 프로젝트 생성'}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">노드 이름 *</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 주식 투자, 영어 학습, 프로그래밍 등"
+              required
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="description">설명</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="노드에 대한 간단한 설명을 입력하세요 (선택사항)"
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="nodeType">노드 타입</Label>
+            <Select value={nodeType} onValueChange={setNodeType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="project">프로젝트</SelectItem>
+                <SelectItem value="category">카테고리</SelectItem>
+                <SelectItem value="topic">주제</SelectItem>
+                <SelectItem value="subtopic">세부 주제</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
+              취소
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? '생성 중...' : '생성'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};

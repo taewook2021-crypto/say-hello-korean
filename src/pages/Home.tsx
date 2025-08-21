@@ -1,536 +1,108 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState } from 'react';
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { BookOpen, Plus, ChevronRight, ChevronDown, Bot } from "lucide-react";
-import { Link } from "react-router-dom";
+import { NodeTree } from "@/components/NodeTree";
+import { CreateNodeModal } from "@/components/CreateNodeModal";
+import { NodeArchivesModal } from "@/components/NodeArchivesModal";
+import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
 import { TodayReviews } from "@/components/TodayReviews";
-import { AIConversationList } from "@/components/AIConversationList";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { useProfile } from "@/hooks/useProfile";
-import { parseAROFormat, validateParsedData, ParsedQA } from "@/utils/aroParser";
-import { ParsePreview } from "@/components/ParsePreview";
-import { User } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Home = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newSubject, setNewSubject] = useState("");
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
-  const [subjectBooks, setSubjectBooks] = useState<{[key: string]: string[]}>({});
-  const [booksLoading, setBooksLoading] = useState<{[key: string]: boolean}>({});
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
-  const [bookMajorChapters, setBookMajorChapters] = useState<{[key: string]: any[]}>({});
-  const [majorChaptersLoading, setMajorChaptersLoading] = useState<{[key: string]: boolean}>({});
-  const [expandedMajorChapter, setExpandedMajorChapter] = useState<string | null>(null);
-  const [majorChapterSubChapters, setMajorChapterSubChapters] = useState<{[key: string]: string[]}>({});
-  const [subChaptersLoading, setSubChaptersLoading] = useState<{[key: string]: boolean}>({});
   
-  // 다이얼로그 상태
-  const [showAddBookDialog, setShowAddBookDialog] = useState(false);
-  const [newBook, setNewBook] = useState("");
-  const [selectedSubjectForBook, setSelectedSubjectForBook] = useState("");
-  const [showAddMajorChapterDialog, setShowAddMajorChapterDialog] = useState(false);
-  const [newMajorChapter, setNewMajorChapter] = useState("");
-  const [selectedBookForMajorChapter, setSelectedBookForMajorChapter] = useState("");
-  const [selectedSubjectForMajorChapter, setSelectedSubjectForMajorChapter] = useState("");
-  const [showAddSubChapterDialog, setShowAddSubChapterDialog] = useState(false);
-  const [newSubChapter, setNewSubChapter] = useState("");
-  const [selectedMajorChapterForSubChapter, setSelectedMajorChapterForSubChapter] = useState("");
-  const [showAddChapterTypeDialog, setShowAddChapterTypeDialog] = useState(false);
-  const [selectedSubjectForChapterType, setSelectedSubjectForChapterType] = useState("");
-  const [selectedBookForChapterType, setSelectedBookForChapterType] = useState("");
-  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [deleteTargetType, setDeleteTargetType] = useState<'subject' | 'book' | 'major' | 'sub'>('major');
-  const [deleteTargetId, setDeleteTargetId] = useState("");
-  const [deleteTargetName, setDeleteTargetName] = useState("");
-  
-  // AI 대화 추가 다이얼로그 상태
-  const [showAIDialog, setShowAIDialog] = useState(false);
-  const [aiSubject, setAiSubject] = useState("");
-  const [aiRawText, setAiRawText] = useState("");
+  // 모달 상태
+  const [showCreateNodeModal, setShowCreateNodeModal] = useState(false);
+  const [showArchivesModal, setShowArchivesModal] = useState(false);
+  const [showAddAIModal, setShowAddAIModal] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('');
+  const [selectedNodeName, setSelectedNodeName] = useState<string>('');
+  const [createNodeParentId, setCreateNodeParentId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [showParsePreview, setShowParsePreview] = useState(false);
-  const [parsedData, setParsedData] = useState<{
-    qaPairs: ParsedQA[];
-    detectedFormat: string;
-    totalCount: number;
-  } | null>(null);
-  
-  const { toast } = useToast();
-  const { profile, isPremiumUser } = useProfile();
 
-  // AI 대화 파싱 프리뷰 함수
-  const handleParsePreview = async () => {
-    if (!aiSubject.trim() || !aiRawText.trim()) return;
-
-    try {
-      // 1. ARO 포맷 파싱
-      const parsed = parseAROFormat(aiRawText);
-      const errors = validateParsedData(parsed);
-      
-      if (errors.length > 0) {
-        toast({
-          title: "파싱 오류",
-          description: errors.join('\n'),
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log(`파싱 완료: ${parsed.detectedFormat} 포맷, ${parsed.totalCount}개 Q&A`);
-      
-      // 파싱 결과 저장하고 미리보기 표시
-      setParsedData({
-        qaPairs: parsed.qaPairs,
-        detectedFormat: parsed.detectedFormat,
-        totalCount: parsed.totalCount
-      });
-      setShowParsePreview(true);
-      
-    } catch (error) {
-      console.error('Error parsing AI conversation:', error);
-      toast({
-        title: "파싱 오류",
-        description: "텍스트 파싱에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
+  // 노드 액션 핸들러들
+  const handleAddAI = (nodeId: string) => {
+    // 선택된 노드 정보 설정
+    setSelectedNodeId(nodeId);
+    // 노드 이름을 가져오기 위해 추가 쿼리가 필요하지만, 일단 간단히 처리
+    setSelectedNodeName('선택된 노드');
+    setShowAddAIModal(true);
   };
 
-  // 실제 DB 저장 함수
-  const handleSaveToDatabase = async () => {
-    if (!parsedData) return;
-
-    try {
-      // 2. 현재 사용자 ID 가져오기
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: "인증 오류",
-          description: "로그인이 필요합니다.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 3. conversations 테이블에 저장
-      const { data: conversation, error: conversationError } = await supabase
-        .from('conversations')
-        .insert({
-          user_id: user.id,
-          subject: aiSubject.trim(),
-          raw_text: aiRawText,
-          lang: 'ko'
-        })
-        .select()
-        .single();
-
-      if (conversationError) {
-        console.error('Conversation insert error:', conversationError);
-        toast({
-          title: "저장 오류",
-          description: "대화 저장에 실패했습니다.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 4. qa_pairs 테이블에 저장
-      const qaInserts = parsedData.qaPairs.map(qa => ({
-        conversation_id: conversation.id,
-        q_text: qa.question,
-        a_text: qa.answer,
-        importance: 'medium',
-        difficulty: qa.level,
-        tags: qa.tags
-      }));
-
-      const { data: qaPairs, error: qaError } = await supabase
-        .from('qa_pairs')
-        .insert(qaInserts)
-        .select();
-
-      if (qaError) {
-        console.error('QA pairs insert error:', qaError);
-        toast({
-          title: "저장 오류",
-          description: "Q&A 저장에 실패했습니다.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 5. cards 테이블에 플래시카드로 저장
-      const cardInserts = qaPairs?.map(qa => ({
-        qa_id: qa.id,
-        front: qa.q_text,
-        back: qa.a_text,
-        next_review_date: new Date().toISOString(),
-        ease_factor: 2.50,
-        interval_days: 1,
-        reviewed_count: 0
-      })) || [];
-
-      const { error: cardError } = await supabase
-        .from('cards')
-        .insert(cardInserts);
-
-      if (cardError) {
-        console.error('Cards insert error:', cardError);
-        toast({
-          title: "경고",
-          description: "플래시카드 생성에 실패했습니다.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "AI 대화 저장 완료! 🎉", 
-        description: `${aiSubject} 과목에 ${parsedData.totalCount}개의 Q&A가 저장되었습니다.`,
-      });
-      
-      // 상태 초기화
-      setAiSubject("");
-      setAiRawText("");
-      setShowAIDialog(false);
-      setShowParsePreview(false);
-      setParsedData(null);
-      
-      // 화면 새로고침
-      loadSubjects();
-      setRefreshTrigger(prev => prev + 1);
-      
-    } catch (error) {
-      console.error('Error saving to database:', error);
-      toast({
-        title: "오류",
-        description: "데이터베이스 저장에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
+  const handleViewArchives = (nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    setSelectedNodeName('선택된 노드');
+    setShowArchivesModal(true);
   };
 
-  // 미리보기 취소
-  const handleCancelPreview = () => {
-    setShowParsePreview(false);
-    setParsedData(null);
+  const handleCreateSubNode = (parentId: string) => {
+    setCreateNodeParentId(parentId || null);
+    setShowCreateNodeModal(true);
   };
 
-  useEffect(() => {
-    loadSubjects();
-  }, []);
-
-  const loadSubjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('name')
-        .order('name');
-      
-      if (error) throw error;
-      
-      setSubjects(data?.map((subject: any) => subject.name) || []);
-    } catch (error) {
-      console.error('Error loading subjects:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleNodeCreated = () => {
+    setRefreshTrigger(prev => prev + 1);
   };
 
-  const loadBooksForSubject = async (subjectName: string) => {
-    if (subjectBooks[subjectName]) return;
-    
-    setBooksLoading(prev => ({ ...prev, [subjectName]: true }));
-    
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('name')
-        .eq('subject_name', subjectName)
-        .order('name');
-      
-      if (error) throw error;
-      
-      setSubjectBooks(prev => ({
-        ...prev,
-        [subjectName]: data?.map((book: any) => book.name) || []
-      }));
-    } catch (error) {
-      console.error('Error loading books:', error);
-    } finally {
-      setBooksLoading(prev => ({ ...prev, [subjectName]: false }));
-    }
+  const handleContentAdded = () => {
+    setRefreshTrigger(prev => prev + 1);
   };
 
-  async function toggleSubject(subject: string) {
-    if (expandedSubject === subject) {
-      setExpandedSubject(null);
-    } else {
-      setExpandedSubject(subject);
-      await loadBooksForSubject(subject);
-    }
-  }
-
-  async function addSubject() {
-    if (!newSubject.trim()) return;
-
-    try {
-      const { error } = await supabase
-        .from('subjects')
-        .insert({ name: newSubject.trim() });
-
-      if (error) throw error;
-
-      setSubjects([...subjects, newSubject.trim()]);
-      setNewSubject("");
-      setShowAddDialog(false);
-      
-      toast({
-        title: "과목 추가됨",
-        description: `${newSubject} 과목이 추가되었습니다.`,
-      });
-    } catch (error) {
-      console.error('Error adding subject:', error);
-      toast({
-        title: "오류",
-        description: "과목 추가에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
+  if (!user) {
+    navigate('/auth');
+    return null;
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">내 학습 공간</h2>
-            <p className="text-muted-foreground">
-              과목별로 체계적인 학습을 시작해보세요
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={isPremiumUser ? "default" : "ghost"}
-              size="icon"
-              onClick={() => navigate('/account')}
-              className={isPremiumUser ? "bg-blue-500 hover:bg-blue-600" : ""}
-            >
-              <User className="h-4 w-4" />
-            </Button>
-            <ThemeToggle />
-          </div>
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-primary">학습 관리 대시보드</h1>
         </div>
 
-        {/* 미리보기 화면 */}
-        {showParsePreview && parsedData ? (
-          <ParsePreview
-            qaPairs={parsedData.qaPairs}
-            detectedFormat={parsedData.detectedFormat}
-            totalCount={parsedData.totalCount}
-            onSave={handleSaveToDatabase}
-            onCancel={handleCancelPreview}
-          />
-        ) : (
-          <>
-            {/* Today's Reviews */}
-            <div className="mb-8">
-              <TodayReviews />
-            </div>
+        <Tabs defaultValue="nodes" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="nodes">프로젝트 트리</TabsTrigger>
+            <TabsTrigger value="reviews">오늘의 복습</TabsTrigger>
+          </TabsList>
 
-            {/* AI 학습 아카이브 */}
-            <div className="mb-8">
-              <AIConversationList refreshTrigger={refreshTrigger} />
-            </div>
+          <TabsContent value="nodes" className="space-y-6">
+            <NodeTree
+              onAddAI={handleAddAI}
+              onViewArchives={handleViewArchives}
+              onCreateSubNode={handleCreateSubNode}
+            />
+          </TabsContent>
 
-            {/* Subjects Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
-              {loading ? (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <Card key={index} className="animate-pulse">
-                    <CardHeader>
-                      <div className="h-6 bg-muted rounded"></div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-20 bg-muted rounded"></div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <>
-                  {subjects.map((subject) => (
-                    <Card key={subject} className="hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="flex items-center justify-between text-lg">
-                          <span>{subject}</span>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleSubject(subject)}
-                            >
-                              {expandedSubject === subject ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {expandedSubject === subject && (
-                          <div className="space-y-2">
-                            {booksLoading[subject] ? (
-                              <div className="animate-pulse">
-                                <div className="h-4 bg-muted rounded mb-2"></div>
-                                <div className="h-4 bg-muted rounded"></div>
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                {subjectBooks[subject]?.map((book) => (
-                                  <div key={book}>
-                                    <Link
-                                      to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
-                                      className="flex items-center justify-between p-2 rounded hover:bg-muted group"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <BookOpen className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-sm">{book}</span>
-                                      </div>
-                                      <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </Link>
-                                  </div>
-                                ))}
-                                {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
-                                  <p className="text-sm text-muted-foreground italic">
-                                    등록된 책이 없습니다
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+          <TabsContent value="reviews" className="space-y-6">
+            <TodayReviews />
+          </TabsContent>
+        </Tabs>
 
-                  {/* Add Subject Card */}
-                  <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                    <DialogTrigger asChild>
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer border-dashed border-2 hover:border-primary/50">
-                        <CardContent className="flex flex-col items-center justify-center h-32">
-                          <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-                          <span className="text-sm text-muted-foreground">새 과목 추가</span>
-                        </CardContent>
-                      </Card>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>새 과목 추가</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <Input
-                          placeholder="과목명을 입력하세요"
-                          value={newSubject}
-                          onChange={(e) => setNewSubject(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && addSubject()}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                            취소
-                          </Button>
-                          <Button onClick={addSubject} disabled={!newSubject.trim()}>
-                            추가
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+        {/* 모달들 */}
+        <CreateNodeModal
+          isOpen={showCreateNodeModal}
+          onClose={() => setShowCreateNodeModal(false)}
+          parentId={createNodeParentId}
+          onNodeCreated={handleNodeCreated}
+        />
 
-                  {/* 🤖 AI 대화 추가 Card */}
-                  <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
-                    <DialogTrigger asChild>
-                      <Card className="hover:shadow-md transition-shadow cursor-pointer border-dashed border-2 hover:border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
-                        <CardContent className="flex flex-col items-center justify-center h-32">
-                          <Bot className="h-8 w-8 text-blue-500 mb-2" />
-                          <span className="text-sm text-blue-600 dark:text-blue-400">🤖 AI 대화 추가</span>
-                        </CardContent>
-                      </Card>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>🤖 AI 대화 추가</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">과목명</label>
-                          <Input
-                            placeholder="과목명을 입력하세요 (예: 수학, 영어, 물리학)"
-                            value={aiSubject}
-                            onChange={(e) => setAiSubject(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium mb-2 block">AI 대화 내용</label>
-                          <Textarea
-                            placeholder={`ARO 포맷으로 정리된 Q&A를 붙여넣어 주세요:
+        <NodeArchivesModal
+          isOpen={showArchivesModal}
+          onClose={() => setShowArchivesModal(false)}
+          nodeId={selectedNodeId}
+          nodeName={selectedNodeName}
+        />
 
-###
-Q: 미적분의 기본 정리는 무엇인가요?
-A: 미적분의 기본 정리는 미분과 적분이 서로 역연산 관계임을 보여주는 정리입니다...
-TAGS: 미적분, 기본정리, 수학
-LEVEL: basic
-
-###
-Q: 다음 질문...
-A: 답변...
-TAGS: 태그1, 태그2
-LEVEL: intermediate
-
-또는 Q&A 패턴 포맷:
-**Q. HBM이란 무엇인가?
-A. 기존 DRAM을 수직 적층해 초고속·저전력 성능을 구현한 메모리 반도체`}
-                            value={aiRawText}
-                            onChange={(e) => setAiRawText(e.target.value)}
-                            className="min-h-[300px] font-mono text-sm"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            💡 두 가지 포맷 모두 지원: ### ARO 블록 또는 **Q. A. 패턴
-                          </p>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={() => setShowAIDialog(false)}>
-                            취소
-                          </Button>
-                          <Button 
-                            onClick={handleParsePreview} 
-                            disabled={!aiSubject.trim() || !aiRawText.trim()}
-                            className="bg-blue-500 hover:bg-blue-600"
-                          >
-                            <Bot className="h-4 w-4 mr-2" />
-                            파싱 미리보기
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </>
-              )}
-            </div>
-          </>
-        )}
+        <AddAIToNodeModal
+          isOpen={showAddAIModal}
+          onClose={() => setShowAddAIModal(false)}
+          nodeId={selectedNodeId}
+          nodeName={selectedNodeName}
+          onContentAdded={handleContentAdded}
+        />
       </div>
     </div>
   );

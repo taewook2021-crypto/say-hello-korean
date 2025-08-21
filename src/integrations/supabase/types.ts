@@ -252,6 +252,101 @@ export type Database = {
           },
         ]
       }
+      node_archives: {
+        Row: {
+          archive_type: string
+          content_summary: string | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          node_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archive_type?: string
+          content_summary?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          node_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archive_type?: string
+          content_summary?: string | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          node_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_archives_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "node_archives_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nodes: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+          node_type: string
+          parent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          node_type?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          node_type?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
