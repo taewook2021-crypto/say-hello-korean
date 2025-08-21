@@ -12,8 +12,9 @@ import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { User } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
+import { parseAROFormat, validateParsedData } from "@/utils/aroParser";
+import { User } from "lucide-react";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -63,15 +64,114 @@ const Home = () => {
     if (!aiSubject.trim() || !aiRawText.trim()) return;
 
     try {
-      // 여기서 파싱 로직이 들어갈 예정 (3단계에서 구현)
+      // 1. ARO 포맷 파싱
+      const parsed = parseAROFormat(aiRawText);
+      const errors = validateParsedData(parsed);
+      
+      if (errors.length > 0) {
+        toast({
+          title: "파싱 오류",
+          description: errors.join('\n'),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 2. 현재 사용자 ID 가져오기
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "인증 오류",
+          description: "로그인이 필요합니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 3. conversations 테이블에 저장
+      const { data: conversation, error: conversationError } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user.id,
+          subject: aiSubject.trim(),
+          raw_text: aiRawText,
+          lang: 'ko'
+        })
+        .select()
+        .single();
+
+      if (conversationError) {
+        console.error('Conversation insert error:', conversationError);
+        toast({
+          title: "저장 오류",
+          description: "대화 저장에 실패했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 4. qa_pairs 테이블에 저장
+      const qaInserts = parsed.qaPairs.map(qa => ({
+        conversation_id: conversation.id,
+        q_text: qa.question,
+        a_text: qa.answer,
+        importance: 'medium',
+        difficulty: qa.level,
+        tags: qa.tags
+      }));
+
+      const { data: qaPairs, error: qaError } = await supabase
+        .from('qa_pairs')
+        .insert(qaInserts)
+        .select();
+
+      if (qaError) {
+        console.error('QA pairs insert error:', qaError);
+        toast({
+          title: "저장 오류",
+          description: "Q&A 저장에 실패했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 5. cards 테이블에 플래시카드로 저장
+      const cardInserts = qaPairs?.map(qa => ({
+        qa_id: qa.id,
+        front: qa.q_text,
+        back: qa.a_text,
+        next_review_date: new Date().toISOString(),
+        ease_factor: 2.50,
+        interval_days: 1,
+        reviewed_count: 0
+      })) || [];
+
+      const { error: cardError } = await supabase
+        .from('cards')
+        .insert(cardInserts);
+
+      if (cardError) {
+        console.error('Cards insert error:', cardError);
+        toast({
+          title: "경고",
+          description: "플래시카드 생성에 실패했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
-        title: "AI 대화 추가됨", 
-        description: `${aiSubject} 과목에 AI 대화가 추가되었습니다.`,
+        title: "AI 대화 추가 완료! 🎉", 
+        description: `${aiSubject} 과목에 ${parsed.totalCount}개의 Q&A가 추가되었습니다.`,
       });
       
       setAiSubject("");
       setAiRawText("");
       setShowAIDialog(false);
+      
+      // 화면 새로고침
+      loadSubjects();
+      
     } catch (error) {
       console.error('Error adding AI conversation:', error);
       toast({
