@@ -72,9 +72,18 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
           summaries (*)
         `)
         .eq('id', conversationId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('대화 조회 오류:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.log('대화를 찾을 수 없음:', conversationId);
+        setConversation(null);
+        return;
+      }
       
       // 데이터 구조 정리
       const conversation: Conversation = {

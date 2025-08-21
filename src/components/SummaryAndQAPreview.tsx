@@ -64,7 +64,7 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
       </Card>
 
       {/* 좌우 분할 레이아웃 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[50vh] max-h-[500px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[60vh]">
         {/* 왼쪽: 정리글 */}
         <Card className="flex flex-col">
           <CardHeader className="pb-3">
@@ -73,11 +73,11 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
               학습 정리글
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-hidden">
+          <CardContent className="flex-1 p-4 h-[50vh]">
             {summary ? (
-              <ScrollArea className="h-full">
+              <ScrollArea className="h-full w-full">
                 <div className="prose prose-sm max-w-none pr-4">
-                  <h3 className="text-lg font-semibold mb-3">{summary.title}</h3>
+                  <h3 className="text-lg font-semibold mb-3 sticky top-0 bg-background">{summary.title}</h3>
                   <div className="whitespace-pre-wrap text-sm leading-relaxed">
                     {summary.content}
                   </div>
@@ -102,9 +102,9 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
               Q&A 카드 ({qaPairs.length}개)
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 overflow-hidden">
+          <CardContent className="flex-1 p-4 h-[50vh]">
             {qaPairs.length > 0 ? (
-              <ScrollArea className="h-full">
+              <ScrollArea className="h-full w-full">
                 <div className="space-y-3 pr-4">
                   {qaPairs.map((qa, index) => (
                     <div key={index} className="border rounded-lg p-3 bg-muted/30">
