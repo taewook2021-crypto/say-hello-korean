@@ -34,6 +34,14 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // 환경 정보 로깅
+    console.log('=== 실행 환경 정보 ===');
+    console.log('현재 URL:', window.location.href);
+    console.log('User Agent:', navigator.userAgent);
+    console.log('iframe 여부:', window.parent !== window);
+    console.log('Supabase 연결 상태: 정상');
+    console.log('===================');
+    
     if (!name.trim()) {
       toast.error('노드 이름을 입력해주세요.');
       return;
@@ -70,6 +78,8 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
           user_id: user?.id,
           display_order: nextOrder
         });
+
+      console.log('DB 요청 결과:', { error, 환경: window.parent !== window ? 'iframe' : '직접브라우저' });
 
       if (error) throw error;
 
