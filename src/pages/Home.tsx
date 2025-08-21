@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, ChevronRight, ChevronDown } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { BookOpen, Plus, ChevronRight, ChevronDown, Bot } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,15 +50,37 @@ const Home = () => {
   const [deleteTargetId, setDeleteTargetId] = useState("");
   const [deleteTargetName, setDeleteTargetName] = useState("");
   
-  // 편집 다이얼로그 상태
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editTargetType, setEditTargetType] = useState<'subject' | 'book' | 'major' | 'sub'>('subject');
-  const [editTargetId, setEditTargetId] = useState("");
-  const [editTargetName, setEditTargetName] = useState("");
-  const [newEditName, setNewEditName] = useState("");
+  // AI 대화 추가 다이얼로그 상태
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [aiSubject, setAiSubject] = useState("");
+  const [aiRawText, setAiRawText] = useState("");
   
   const { toast } = useToast();
-  const { isPremiumUser } = useProfile();
+  const { profile, isPremiumUser } = useProfile();
+
+  // AI 대화 추가 함수
+  const addAIConversation = async () => {
+    if (!aiSubject.trim() || !aiRawText.trim()) return;
+
+    try {
+      // 여기서 파싱 로직이 들어갈 예정 (3단계에서 구현)
+      toast({
+        title: "AI 대화 추가됨", 
+        description: `${aiSubject} 과목에 AI 대화가 추가되었습니다.`,
+      });
+      
+      setAiSubject("");
+      setAiRawText("");
+      setShowAIDialog(false);
+    } catch (error) {
+      console.error('Error adding AI conversation:', error);
+      toast({
+        title: "오류",
+        description: "AI 대화 추가에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     loadSubjects();
@@ -268,6 +291,70 @@ const Home = () => {
                       </Button>
                       <Button onClick={addSubject} disabled={!newSubject.trim()}>
                         추가
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* 🤖 AI 대화 추가 Card */}
+              <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+                <DialogTrigger asChild>
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer border-dashed border-2 hover:border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
+                    <CardContent className="flex flex-col items-center justify-center h-32">
+                      <Bot className="h-8 w-8 text-blue-500 mb-2" />
+                      <span className="text-sm text-blue-600 dark:text-blue-400">🤖 AI 대화 추가</span>
+                    </CardContent>
+                  </Card>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>🤖 AI 대화 추가</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">과목명</label>
+                      <Input
+                        placeholder="과목명을 입력하세요 (예: 수학, 영어, 물리학)"
+                        value={aiSubject}
+                        onChange={(e) => setAiSubject(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">AI 대화 내용</label>
+                      <Textarea
+                        placeholder={`ARO 포맷으로 정리된 Q&A를 붙여넣어 주세요:
+
+###
+Q: 미적분의 기본 정리는 무엇인가요?
+A: 미적분의 기본 정리는 미분과 적분이 서로 역연산 관계임을 보여주는 정리입니다...
+TAGS: 미적분, 기본정리, 수학
+LEVEL: basic
+
+###
+Q: 다음 질문...
+A: 답변...
+TAGS: 태그1, 태그2
+LEVEL: intermediate`}
+                        value={aiRawText}
+                        onChange={(e) => setAiRawText(e.target.value)}
+                        className="min-h-[300px] font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        💡 ChatGPT나 Claude에게 "ARO 정리용으로 Q&A 형태로 요약해줘"라고 요청한 후 붙여넣어 주세요
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setShowAIDialog(false)}>
+                        취소
+                      </Button>
+                      <Button 
+                        onClick={addAIConversation} 
+                        disabled={!aiSubject.trim() || !aiRawText.trim()}
+                        className="bg-blue-500 hover:bg-blue-600"
+                      >
+                        <Bot className="h-4 w-4 mr-2" />
+                        추가하기
                       </Button>
                     </div>
                   </div>
