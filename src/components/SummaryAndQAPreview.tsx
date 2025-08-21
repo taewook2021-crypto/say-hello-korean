@@ -63,7 +63,7 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
       </Card>
 
       {/* 좌우 분할 레이아웃 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-h-[400px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[50vh] max-h-[500px]">
         {/* 왼쪽: 정리글 */}
         <Card className="flex flex-col">
           <CardHeader className="pb-3">
@@ -72,7 +72,7 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
               학습 정리글
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1">
+          <CardContent className="flex-1 overflow-y-auto">
             {summary ? (
               <div className="prose prose-sm max-w-none">
                 <h3 className="text-lg font-semibold mb-3">{summary.title}</h3>
@@ -99,9 +99,9 @@ export const SummaryAndQAPreview: React.FC<SummaryAndQAPreviewProps> = ({
               Q&A 카드 ({qaPairs.length}개)
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1">
+          <CardContent className="flex-1 overflow-y-auto">
             {qaPairs.length > 0 ? (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3 h-full overflow-y-auto">
                 {qaPairs.map((qa, index) => (
                   <div key={index} className="border rounded-lg p-3 bg-muted/30">
                     <div className="flex items-start justify-between gap-2">

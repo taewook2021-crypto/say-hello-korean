@@ -183,7 +183,7 @@ A. 다음 답변
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh]">
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>
             {nodeName}에 AI 대화 추가
