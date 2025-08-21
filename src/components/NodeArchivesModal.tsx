@@ -13,7 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Eye } from 'lucide-react';
+import { ConversationDetailModal } from './ConversationDetailModal';
 
 interface Archive {
   id: string;
@@ -41,6 +42,8 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
 }) => {
   const [archives, setArchives] = useState<Archive[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showConversationDetail, setShowConversationDetail] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string>('');
 
   useEffect(() => {
     if (isOpen && nodeId) {
@@ -111,6 +114,11 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
     }
   };
 
+  const viewConversation = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    setShowConversationDetail(true);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl max-h-[80vh]">
@@ -148,28 +156,26 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
                       {archive.content_summary}
                     </p>
                   )}
-                  
-                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <span>
-                      {formatDistanceToNow(new Date(archive.created_at), {
-                        addSuffix: true,
-                        locale: ko
-                      })}
-                    </span>
                     
-                    {archive.conversation_id && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          // TODO: 대화 상세 보기 기능
-                          toast.info('대화 상세 보기 기능은 곧 추가될 예정입니다.');
-                        }}
-                      >
-                        상세보기
-                      </Button>
-                    )}
-                  </div>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>
+                        {formatDistanceToNow(new Date(archive.created_at), {
+                          addSuffix: true,
+                          locale: ko
+                        })}
+                      </span>
+                      
+                      {archive.conversation_id && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => viewConversation(archive.conversation_id!)}
+                        >
+                          <Eye size={14} className="mr-1" />
+                          대화보기
+                        </Button>
+                      )}
+                    </div>
                 </Card>
               ))}
             </div>
@@ -187,6 +193,13 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
           </Button>
           <Button onClick={onClose}>닫기</Button>
         </div>
+
+        {/* 대화 상세보기 모달 */}
+        <ConversationDetailModal
+          isOpen={showConversationDetail}
+          onClose={() => setShowConversationDetail(false)}
+          conversationId={selectedConversationId}
+        />
       </DialogContent>
     </Dialog>
   );

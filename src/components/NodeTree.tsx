@@ -38,6 +38,28 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
     console.log('NodeTree useEffect 실행:', { user: user?.id });
     if (user) {
       loadNodes();
+      
+      // 실시간 업데이트 구독
+      const channel = supabase
+        .channel('nodes-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // INSERT, UPDATE, DELETE 모든 이벤트
+            schema: 'public',
+            table: 'nodes',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('노드 변경 감지:', payload);
+            loadNodes(); // 변경 시 다시 로드
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } else {
       console.log('사용자가 로그인되지 않음');
       setLoading(false);
