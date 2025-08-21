@@ -86,30 +86,27 @@ export const parseAROFormat = (rawText: string): ParsedConversation => {
 const extractSummarySection = (text: string): string | null => {
   // "## 정리" 또는 "# 정리" 등으로 시작하는 섹션 찾기
   const summaryMarkers = [
-    /## 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
-    /# 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
-    /## 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
-    /# 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
-    /## 학습 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
-    /## 내용 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|$)/i,
-    // 더 포괄적인 패턴들 추가
-    /정리[\s\S]*?(?=Q\.|q\.|\n## Q&A|\n# Q&A|$)/i,
-    /요약[\s\S]*?(?=Q\.|q\.|\n## Q&A|\n# Q&A|$)/i,
-    // Q&A 이전까지의 모든 내용을 정리로 간주
-    /^[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.)(?!\n)/im
+    /## 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
+    /# 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
+    /## 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
+    /# 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
+    /## 학습 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
+    /## 내용 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
+    // 더 포괄적인 패턴들 - Q&A 시작 전까지 모든 내용
+    /^[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|\nq\.|$)/im
   ];
   
   for (const marker of summaryMarkers) {
     const match = text.match(marker);
     if (match) {
-      return match[0];
+      return match[0].trim();
     }
   }
   
   // Q&A 패턴이 없다면 전체를 정리글로 간주
-  const hasQAPattern = /^[Qq][\.\:]|\n[Qq][\.\:]/m.test(text);
+  const hasQAPattern = /(?:^|\n)[Qq][\.\:]/m.test(text);
   if (!hasQAPattern && !text.includes('###')) {
-    return text;
+    return text.trim();
   }
   
   return null;
@@ -128,14 +125,19 @@ const extractQASection = (text: string): string | null => {
   for (const marker of qaMarkers) {
     const match = text.match(marker);
     if (match) {
-      return match[0];
+      return match[0].trim();
     }
   }
   
-  // Q&A 패턴이 있으면 해당 부분을 반환
-  const hasQAPattern = /^[Qq][\.\:]|\n[Qq][\.\:]/m.test(text);
-  if (hasQAPattern || text.includes('###')) {
-    return text;
+  // Q&A 패턴이 있으면 해당 부분부터 끝까지 반환
+  const qaPatternMatch = text.match(/(?:^|\n)[Qq][\.\:][\s\S]*$/m);
+  if (qaPatternMatch) {
+    return qaPatternMatch[0].trim();
+  }
+  
+  // ARO 블록 패턴이 있으면 반환
+  if (text.includes('###')) {
+    return text.trim();
   }
   
   return null;
@@ -143,7 +145,19 @@ const extractQASection = (text: string): string | null => {
 
 // 정리글 파싱
 const parseSummarySection = (summaryText: string): ParsedSummary => {
-  const cleanText = summaryText.replace(/^##?\s*(정리|요약|학습\s*정리|내용\s*정리)?\s*/i, '').trim();
+  // 마크다운 특수문자 정리 및 정리글 헤더 제거
+  let cleanText = summaryText
+    .replace(/^##?\s*(정리|요약|학습\s*정리|내용\s*정리)?\s*/i, '')
+    .trim();
+  
+  // 마크다운 굵기/기울임꼴 문법을 일반 텍스트로 변환 (과도한 특수문자 제거)
+  cleanText = cleanText
+    .replace(/\*\*\*(.+?)\*\*\*/g, '$1')  // ***text*** -> text
+    .replace(/\*\*(.+?)\*\*/g, '$1')      // **text** -> text  
+    .replace(/\*(.+?)\*/g, '$1')          // *text* -> text
+    .replace(/__(.+?)__/g, '$1')          // __text__ -> text
+    .replace(/_(.+?)_/g, '$1')            // _text_ -> text
+    .replace(/~~(.+?)~~/g, '$1');         // ~~text~~ -> text
   
   // 제목 추출 (첫 번째 # 헤딩 또는 첫 번째 줄)
   const titleMatch = cleanText.match(/^#\s*(.+)/m);
