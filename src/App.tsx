@@ -11,7 +11,6 @@ import Book from "./pages/Book";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
-import PDFAnnotator from "./pages/PDFAnnotator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,7 +33,6 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/home" element={<Home />} />
               <Route path="/account" element={<Account />} />
-              <Route path="/pdf-annotator" element={<PDFAnnotator />} />
               <Route path="/subject/:subjectName" element={<Subject />} />
               <Route path="/book/:subjectName/:bookName" element={<Book />} />
               <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
