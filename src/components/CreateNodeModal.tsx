@@ -34,8 +34,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('노드 생성 시작:', { name, parentId, user: user?.id });
-    
     if (!name.trim()) {
       toast.error('노드 이름을 입력해주세요.');
       return;
@@ -63,14 +61,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
         ? siblingNodes[0].display_order + 1 
         : 0;
 
-      console.log('데이터베이스 삽입 시도:', {
-        name: name.trim(),
-        description: description.trim() || null,
-        parent_id: parentId,
-        user_id: user?.id,
-        display_order: nextOrder
-      });
-
       const { error } = await supabase
         .from('nodes')
         .insert({
@@ -81,12 +71,8 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
           display_order: nextOrder
         });
 
-      if (error) {
-        console.error('데이터베이스 삽입 오류:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('노드 생성 성공');
       toast.success('노드가 생성되었습니다.');
       setName('');
       setDescription('');
