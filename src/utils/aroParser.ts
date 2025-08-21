@@ -82,144 +82,132 @@ export const parseAROFormat = (rawText: string): ParsedConversation => {
   };
 };
 
-// 정리글 섹션 추출
+// 정리글 섹션 추출 - 단순화된 로직
 const extractSummarySection = (text: string): string | null => {
-  // "## 정리" 또는 "# 정리" 등으로 시작하는 섹션 찾기
-  const summaryMarkers = [
-    /## 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
-    /# 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
-    /## 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
-    /# 요약[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
-    /## 학습 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
-    /## 내용 정리[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|q\.|$)/i,
-    // 더 포괄적인 패턴들 - Q&A 시작 전까지 모든 내용
-    /^[\s\S]*?(?=\n## Q&A|\n# Q&A|\nQ\.|\nq\.|$)/im
+  const cleanText = text.trim();
+  
+  // Q&A 시작점 찾기
+  const qaStartPatterns = [
+    /\n## Q&A/i,
+    /\n# Q&A/i,
+    /\nQ\./,
+    /\nq\./
   ];
   
-  for (const marker of summaryMarkers) {
-    const match = text.match(marker);
-    if (match) {
-      return match[0].trim();
+  let qaStartIndex = -1;
+  for (const pattern of qaStartPatterns) {
+    const match = cleanText.search(pattern);
+    if (match !== -1) {
+      qaStartIndex = match;
+      break;
     }
   }
   
-  // Q&A 패턴이 없다면 전체를 정리글로 간주
-  const hasQAPattern = /(?:^|\n)[Qq][\.\:]/m.test(text);
-  if (!hasQAPattern && !text.includes('###')) {
-    return text.trim();
+  // Q&A가 있으면 그 이전까지, 없으면 전체를 정리글로 간주
+  if (qaStartIndex !== -1) {
+    return cleanText.substring(0, qaStartIndex).trim();
+  }
+  
+  // Q&A 패턴이 없고 ARO 블록(###)도 없으면 전체를 정리글로 간주
+  if (!cleanText.includes('###')) {
+    return cleanText;
   }
   
   return null;
 };
 
-// Q&A 섹션 추출
+// Q&A 섹션 추출 - 단순화된 로직
 const extractQASection = (text: string): string | null => {
-  // "## Q&A" 또는 "# Q&A" 등으로 시작하는 섹션 찾기
-  const qaMarkers = [
-    /## Q&A[\s\S]*$/i,
-    /# Q&A[\s\S]*$/i,
-    /## 문제[\s\S]*$/i,
-    /## 퀴즈[\s\S]*$/i
+  const cleanText = text.trim();
+  
+  // Q&A 시작점 찾기
+  const qaStartPatterns = [
+    /## Q&A/i,
+    /# Q&A/i,
+    /Q\./,
+    /q\./
   ];
   
-  for (const marker of qaMarkers) {
-    const match = text.match(marker);
-    if (match) {
-      return match[0].trim();
+  for (const pattern of qaStartPatterns) {
+    const match = cleanText.search(pattern);
+    if (match !== -1) {
+      return cleanText.substring(match).trim();
     }
-  }
-  
-  // Q&A 패턴이 있으면 해당 부분부터 끝까지 반환
-  const qaPatternMatch = text.match(/(?:^|\n)[Qq][\.\:][\s\S]*$/m);
-  if (qaPatternMatch) {
-    return qaPatternMatch[0].trim();
   }
   
   // ARO 블록 패턴이 있으면 반환
-  if (text.includes('###')) {
-    return text.trim();
+  if (cleanText.includes('###')) {
+    return cleanText;
   }
   
   return null;
 };
 
-// 정리글 파싱
+// 정리글 파싱 - 원본 그대로 보존
 const parseSummarySection = (summaryText: string): ParsedSummary => {
-  // 정리글 헤더만 제거하고 나머지는 원본 그대로 유지
-  let cleanText = summaryText
-    .replace(/^##?\s*(정리|요약|학습\s*정리|내용\s*정리)?\s*/i, '')
-    .trim();
+  const cleanText = summaryText.trim();
   
-  // 제목 추출 (첫 번째 # 헤딩 또는 첫 번째 줄)
+  // 제목 추출 시도 (첫 번째 # 헤딩)
   const titleMatch = cleanText.match(/^#\s*(.+)/m);
-  const title = titleMatch ? titleMatch[1].trim() : 
-                cleanText.split('\n')[0].trim() || '학습 정리';
+  let title = '학습 정리';
+  
+  if (titleMatch) {
+    title = titleMatch[1].trim();
+  } else {
+    // 첫 번째 줄이 제목처럼 보이면 사용
+    const firstLine = cleanText.split('\n')[0].trim();
+    if (firstLine && firstLine.length < 100 && !firstLine.includes('.')) {
+      title = firstLine;
+    }
+  }
   
   return {
     title,
-    content: cleanText, // 원본 텍스트 그대로 저장
+    content: cleanText, // 원본 텍스트 완전 보존
     structure_type: 'markdown'
   };
 };
 
 /**
- * 유연한 Q&A 패턴 파싱 - 다양한 질문-답변 구조 지원
+ * 단순한 Q&A 패턴 파싱 - 원본 보존
  */
 function parseQAPattern(rawText: string): ParsedConversation {
   const qaPairs: ParsedQA[] = [];
   const lines = rawText.split('\n');
   
-  let currentSection = '';
-  let sectionTags: string[] = [];
-  
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
-    // 빈 줄 건너뛰기
-    if (!line) continue;
-    
-    // 섹션 제목 감지
-    if (line.match(/^#{1,3}\s+(.+)/)) {
-      const sectionMatch = line.match(/^#{1,3}\s+(.+)/);
-      if (sectionMatch) {
-        currentSection = sectionMatch[1].trim();
-        sectionTags = [currentSection];
-      }
-      continue;
-    }
-    
     // Q. 패턴 찾기
-    const questionMatch = line.match(/[Qq][\.\:]\s*(.+?)(?:\s+[Aa][\.\:]\s*(.+))?$/);
+    const questionMatch = line.match(/^[Qq][\.\:]\s*(.+)$/);
     if (questionMatch) {
       const question = questionMatch[1].trim();
-      let answer = questionMatch[2] ? questionMatch[2].trim() : '';
+      let answer = '';
       
-      // 같은 줄에 A.가 없으면 다음 줄에서 A. 찾기
-      if (!answer) {
-        for (let j = i + 1; j < lines.length; j++) {
-          const nextLine = lines[j].trim();
-          if (!nextLine) continue;
-          
-          const answerMatch = nextLine.match(/[Aa][\.\:]\s*(.+)$/);
-          if (answerMatch) {
-            answer = answerMatch[1].trim();
-            i = j; // 인덱스 업데이트
-            break;
-          }
-          
-          // 다음 Q.가 나오면 중단
-          if (nextLine.match(/[Qq][\.\:]\s/)) {
-            break;
-          }
+      // 다음 줄들에서 A. 찾기
+      for (let j = i + 1; j < lines.length; j++) {
+        const nextLine = lines[j].trim();
+        if (!nextLine) continue;
+        
+        const answerMatch = nextLine.match(/^[Aa][\.\:]\s*(.+)$/);
+        if (answerMatch) {
+          answer = answerMatch[1].trim();
+          i = j; // 인덱스 업데이트
+          break;
+        }
+        
+        // 다음 Q.가 나오면 중단
+        if (nextLine.match(/^[Qq][\.\:]/)) {
+          break;
         }
       }
       
-      // Q&A 쌍 저장 (원본 텍스트 그대로)
+      // Q&A 쌍 저장
       if (question && answer) {
         qaPairs.push({
-          question: question, // 원본 그대로
-          answer: answer,     // 원본 그대로
-          tags: [...sectionTags],
+          question,
+          answer,
+          tags: [],
           level: 'basic'
         });
       }
