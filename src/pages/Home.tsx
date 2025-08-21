@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BookOpen, Plus, ChevronRight, ChevronDown, Bot } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
+import { AIConversationList } from "@/components/AIConversationList";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -55,6 +56,7 @@ const Home = () => {
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [aiSubject, setAiSubject] = useState("");
   const [aiRawText, setAiRawText] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const { toast } = useToast();
   const { profile, isPremiumUser } = useProfile();
@@ -171,6 +173,7 @@ const Home = () => {
       
       // 화면 새로고침
       loadSubjects();
+      setRefreshTrigger(prev => prev + 1); // AI 대화 목록 새로고침
       
     } catch (error) {
       console.error('Error adding AI conversation:', error);
@@ -289,8 +292,15 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Today's Reviews Section */}
-        <TodayReviews />
+        {/* Today's Reviews */}
+        <div className="mb-8">
+          <TodayReviews />
+        </div>
+
+        {/* AI 학습 아카이브 */}
+        <div className="mb-8">
+          <AIConversationList refreshTrigger={refreshTrigger} />
+        </div>
 
         {/* Subjects Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
