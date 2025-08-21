@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -40,6 +40,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "subjects"
             referencedColumns: ["name"]
+          },
+        ]
+      }
+      cards: {
+        Row: {
+          back: string
+          created_at: string
+          ease_factor: number
+          front: string
+          id: string
+          interval_days: number
+          next_review_date: string
+          qa_id: string
+          reviewed_count: number
+          updated_at: string
+        }
+        Insert: {
+          back: string
+          created_at?: string
+          ease_factor?: number
+          front: string
+          id?: string
+          interval_days?: number
+          next_review_date?: string
+          qa_id: string
+          reviewed_count?: number
+          updated_at?: string
+        }
+        Update: {
+          back?: string
+          created_at?: string
+          ease_factor?: number
+          front?: string
+          id?: string
+          interval_days?: number
+          next_review_date?: string
+          qa_id?: string
+          reviewed_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cards_qa_id_fkey"
+            columns: ["qa_id"]
+            isOneToOne: false
+            referencedRelation: "qa_pairs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -91,6 +138,36 @@ export type Database = {
             referencedColumns: ["name"]
           },
         ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          lang: string
+          raw_text: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lang?: string
+          raw_text: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lang?: string
+          raw_text?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       major_chapters: {
         Row: {
@@ -201,6 +278,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      qa_pairs: {
+        Row: {
+          a_text: string
+          conversation_id: string
+          created_at: string
+          difficulty: string | null
+          id: string
+          importance: string | null
+          q_text: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          a_text: string
+          conversation_id: string
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          importance?: string | null
+          q_text: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          a_text?: string
+          conversation_id?: string
+          created_at?: string
+          difficulty?: string | null
+          id?: string
+          importance?: string | null
+          q_text?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_pairs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       review_schedule: {
         Row: {
