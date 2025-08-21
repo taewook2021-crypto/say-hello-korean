@@ -52,6 +52,12 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
           },
           (payload) => {
             console.log('노드 변경 감지:', payload);
+            
+            // 새 노드가 추가된 경우 부모 노드 자동 확장
+            if (payload.eventType === 'INSERT' && payload.new?.parent_id) {
+              setExpandedNodes(prev => new Set([...prev, payload.new.parent_id]));
+            }
+            
             loadNodes(); // 변경 시 다시 로드
           }
         )
