@@ -69,16 +69,12 @@ function parseQAPattern(rawText: string): ParsedConversation {
   
   let currentSection = '';
   let sectionTags: string[] = [];
-  let i = 0;
   
-  while (i < lines.length) {
+  for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
     // 빈 줄 건너뛰기
-    if (!line) {
-      i++;
-      continue;
-    }
+    if (!line) continue;
     
     // 섹션 제목 감지
     if (line.match(/^#{1,3}\s+(.+)/)) {
@@ -88,73 +84,46 @@ function parseQAPattern(rawText: string): ParsedConversation {
         sectionTags = [currentSection];
         console.log(`섹션 감지: ${currentSection}`);
       }
-      i++;
       continue;
     }
     
-    // Q. 패턴으로 시작하는 질문 찾기
-    const questionMatch = line.match(/^Q\.\s*(.+)/);
+    // Q. 패턴 찾기
+    const questionMatch = line.match(/Q\.\s*(.+?)(?:\s+A\.\s*(.+))?$/);
     if (questionMatch) {
       const question = questionMatch[1].trim();
-      let answer = '';
+      let answer = questionMatch[2] ? questionMatch[2].trim() : '';
       
-      // 다음 줄부터 A. 패턴 찾기
-      i++;
-      while (i < lines.length) {
-        const nextLine = lines[i].trim();
-        
-        // 빈 줄이면 건너뛰기
-        if (!nextLine) {
-          i++;
-          continue;
-        }
-        
-        // A. 패턴 찾기
-        const answerMatch = nextLine.match(/^A\.\s*(.+)/);
-        if (answerMatch) {
-          answer = answerMatch[1].trim();
+      // 같은 줄에 A.가 없으면 다음 줄에서 A. 찾기
+      if (!answer) {
+        for (let j = i + 1; j < lines.length; j++) {
+          const nextLine = lines[j].trim();
+          if (!nextLine) continue;
           
-          // A. 다음 줄들도 답변에 포함 (다음 Q.가 나올 때까지)
-          i++;
-          while (i < lines.length) {
-            const continueLine = lines[i].trim();
-            
-            // 다음 Q. 패턴이 나오면 중단
-            if (continueLine.match(/^Q\.\s/)) {
-              break;
-            }
-            
-            // 빈 줄이 아니면 답변에 추가
-            if (continueLine) {
-              answer += '\n' + continueLine;
-            }
-            
-            i++;
+          const answerMatch = nextLine.match(/A\.\s*(.+)$/);
+          if (answerMatch) {
+            answer = answerMatch[1].trim();
+            i = j; // 인덱스 업데이트
+            break;
           }
           
-          // Q&A 쌍 저장
-          if (question && answer) {
-            qaPairs.push({
-              question: question.trim(),
-              answer: answer.trim(),
-              tags: [...sectionTags],
-              level: 'basic'
-            });
-            console.log(`Q&A 추출: Q="${question.slice(0, 20)}..." A="${answer.slice(0, 20)}..."`);
+          // 다음 Q.가 나오면 중단
+          if (nextLine.match(/Q\.\s/)) {
+            break;
           }
-          
-          // i는 이미 다음 Q. 위치이므로 continue로 다시 처리
-          break;
         }
-        
-        i++;
       }
       
-      // A.를 찾지 못한 경우에도 i를 증가시켜 무한루프 방지
-      continue;
+      // Q&A 쌍 저장
+      if (question && answer) {
+        qaPairs.push({
+          question: question,
+          answer: answer,
+          tags: [...sectionTags],
+          level: 'basic'
+        });
+        console.log(`Q&A 추출: "${question}" -> "${answer}"`);
+      }
     }
-    
-    i++;
   }
   
   console.log(`Q&A 패턴 파싱 완료: ${qaPairs.length}개 추출`);
