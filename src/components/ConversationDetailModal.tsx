@@ -56,21 +56,34 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
   const [showAnswers, setShowAnswers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // 🔧 강제 디버깅 - useEffect 진입 확인
+    console.log('=== ConversationDetailModal useEffect 실행됨 ===');
+    alert('🔧 디버그: useEffect 실행됨');
+    
     if (isOpen && conversationId) {
       console.log('🚀 === ConversationDetailModal 열림 ===');
       console.log('📋 props - conversationId:', conversationId);
       console.log('🔍 conversationId 타입:', typeof conversationId);
       console.log('✅ props - isOpen:', isOpen);
+      alert('🔧 디버그: 조건 통과 - isOpen=' + isOpen + ', conversationId=' + conversationId);
       
       // 임시 테스트용으로 하드코딩된 ID 사용
       const testConversationId = 'c7efb1f5-39c8-4a83-ad41-82f26ec024bd';
       console.log('🧪 테스트용 conversation ID:', testConversationId);
+      alert('🔧 디버그: loadConversation 호출 직전');
       
       loadConversation(testConversationId);
+    } else {
+      console.log('❌ useEffect 조건 불충족:', { isOpen, conversationId });
+      alert('❌ useEffect 조건 불충족: isOpen=' + isOpen + ', conversationId=' + conversationId);
     }
   }, [isOpen, conversationId]);
 
   const loadConversation = async (testId?: string) => {
+    // 🔧 강제 디버깅 - 함수 진입 확인
+    console.log('=== loadConversation 함수 시작 ===');
+    alert('🔧 디버그: loadConversation 함수 진입');
+    
     const actualId = testId || conversationId;
     console.log('📋 사용할 conversation ID:', actualId);
     console.log('🌐 현재 환경:', {
@@ -78,9 +91,16 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       isIframe: window.parent !== window,
       userAgent: navigator.userAgent.substring(0, 50)
     });
+    alert('🔧 디버그: 환경 체크 완료, ID=' + actualId);
     
+    console.log('🔧 setLoading(true) 호출 직전');
     setLoading(true);
+    console.log('🔧 setLoading(true) 호출 완료');
+    alert('🔧 디버그: loading 상태 설정 완료');
+    
     try {
+      console.log('🔧 try 블록 진입');
+      alert('🔧 디버그: try 블록 진입');
       // 현재 사용자 정보 확인 (임시로 고정값 사용)
       const mockUserId = 'ebcc4eaf-7b16-4a2b-b3ab-4105ba5ff92c';
       console.log('👤 현재 사용자 ID (임시):', mockUserId);
@@ -209,11 +229,25 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       setConversation(conversation);
     } catch (error) {
       console.error('💥 === 대화 로딩 실패 ===');
+      alert('🔧 디버그: catch 블록 진입 - 오류 발생!');
+      console.error('전체 에러 객체:', error);
       console.error('원본 오류:', error);
       console.error('오류 타입:', typeof error);
       console.error('오류 코드:', error?.code);
       console.error('오류 메시지:', error?.message);
       console.error('오류 스택:', error?.stack);
+      console.error('오류 상세 정보:', {
+        name: error?.name,
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      alert('🔧 디버그: 오류 정보 - ' + JSON.stringify({
+        type: typeof error,
+        code: error?.code,
+        message: error?.message?.substring(0, 100)
+      }));
       
       let errorMessage = '대화를 불러오는데 실패했습니다.';
       
