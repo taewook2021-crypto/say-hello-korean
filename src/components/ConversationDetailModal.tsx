@@ -13,8 +13,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { MessageSquare, ChevronDown, ChevronUp, FileText, HelpCircle } from 'lucide-react';
+import { MessageSquare, ChevronDown, ChevronUp, FileText, HelpCircle, BookOpen, FileDown, Brain } from 'lucide-react';
 import { parseAROFormat, ParsedConversation } from '@/utils/aroParser';
+import { convertArchiveToWrongNotes, validateArchiveQAs, convertArchiveToNotesFormat } from '@/utils/archiveConverter';
+
+// 컴포넌트에서 사용할 WrongNote 타입 정의
+interface WrongNote {
+  id: string;
+  question: string;
+  wrong_answer: string | null;
+  correct_answer: string;
+  explanation: string | null;
+  subject_name: string;
+  book_name: string;
+  chapter_name: string;
+  is_resolved: boolean;
+}
+import { FlashCard } from '@/components/study/FlashCard';
+import { Quiz } from '@/components/study/Quiz';
+import { SubjectiveQuiz } from '@/components/study/SubjectiveQuiz';
+import { StudyModeSelector } from '@/components/study/StudyModeSelector';
+import { downloadPDF, printPDF } from '@/components/pdf-generator';
 
 // 단순화된 인터페이스
 interface Conversation {
@@ -39,6 +58,8 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
   const [parsedData, setParsedData] = useState<ParsedConversation | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAnswers, setShowAnswers] = useState<Set<string>>(new Set());
+  const [showStudyModal, setShowStudyModal] = useState(false);
+  const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'quiz' | 'subjective' | null>(null);
 
   useEffect(() => {
     if (isOpen && conversationId) {
@@ -111,14 +132,79 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
     }
   };
 
+  const handleStudyStart = (mode: 'flashcard' | 'quiz' | 'subjective') => {
+    if (!parsedData || parsedData.qaPairs.length === 0) {
+      toast.error('학습할 Q&A가 없습니다.');
+      return;
+    }
+    setSelectedStudyMode(mode);
+    setShowStudyModal(true);
+  };
+
+  const handleStudyComplete = () => {
+    setShowStudyModal(false);
+    setSelectedStudyMode(null);
+    toast.success('학습을 완료했습니다!');
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!parsedData || parsedData.qaPairs.length === 0) {
+      toast.error('다운로드할 Q&A가 없습니다.');
+      return;
+    }
+
+    const wrongNotes = convertArchiveToWrongNotes(
+      parsedData.qaPairs,
+      conversation?.title || '아카이브',
+      conversationId
+    );
+
+    await downloadPDF(wrongNotes, '아카이브', conversation?.title || '저장된 Q&A', 'Q&A 복습', {
+      includeWrongAnswers: false,
+      paperTemplate: 'default'
+    });
+  };
+
+  const getConvertedNotes = () => {
+    if (!parsedData || !conversation) return [];
+    return convertArchiveToWrongNotes(
+      parsedData.qaPairs,
+      conversation.title,
+      conversationId
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-7xl max-h-[90vh] w-[95vw]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MessageSquare size={20} />
-            대화 상세보기
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare size={20} />
+              대화 상세보기
+            </DialogTitle>
+            
+            {parsedData && parsedData.qaPairs.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setShowStudyModal(true)}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Brain size={16} className="mr-1" />
+                  복습하기
+                </Button>
+                <Button
+                  onClick={handleDownloadPDF}
+                  size="sm"
+                  variant="outline"
+                >
+                  <FileDown size={16} className="mr-1" />
+                  PDF 다운로드
+                </Button>
+              </div>
+            )}
+          </div>
         </DialogHeader>
         
         {loading ? (
@@ -256,6 +342,45 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
         <div className="flex justify-end pt-4 border-t">
           <Button onClick={onClose}>닫기</Button>
         </div>
+
+        {/* 학습 모드 선택 모달 */}
+        <Dialog open={showStudyModal} onOpenChange={setShowStudyModal}>
+          <DialogContent>
+            {!selectedStudyMode ? (
+              <StudyModeSelector
+                noteCount={parsedData?.qaPairs.length || 0}
+                onModeSelect={(mode) => {
+                  if (mode === 'multiple-choice') {
+                    handleStudyStart('quiz');
+                  } else {
+                    handleStudyStart(mode);
+                  }
+                }}
+              />
+            ) : (
+              <>
+                {selectedStudyMode === 'flashcard' && (
+                  <FlashCard
+                    notes={getConvertedNotes()}
+                    onComplete={handleStudyComplete}
+                  />
+                )}
+                {selectedStudyMode === 'quiz' && (
+                  <Quiz
+                    notes={getConvertedNotes()}
+                    onComplete={handleStudyComplete}
+                  />
+                )}
+                {selectedStudyMode === 'subjective' && (
+                  <SubjectiveQuiz
+                    notes={getConvertedNotes()}
+                    onComplete={handleStudyComplete}
+                  />
+                )}
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
