@@ -21,7 +21,7 @@ interface AddAIToNodeModalProps {
   onClose: () => void;
   nodeId: string;
   nodeName: string;
-  onContentAdded: () => void;
+  onContentAdded: (conversationId: string) => void;
 }
 
 export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
@@ -194,7 +194,7 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
       setArchiveTitle('');
       setParsedData(null);
       setShowPreview(false);
-      onContentAdded();
+      onContentAdded(conversation.id);
       onClose();
     } catch (error) {
       handleNetworkError({

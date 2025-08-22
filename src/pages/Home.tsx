@@ -3,8 +3,8 @@ import { useAuth } from "@/hooks/useAuthMock";
 import { useNavigate } from "react-router-dom";
 import { NodeTree } from "@/components/NodeTree";
 import { CreateNodeModal } from "@/components/CreateNodeModal";
-import { NodeArchivesModal } from "@/components/NodeArchivesModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
+import { ConversationDetailModal } from "@/components/ConversationDetailModal";
 import { TodayReviews } from "@/components/TodayReviews";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,10 +15,11 @@ const Home = () => {
   
   // 모달 상태
   const [showCreateNodeModal, setShowCreateNodeModal] = useState(false);
-  const [showArchivesModal, setShowArchivesModal] = useState(false);
   const [showAddAIModal, setShowAddAIModal] = useState(false);
+  const [showConversationModal, setShowConversationModal] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedNodeName, setSelectedNodeName] = useState<string>('');
+  const [selectedConversationId, setSelectedConversationId] = useState<string>('');
   const [createNodeParentId, setCreateNodeParentId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -31,22 +32,19 @@ const Home = () => {
     setShowAddAIModal(true);
   };
 
-  const handleViewArchives = (nodeId: string, nodeName: string) => {
-    setSelectedNodeId(nodeId);
-    setSelectedNodeName(nodeName);
-    setShowArchivesModal(true);
-  };
-
   const handleCreateSubNode = (parentId: string) => {
     setCreateNodeParentId(parentId || null);
     setShowCreateNodeModal(true);
   };
 
-  const handleNodeCreated = () => {
+  // 저장 완료 후 대화보기 모달 열기
+  const handleContentAdded = (conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    setShowConversationModal(true);
     setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleContentAdded = () => {
+  const handleNodeCreated = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
@@ -76,7 +74,6 @@ const Home = () => {
           <TabsContent value="nodes" className="space-y-6">
             <NodeTree
               onAddAI={handleAddAI}
-              onViewArchives={handleViewArchives}
               onCreateSubNode={handleCreateSubNode}
               onNodeDeleted={handleNodeDeleted}
             />
@@ -95,20 +92,18 @@ const Home = () => {
           onNodeCreated={handleNodeCreated}
         />
 
-        <NodeArchivesModal
-          isOpen={showArchivesModal}
-          onClose={() => setShowArchivesModal(false)}
-          nodeId={selectedNodeId}
-          nodeName={selectedNodeName}
-          onNodeDeleted={handleNodeDeleted}
-        />
-
         <AddAIToNodeModal
           isOpen={showAddAIModal}
           onClose={() => setShowAddAIModal(false)}
           nodeId={selectedNodeId}
           nodeName={selectedNodeName}
           onContentAdded={handleContentAdded}
+        />
+
+        <ConversationDetailModal
+          isOpen={showConversationModal}
+          onClose={() => setShowConversationModal(false)}
+          conversationId={selectedConversationId}
         />
       </div>
     </div>
