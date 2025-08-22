@@ -454,25 +454,116 @@ const AROTemplate: React.FC<AROTemplateProps> = ({ conversationData }) => {
         @media print {
           @page {
             size: A4 landscape;
-            margin: 0.5in;
+            margin: 20mm;
           }
           
           body {
             -webkit-print-color-adjust: exact !important;
             color-adjust: exact !important;
+            background: white;
           }
           
           .print-container {
-            width: 100% !important;
-            height: 210mm !important;
-            page-break-inside: avoid;
-            page-break-after: always;
-            border: 1px solid #d1d1d6 !important;
-            margin-bottom: 20mm;
+            width: 257mm !important; /* A4 landscape - 양쪽 여백 */
+            height: 170mm !important; /* A4 landscape - 상하 여백 */
+            border: 2px solid #000 !important;
+            margin: 0 auto !important;
+            padding: 15mm !important;
+            box-sizing: border-box !important;
+            page-break-after: always !important;
+            position: relative !important;
+            background: white !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
           
           .print-container:last-child {
-            page-break-after: auto;
+            page-break-after: avoid !important;
+          }
+          
+          .template-layout {
+            width: 100% !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          
+          .header-section {
+            height: 15% !important;
+            text-align: center !important;
+            border-bottom: 1px solid #ccc !important;
+            margin-bottom: 10px !important;
+            flex-shrink: 0 !important;
+          }
+          
+          .content-wrapper {
+            height: 85% !important;
+            display: flex !important;
+            gap: 15px !important;
+            flex: 1 !important;
+            overflow: hidden !important;
+          }
+          
+          .left-panel {
+            width: 60% !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+          }
+          
+          .right-panel {
+            width: 40% !important;
+            height: 100% !important;
+          }
+          
+          .project-section {
+            height: 25% !important;
+            flex-shrink: 0 !important;
+          }
+          
+          .content-section {
+            height: 75% !important;
+            flex: 1 !important;
+            overflow: hidden !important;
+          }
+          
+          .qa-section {
+            height: 100% !important;
+            overflow: hidden !important;
+          }
+          
+          .section {
+            border: 1px solid #d1d1d6 !important;
+            border-radius: 8px !important;
+            padding: 12px !important;
+            background: #fff !important;
+            height: 100% !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: column !important;
+          }
+          
+          .section-content {
+            flex: 1 !important;
+            overflow: hidden !important;
+          }
+          
+          .qa-list {
+            height: 100% !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+          }
+          
+          .qa-item {
+            flex-shrink: 0 !important;
+            padding: 6px !important;
+            border: 1px solid #e5e5e5 !important;
+            border-radius: 4px !important;
+            background: #fafafa !important;
+            font-size: 9px !important;
           }
         }
       `}</style>
