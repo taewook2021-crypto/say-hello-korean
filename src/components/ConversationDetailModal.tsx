@@ -65,14 +65,19 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
   }, [isOpen, conversationId]);
 
   const loadConversation = async () => {
-    console.log('=== 대화 불러오기 시작 ===');
-    console.log('conversation ID:', conversationId);
+    console.log('🚀 === 대화 불러오기 시작 ===');
+    console.log('📋 conversation ID:', conversationId);
+    console.log('🌐 현재 환경:', {
+      url: window.location.href,
+      isIframe: window.parent !== window,
+      userAgent: navigator.userAgent.substring(0, 50)
+    });
     
     setLoading(true);
     try {
       // 현재 사용자 정보 확인 (임시로 고정값 사용)
       const mockUserId = 'ebcc4eaf-7b16-4a2b-b3ab-4105ba5ff92c';
-      console.log('현재 사용자 ID (임시):', mockUserId);
+      console.log('👤 현재 사용자 ID (임시):', mockUserId);
 
       // 먼저 node_archives에서 해당 conversation_id가 있는지 확인
       console.log('1. node_archives에서 conversation 확인...');
@@ -163,19 +168,46 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       console.log('=== 대화 불러오기 완료 ===');
       setConversation(conversation);
     } catch (error) {
-      console.error('❌ 대화 로딩 실패:', error);
+      console.error('💥 === 대화 로딩 실패 ===');
+      console.error('원본 오류:', error);
+      console.error('오류 타입:', typeof error);
+      console.error('오류 코드:', error?.code);
+      console.error('오류 메시지:', error?.message);
+      console.error('오류 스택:', error?.stack);
+      
       let errorMessage = '대화를 불러오는데 실패했습니다.';
+      
+      // iframe 환경에서는 특별한 안내 추가
+      const isIframe = window.parent !== window;
       
       if (error?.code === 'PGRST116') {
         errorMessage = '해당 대화를 찾을 수 없습니다.';
       } else if (error?.code === 'PGRST301') {
         errorMessage = '대화에 접근할 권한이 없습니다.';
-      } else if (error?.message?.includes('network')) {
+      } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
         errorMessage = '네트워크 연결을 확인해주세요.';
+        if (isIframe) {
+          errorMessage += ' iframe 환경에서는 일부 요청이 차단될 수 있습니다.';
+        }
+      } else if (error?.message?.includes('CORS')) {
+        errorMessage = 'CORS 오류가 발생했습니다.';
+        if (isIframe) {
+          errorMessage += ' iframe 환경에서는 외부 요청이 제한될 수 있습니다.';
+        }
       }
       
-      console.log('사용자에게 표시할 오류:', errorMessage);
-      toast.error(errorMessage);
+      if (isIframe && !errorMessage.includes('iframe')) {
+        errorMessage += ' iframe 제한으로 인한 문제일 수 있습니다. 새 탭에서 시도해보세요.';
+      }
+      
+      console.log('🎯 사용자에게 표시할 오류:', errorMessage);
+      toast.error(errorMessage, {
+        duration: 5000,
+        action: isIframe ? {
+          label: '새 탭에서 열기',
+          onClick: () => window.open(window.location.href, '_blank')
+        } : undefined
+      });
     } finally {
       setLoading(false);
     }
