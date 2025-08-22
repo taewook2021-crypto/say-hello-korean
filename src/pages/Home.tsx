@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { NodeTree } from "@/components/NodeTree";
 import { CreateNodeModal } from "@/components/CreateNodeModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
+import { AIConversationList } from "@/components/AIConversationList";
 import { ConversationDetailModal } from "@/components/ConversationDetailModal";
 import { TodayReviews } from "@/components/TodayReviews";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,6 +82,9 @@ const Home = () => {
 
           <TabsContent value="reviews" className="space-y-6">
             <TodayReviews />
+            <div className="mt-8">
+              <AIConversationList refreshTrigger={refreshTrigger} />
+            </div>
           </TabsContent>
         </Tabs>
 

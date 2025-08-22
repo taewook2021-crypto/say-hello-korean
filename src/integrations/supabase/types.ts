@@ -80,15 +80,7 @@ export type Database = {
           reviewed_count?: number
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "cards_qa_id_fkey"
-            columns: ["qa_id"]
-            isOneToOne: false
-            referencedRelation: "qa_pairs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       chapters: {
         Row: {
@@ -141,31 +133,22 @@ export type Database = {
       }
       conversations: {
         Row: {
-          created_at: string
+          content: string
+          created_at: string | null
           id: string
-          lang: string
-          raw_text: string
-          subject: string
-          updated_at: string
-          user_id: string
+          title: string
         }
         Insert: {
-          created_at?: string
+          content: string
+          created_at?: string | null
           id?: string
-          lang?: string
-          raw_text: string
-          subject: string
-          updated_at?: string
-          user_id: string
+          title: string
         }
         Update: {
-          created_at?: string
+          content?: string
+          created_at?: string | null
           id?: string
-          lang?: string
-          raw_text?: string
-          subject?: string
-          updated_at?: string
-          user_id?: string
+          title?: string
         }
         Relationships: []
       }
@@ -252,54 +235,6 @@ export type Database = {
           },
         ]
       }
-      node_archives: {
-        Row: {
-          archive_type: string
-          content_summary: string | null
-          conversation_id: string | null
-          created_at: string
-          id: string
-          node_id: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          archive_type?: string
-          content_summary?: string | null
-          conversation_id?: string | null
-          created_at?: string
-          id?: string
-          node_id: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          archive_type?: string
-          content_summary?: string | null
-          conversation_id?: string | null
-          created_at?: string
-          id?: string
-          node_id?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "node_archives_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "node_archives_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       nodes: {
         Row: {
           created_at: string
@@ -370,50 +305,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      qa_pairs: {
-        Row: {
-          a_text: string
-          conversation_id: string
-          created_at: string
-          difficulty: string | null
-          id: string
-          importance: string | null
-          q_text: string
-          tags: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          a_text: string
-          conversation_id: string
-          created_at?: string
-          difficulty?: string | null
-          id?: string
-          importance?: string | null
-          q_text: string
-          tags?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          a_text?: string
-          conversation_id?: string
-          created_at?: string
-          difficulty?: string | null
-          id?: string
-          importance?: string | null
-          q_text?: string
-          tags?: string[] | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "qa_pairs_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       review_schedule: {
         Row: {
@@ -556,44 +447,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
-      }
-      summaries: {
-        Row: {
-          content: string
-          conversation_id: string
-          created_at: string
-          id: string
-          structure_type: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          content: string
-          conversation_id: string
-          created_at?: string
-          id?: string
-          structure_type?: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          content?: string
-          conversation_id?: string
-          created_at?: string
-          id?: string
-          structure_type?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "summaries_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       wrong_notes: {
         Row: {
