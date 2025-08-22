@@ -45,7 +45,8 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
         .from('conversations')
         .insert({
           title: title.trim(),
-          content: content.trim()
+          content: content.trim(),
+          node_id: nodeId
         })
         .select()
         .single();

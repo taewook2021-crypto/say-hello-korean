@@ -51,12 +51,11 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
     try {
       console.log('📂 노드 아카이브 조회 시작:', nodeId);
 
-      // conversations 테이블에서 해당 노드의 모든 대화 조회
-      // 실제로는 node와 conversation 간의 연결 테이블이 필요하지만
-      // 지금은 단순화를 위해 모든 conversations를 조회
+      // conversations 테이블에서 해당 노드의 대화만 조회
       const { data, error } = await supabase
         .from('conversations')
         .select('*')
+        .eq('node_id', nodeId)
         .order('created_at', { ascending: false });
 
       if (error) {

@@ -136,21 +136,32 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          node_id: string | null
           title: string
         }
         Insert: {
           content: string
           created_at?: string | null
           id?: string
+          node_id?: string | null
           title: string
         }
         Update: {
           content?: string
           created_at?: string | null
           id?: string
+          node_id?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_node_id_fkey"
+            columns: ["node_id"]
+            isOneToOne: false
+            referencedRelation: "nodes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       major_chapters: {
         Row: {
