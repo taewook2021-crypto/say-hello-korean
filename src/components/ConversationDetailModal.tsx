@@ -13,9 +13,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { MessageSquare, ChevronDown, ChevronUp, FileText, HelpCircle, BookOpen, FileDown, Brain } from 'lucide-react';
+import { MessageSquare, ChevronDown, ChevronUp, FileText, HelpCircle, BookOpen, FileDown, Brain, MoreVertical } from 'lucide-react';
 import { parseAROFormat, ParsedConversation } from '@/utils/aroParser';
 import { convertArchiveToWrongNotes, validateArchiveQAs, convertArchiveToNotesFormat } from '@/utils/archiveConverter';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import StudySummaryTemplate from '@/components/StudySummaryTemplate';
 
 // 컴포넌트에서 사용할 WrongNote 타입 정의
 interface WrongNote {
@@ -60,6 +67,7 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
   const [showAnswers, setShowAnswers] = useState<Set<string>>(new Set());
   const [showStudyModal, setShowStudyModal] = useState(false);
   const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'quiz' | 'subjective' | null>(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
 
   useEffect(() => {
     if (isOpen && conversationId) {
@@ -147,22 +155,54 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
     toast.success('학습을 완료했습니다!');
   };
 
-  const handleDownloadPDF = async () => {
-    if (!parsedData || parsedData.qaPairs.length === 0) {
+  const handleDownloadPDF = async (option: 'all' | 'summary' | 'qa') => {
+    if (option === 'all') {
+      // 새로운 템플릿 모달 열기
+      setShowTemplateModal(true);
+      return;
+    }
+
+    if (option === 'qa' && (!parsedData || parsedData.qaPairs.length === 0)) {
       toast.error('다운로드할 Q&A가 없습니다.');
       return;
     }
 
-    const wrongNotes = convertArchiveToWrongNotes(
-      parsedData.qaPairs,
-      conversation?.title || '아카이브',
-      conversationId
-    );
+    if (option === 'summary' && !parsedData?.summary?.content && !conversation?.content) {
+      toast.error('다운로드할 정리문이 없습니다.');
+      return;
+    }
 
-    await downloadPDF(wrongNotes, '아카이브', conversation?.title || '저장된 Q&A', 'Q&A 복습', {
-      includeWrongAnswers: false,
-      paperTemplate: 'default'
-    });
+    if (option === 'qa') {
+      const wrongNotes = convertArchiveToWrongNotes(
+        parsedData.qaPairs,
+        conversation?.title || '아카이브',
+        conversationId
+      );
+
+      await downloadPDF(wrongNotes, '아카이브', conversation?.title || '저장된 Q&A', 'Q&A 복습', {
+        includeWrongAnswers: false,
+        paperTemplate: 'default'
+      });
+    } else if (option === 'summary') {
+      // 정리문만 PDF로 변환
+      const summaryContent = parsedData?.summary?.content || conversation?.content || '';
+      const dummyWrongNotes = [{
+        id: 'summary-1',
+        question: parsedData?.summary?.title || conversation?.title || '학습 정리',
+        wrong_answer: null,
+        correct_answer: summaryContent,
+        explanation: null,
+        subject_name: '정리문',
+        book_name: '아카이브',
+        chapter_name: conversation?.title || '정리문',
+        is_resolved: false
+      }];
+
+      await downloadPDF(dummyWrongNotes, '아카이브', conversation?.title || '저장된 정리문', '정리문', {
+        includeWrongAnswers: false,
+        paperTemplate: 'default'
+      });
+    }
   };
 
   const getConvertedNotes = () => {
@@ -194,14 +234,29 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
                   <Brain size={16} className="mr-1" />
                   복습하기
                 </Button>
-                <Button
-                  onClick={handleDownloadPDF}
-                  size="sm"
-                  variant="outline"
-                >
-                  <FileDown size={16} className="mr-1" />
-                  PDF 다운로드
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <FileDown size={16} className="mr-1" />
+                      PDF 다운로드
+                      <MoreVertical size={12} className="ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleDownloadPDF('all')}>
+                      <FileText size={16} className="mr-2" />
+                      정리문 + Q&A 모두 인쇄
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownloadPDF('summary')}>
+                      <BookOpen size={16} className="mr-2" />
+                      정리문만 인쇄
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDownloadPDF('qa')}>
+                      <HelpCircle size={16} className="mr-2" />
+                      Q&A만 인쇄
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </div>
@@ -379,6 +434,16 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
                 )}
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* 새로운 템플릿 모달 */}
+        <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
+          <DialogContent className="sm:max-w-7xl max-h-[95vh] w-[95vw]">
+            <DialogHeader>
+              <DialogTitle>학습 정리 템플릿</DialogTitle>
+            </DialogHeader>
+            <StudySummaryTemplate />
           </DialogContent>
         </Dialog>
       </DialogContent>
