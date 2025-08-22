@@ -6,9 +6,6 @@ import { CreateNodeModal } from "@/components/CreateNodeModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
 import { NodeArchivesModal } from "@/components/NodeArchivesModal";
 import { ConversationDetailModal } from "@/components/ConversationDetailModal";
-import { PromptCopyModal } from "@/components/PromptCopyModal";
-import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
 
 const Home = () => {
   const { user } = useAuth();
@@ -19,7 +16,6 @@ const Home = () => {
   const [showAddAIModal, setShowAddAIModal] = useState(false);
   const [showConversationModal, setShowConversationModal] = useState(false);
   const [showArchivesModal, setShowArchivesModal] = useState(false);
-  const [showPromptModal, setShowPromptModal] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedNodeName, setSelectedNodeName] = useState<string>('');
   const [selectedConversationId, setSelectedConversationId] = useState<string>('');
@@ -72,14 +68,6 @@ const Home = () => {
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-primary">ARO</h1>
-          <Button 
-            onClick={() => setShowPromptModal(true)}
-            variant="outline"
-            size="sm"
-          >
-            <Copy size={16} className="mr-2" />
-            AI 프롬프트 복사
-          </Button>
         </div>
 
         <div className="space-y-6">
@@ -124,11 +112,6 @@ const Home = () => {
           isOpen={showConversationModal}
           onClose={() => setShowConversationModal(false)}
           conversationId={selectedConversationId}
-        />
-
-        <PromptCopyModal
-          isOpen={showPromptModal}
-          onClose={() => setShowPromptModal(false)}
         />
       </div>
     </div>

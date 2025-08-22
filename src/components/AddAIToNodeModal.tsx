@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Copy, Check } from 'lucide-react';
 
 interface AddAIToNodeModalProps {
   isOpen: boolean;
@@ -30,6 +31,15 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const promptText = `평문만 주세요(마크다운 금지). 아래 형식 그대로:
+1. 정리(제목/소제목/핵심 개념/상세 설명/체크리스트/기록 팁)
+2. Q&A(각 줄 Q./A.로 시작)
+하이픈(-), 숫자만 사용. "**", "_", "\`", "#", "[]", "()" 등 금지.
+결과는 START~END 사이에만 작성.
+===START===
+===END===`;
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
@@ -75,12 +85,49 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
     }
   };
 
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(promptText);
+      setCopied(true);
+      toast.success('프롬프트가 복사되었습니다!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error('복사에 실패했습니다.');
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>새 대화 추가 - {nodeName}</DialogTitle>
         </DialogHeader>
+        
+        <div className="mb-4 p-3 bg-muted rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">AI용 프롬프트</span>
+            <Button
+              onClick={handleCopy}
+              size="sm"
+              variant="outline"
+            >
+              {copied ? (
+                <>
+                  <Check size={14} className="mr-1" />
+                  복사됨
+                </>
+              ) : (
+                <>
+                  <Copy size={14} className="mr-1" />
+                  복사
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="text-xs text-muted-foreground max-h-20 overflow-y-auto bg-background p-2 rounded border">
+            <pre className="whitespace-pre-wrap font-mono">{promptText}</pre>
+          </div>
+        </div>
         
         <div className="space-y-4">
           <div>
