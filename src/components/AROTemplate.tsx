@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,20 @@ interface QAItem {
   answer: string;
 }
 
+interface QAPair {
+  question: string;
+  answer: string;
+  level: string;
+  tags?: string[];
+}
+
+interface ConversationData {
+  title: string;
+  content: string;
+  summary: string;
+  qaPairs: QAPair[];
+}
+
 interface AROTemplateData {
   title: string;
   project: string;
@@ -17,7 +31,11 @@ interface AROTemplateData {
   qaItems: QAItem[];
 }
 
-const AROTemplate: React.FC = () => {
+interface AROTemplateProps {
+  conversationData?: ConversationData;
+}
+
+const AROTemplate: React.FC<AROTemplateProps> = ({ conversationData }) => {
   const [data, setData] = useState<AROTemplateData>({
     title: 'ARO 지식 정리',
     project: '',
@@ -30,6 +48,26 @@ const AROTemplate: React.FC = () => {
   });
 
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // 대화 데이터가 변경될 때 자동으로 템플릿에 채우기
+  useEffect(() => {
+    if (conversationData) {
+      setData(prev => ({
+        ...prev,
+        title: conversationData.title || 'ARO 지식 정리',
+        project: conversationData.title || '',
+        content: conversationData.summary || conversationData.content || '',
+        qaItems: prev.qaItems.map((item, index) => {
+          const qaPair = conversationData.qaPairs[index];
+          return qaPair ? {
+            id: item.id,
+            question: qaPair.question,
+            answer: qaPair.answer
+          } : item;
+        })
+      }));
+    }
+  }, [conversationData]);
 
   const updateTitle = (title: string) => {
     setData(prev => ({ ...prev, title }));

@@ -444,7 +444,14 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
             <DialogHeader>
               <DialogTitle>학습 정리 템플릿</DialogTitle>
             </DialogHeader>
-            <AROTemplate />
+            <AROTemplate 
+              conversationData={{
+                title: conversation?.title || '',
+                content: conversation?.content || '',
+                summary: parsedData?.summary?.content || '',
+                qaPairs: parsedData?.qaPairs || []
+              }}
+            />
           </DialogContent>
         </Dialog>
       </DialogContent>
