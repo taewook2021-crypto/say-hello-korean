@@ -270,7 +270,12 @@ const AROTemplate: React.FC = () => {
             fontSize: '11px',
             lineHeight: '1.4',
             color: '#000',
-            background: '#fff'
+            background: '#fff',
+            minHeight: '210mm', // A4 landscape height
+            border: '1px solid #d1d1d6',
+            borderRadius: '8px',
+            padding: '16px',
+            pageBreakInside: 'avoid'
           }}
         >
           {/* 헤더 */}
@@ -404,6 +409,8 @@ const AROTemplate: React.FC = () => {
       <style>{`
         .print-container {
           min-height: 210mm !important;
+          page-break-inside: avoid;
+          box-sizing: border-box;
         }
         
         @media print {
@@ -419,8 +426,15 @@ const AROTemplate: React.FC = () => {
           
           .print-container {
             width: 100% !important;
-            height: auto !important;
+            height: 210mm !important;
             page-break-inside: avoid;
+            page-break-after: always;
+            border: 1px solid #d1d1d6 !important;
+            margin-bottom: 20mm;
+          }
+          
+          .print-container:last-child {
+            page-break-after: auto;
           }
         }
       `}</style>
