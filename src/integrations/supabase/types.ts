@@ -285,13 +285,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_node_archives_conversation_id"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "node_archives_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: false
@@ -413,13 +406,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "fk_qa_pairs_conversation_id"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "conversations"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "qa_pairs_conversation_id_fkey"
             columns: ["conversation_id"]
@@ -601,7 +587,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_summaries_conversation_id"
+            foreignKeyName: "summaries_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
