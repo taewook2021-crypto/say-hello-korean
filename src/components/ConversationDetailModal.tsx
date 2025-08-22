@@ -98,36 +98,69 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
         console.log('아카이브 데이터:', archiveData);
       }
 
-      // conversation만 먼저 조회
-      console.log('2. conversation 기본 정보 조회...');
-      const { data: conversationOnly, error: convOnlyError } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('id', actualId)
-        .maybeSingle();
-
-      console.log('conversation 기본 정보:', { conversationOnly, convOnlyError });
-
-      // summaries 별도 조회
-      console.log('3. summaries 조회...');
-      const { data: summariesData, error: summariesError } = await supabase
+      // 2️⃣ 관련 테이블 데이터 확인
+      console.log('2️⃣ 관련 테이블 데이터 확인...');
+      
+      // summaries 개별 조회
+      console.log('📄 summaries 조회...');
+      const summariesCheck = await supabase
         .from('summaries')
         .select('*')
         .eq('conversation_id', actualId);
-
-      console.log('summaries 결과:', { summariesData, summariesError });
-
-      // qa_pairs 별도 조회
-      console.log('4. qa_pairs 조회...');
-      const { data: qaPairsData, error: qaPairsError } = await supabase
+      
+      console.log('summaries 결과:', summariesCheck);
+      
+      // qa_pairs 개별 조회  
+      console.log('💭 qa_pairs 조회...');
+      const qaPairsCheck = await supabase
         .from('qa_pairs')
         .select('*')
         .eq('conversation_id', actualId);
+        
+      console.log('qa_pairs 결과:', qaPairsCheck);
 
-      console.log('qa_pairs 결과:', { qaPairsData, qaPairsError });
+      // 3️⃣ JOIN 쿼리 실행
+      console.log('3️⃣ 전체 JOIN 쿼리 실행...');
+      const joinQuery = `
+        SELECT 
+          conversations.*,
+          COALESCE(
+            JSON_AGG(
+              CASE WHEN qa_pairs.id IS NOT NULL 
+              THEN json_build_object(
+                'id', qa_pairs.id,
+                'q_text', qa_pairs.q_text,
+                'a_text', qa_pairs.a_text,
+                'difficulty', qa_pairs.difficulty,
+                'importance', qa_pairs.importance,
+                'tags', qa_pairs.tags
+              ) END
+            ) FILTER (WHERE qa_pairs.id IS NOT NULL), 
+            '[]'::json
+          ) as qa_pairs,
+          COALESCE(
+            JSON_AGG(
+              CASE WHEN summaries.id IS NOT NULL 
+              THEN json_build_object(
+                'id', summaries.id,
+                'title', summaries.title,
+                'content', summaries.content,
+                'structure_type', summaries.structure_type
+              ) END
+            ) FILTER (WHERE summaries.id IS NOT NULL), 
+            '[]'::json
+          ) as summaries
+        FROM conversations
+        LEFT JOIN qa_pairs ON conversations.id = qa_pairs.conversation_id
+        LEFT JOIN summaries ON conversations.id = summaries.conversation_id
+        WHERE conversations.id = '${actualId}'
+        GROUP BY conversations.id
+      `;
+      
+      console.log('실행할 쿼리:', joinQuery);
 
-      // 대화 데이터 조회 (조인 쿼리)
-      console.log('5. 전체 조인 쿼리 실행...');
+      // 4️⃣ 최종 조회 (기존 방식)
+      console.log('4️⃣ 기존 JOIN 방식으로 최종 조회...');
       const { data, error } = await supabase
         .from('conversations')
         .select(`
@@ -138,27 +171,28 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
         .eq('id', actualId)
         .maybeSingle();
 
-      console.log('조회 쿼리 결과:', { data, error });
+      console.log('🎯 최종 조회 결과:', { data, error });
 
       if (error) {
-        console.error('❌ 대화 조회 오류:', error);
+        console.error('💥 최종 조회 오류:', error);
         if (error.code === 'PGRST116') {
-          console.log('오류 원인: 해당 ID의 대화를 찾을 수 없음');
-          setConversation(null);
-          return;
+          console.log('🔍 오류 원인: 해당 ID의 대화를 찾을 수 없음');
+          throw new Error('해당 대화를 찾을 수 없습니다.');
         }
-        throw error;
+        throw new Error(`데이터베이스 오류: ${error.message}`);
       }
       
       if (!data) {
-        console.log('❌ 대화 데이터 없음 - conversation_id가 존재하지 않거나 접근 권한이 없음');
-        setConversation(null);
-        return;
+        console.log('💥 데이터 없음 - conversation_id가 존재하지 않거나 접근 권한이 없음');
+        throw new Error('대화 데이터를 찾을 수 없습니다.');
       }
 
-      console.log('✅ 대화 데이터 조회 성공:', data);
+      console.log('🎉 === 대화 데이터 조회 성공 ===');
+      console.log('📊 데이터 분석:');
+      console.log('- 대화 제목:', data.subject);
       console.log('- 정리글 개수:', data.summaries?.length || 0);
       console.log('- Q&A 개수:', data.qa_pairs?.length || 0);
+      console.log('- 원본 텍스트 길이:', data.raw_text?.length || 0);
       
       // 데이터 구조 정리
       const conversation: Conversation = {
@@ -166,12 +200,12 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
         subject: data.subject,
         raw_text: data.raw_text,
         created_at: data.created_at,
-        qa_pairs: data.qa_pairs || [],
+        qa_pairs: Array.isArray(data.qa_pairs) ? data.qa_pairs : [],
         summaries: Array.isArray(data.summaries) ? data.summaries : []
       };
       
-      console.log('✅ 최종 conversation 객체:', conversation);
-      console.log('=== 대화 불러오기 완료 ===');
+      console.log('🚀 최종 conversation 객체:', conversation);
+      console.log('✅ === 대화 불러오기 성공적으로 완료 ===');
       setConversation(conversation);
     } catch (error) {
       console.error('💥 === 대화 로딩 실패 ===');
