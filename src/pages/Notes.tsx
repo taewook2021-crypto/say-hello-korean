@@ -33,6 +33,49 @@ interface WrongNote {
   isResolved: boolean;
 }
 
+// Study 컴포넌트들이 기대하는 WrongNote 형식
+interface StudyWrongNote {
+  id: string;
+  question: string;
+  wrong_answer: string | null;
+  correct_answer: string;
+  explanation: string | null;
+  subject_name: string;
+  book_name: string;
+  chapter_name: string;
+  is_resolved: boolean;
+}
+
+// Notes.tsx 형식을 Study 컴포넌트 형식으로 변환
+const convertToStudyFormat = (notes: WrongNote[], subject: string, book: string, chapter: string): StudyWrongNote[] => {
+  return notes.map(note => ({
+    id: note.id,
+    question: note.question,
+    wrong_answer: note.wrongAnswer || null,
+    correct_answer: note.correctAnswer,
+    explanation: null,
+    subject_name: subject,
+    book_name: book,
+    chapter_name: chapter,
+    is_resolved: note.isResolved
+  }));
+};
+
+// PDF 컴포넌트가 기대하는 WrongNote 형식으로 변환
+const convertToPDFFormat = (notes: WrongNote[]): any[] => {
+  return notes.map(note => ({
+    id: note.id,
+    question: note.question,
+    wrong_answer: note.wrongAnswer || null,
+    correct_answer: note.correctAnswer,
+    explanation: null,
+    subject_name: '',
+    book_name: '',
+    chapter_name: '',
+    is_resolved: note.isResolved
+  }));
+};
+
 const Index = () => {
   const { subjectName, bookName, chapterName } = useParams<{
     subjectName: string;
@@ -341,7 +384,7 @@ const Index = () => {
     };
     
     console.log('Executing download with template:', templateId);
-    const success = await downloadPDF(filteredNotes, subject, book, chapter, options);
+    const success = await downloadPDF(convertToPDFFormat(filteredNotes), subject, book, chapter, options);
     if (success) {
       toast({
         title: "성공",
@@ -391,7 +434,7 @@ const Index = () => {
       paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
     };
 
-    const success = await downloadPDF(filteredNotes, subject, book, chapter, extendedOptions);
+    const success = await downloadPDF(convertToPDFFormat(filteredNotes), subject, book, chapter, extendedOptions);
     if (success) {
       toast({
         title: "성공",
@@ -431,7 +474,7 @@ const Index = () => {
       return;
     }
 
-    const success = await printPDF(filteredNotes, subject, book, chapter, {
+    const success = await printPDF(convertToPDFFormat(filteredNotes), subject, book, chapter, {
       ...options,
       paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
     });
@@ -882,17 +925,7 @@ const Index = () => {
                   </div>
 
                   {selectedStudyMode === 'flashcard' && (() => {
-                    const mappedNotes = notes.map(n => ({
-                      id: n.id,
-                      question: n.question,
-                      wrong_answer: n.wrongAnswer,
-                      correct_answer: n.correctAnswer,
-                      explanation: null,
-                      subject_name: subject || '',
-                      book_name: book || '',
-                      chapter_name: chapter || '',
-                      is_resolved: n.isResolved
-                    }));
+                    const mappedNotes = convertToStudyFormat(notes, subject || '', book || '', chapter || '');
                     
                     console.log('Total notes for FlashCard:', mappedNotes.length);
                     console.log('Notes data:', mappedNotes);
@@ -926,17 +959,7 @@ const Index = () => {
 
                   {selectedStudyMode === 'multiple-choice' && (
                     <Quiz 
-                      notes={notes.map(n => ({
-                        id: n.id,
-                        question: n.question,
-                        wrong_answer: n.wrongAnswer,
-                        correct_answer: n.correctAnswer,
-                        explanation: null,
-                        subject_name: subject || '',
-                        book_name: book || '',
-                        chapter_name: chapter || '',
-                        is_resolved: n.isResolved
-                      }))} 
+                      notes={convertToStudyFormat(notes, subject || '', book || '', chapter || '')} 
                       onComplete={() => {
                         setShowStudyModal(false);
                         setSelectedStudyMode(null);
@@ -951,17 +974,7 @@ const Index = () => {
 
                   {selectedStudyMode === 'subjective' && (
                     <SubjectiveQuiz 
-                      notes={notes.map(n => ({
-                        id: n.id,
-                        question: n.question,
-                        wrong_answer: n.wrongAnswer,
-                        correct_answer: n.correctAnswer,
-                        explanation: null,
-                        subject_name: subject || '',
-                        book_name: book || '',
-                        chapter_name: chapter || '',
-                        is_resolved: n.isResolved
-                      }))} 
+                      notes={convertToStudyFormat(notes, subject || '', book || '', chapter || '')} 
                       onComplete={() => {
                         setShowStudyModal(false);
                         setSelectedStudyMode(null);
