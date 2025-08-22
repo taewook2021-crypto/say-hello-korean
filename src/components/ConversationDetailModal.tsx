@@ -13,7 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, ChevronDown, ChevronUp, FileText, HelpCircle } from 'lucide-react';
+import { parseAROFormat, ParsedConversation } from '@/utils/aroParser';
 
 // 단순화된 인터페이스
 interface Conversation {
@@ -35,7 +36,9 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
   conversationId
 }) => {
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedConversation | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAnswers, setShowAnswers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isOpen && conversationId) {
@@ -66,6 +69,11 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       console.log('✅ 조회 성공:', data);
       setConversation(data);
       
+      // content 파싱하여 좌우 분할 준비
+      const parsed = parseAROFormat(data.content);
+      console.log('📋 파싱 결과:', parsed);
+      setParsedData(parsed);
+      
     } catch (error) {
       console.error('💥 조회 실패:', error);
       toast.error('대화를 불러오는데 실패했습니다.');
@@ -74,9 +82,38 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
     }
   };
 
+  const toggleAnswer = (qaIndex: number) => {
+    const newShowAnswers = new Set(showAnswers);
+    if (newShowAnswers.has(qaIndex.toString())) {
+      newShowAnswers.delete(qaIndex.toString());
+    } else {
+      newShowAnswers.add(qaIndex.toString());
+    }
+    setShowAnswers(newShowAnswers);
+  };
+
+  const toggleAllAnswers = () => {
+    if (!parsedData) return;
+    
+    if (showAnswers.size === parsedData.qaPairs.length) {
+      setShowAnswers(new Set());
+    } else {
+      setShowAnswers(new Set(parsedData.qaPairs.map((_, index) => index.toString())));
+    }
+  };
+
+  const getDifficultyColor = (level: string) => {
+    switch (level.toLowerCase()) {
+      case 'easy': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+      <DialogContent className="sm:max-w-7xl max-h-[90vh] w-[95vw]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare size={20} />
@@ -93,24 +130,120 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
             대화를 찾을 수 없습니다.
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-semibold">{conversation.title}</h2>
-              <Badge variant="outline">
-                {formatDistanceToNow(new Date(conversation.created_at), {
-                  addSuffix: true,
-                  locale: ko
-                })}
-              </Badge>
+          <div className="flex gap-6 h-[70vh]">
+            {/* 좌측: 정리글 */}
+            <div className="w-1/2 border-r pr-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold mb-2">📝 학습 정리</h3>
+                <Badge variant="outline">
+                  {formatDistanceToNow(new Date(conversation.created_at), {
+                    addSuffix: true,
+                    locale: ko
+                  })}
+                </Badge>
+              </div>
+              
+              <ScrollArea className="h-full">
+                {parsedData?.summary ? (
+                  <Card className="p-4">
+                    <h4 className="font-medium mb-3">{parsedData.summary.title}</h4>
+                    <div className="prose prose-sm max-w-none">
+                      <div className="whitespace-pre-wrap leading-relaxed">
+                        {parsedData.summary.content}
+                      </div>
+                    </div>
+                  </Card>
+                ) : (
+                  <Card className="p-4">
+                    <div className="whitespace-pre-wrap leading-relaxed">
+                      {conversation.content}
+                    </div>
+                  </Card>
+                )}
+              </ScrollArea>
             </div>
-            
-            <ScrollArea className="h-[60vh]">
-              <Card className="p-6">
-                <div className="whitespace-pre-wrap leading-relaxed">
-                  {conversation.content}
-                </div>
-              </Card>
-            </ScrollArea>
+
+            {/* 우측: Q&A 카드들 */}
+            <div className="w-1/2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">🎯 Q&A 카드</h3>
+                {parsedData && parsedData.qaPairs.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={toggleAllAnswers}
+                  >
+                    {showAnswers.size === parsedData.qaPairs.length ? '모두 숨기기' : '모두 보기'}
+                  </Button>
+                )}
+              </div>
+
+              <ScrollArea className="h-full">
+                {parsedData && parsedData.qaPairs.length > 0 ? (
+                  <div className="space-y-3">
+                    {parsedData.qaPairs.map((qa, index) => (
+                      <Card key={index} className="p-4 hover:shadow-md transition-shadow">
+                        <div className="space-y-3">
+                          {/* 질문 */}
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Badge variant="secondary">Q{index + 1}</Badge>
+                                <Badge 
+                                  variant="secondary"
+                                  className={getDifficultyColor(qa.level)}
+                                >
+                                  {qa.level}
+                                </Badge>
+                              </div>
+                              <p className="font-medium text-sm leading-relaxed">{qa.question}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleAnswer(index)}
+                            >
+                              {showAnswers.has(index.toString()) ? (
+                                <ChevronUp size={16} />
+                              ) : (
+                                <ChevronDown size={16} />
+                              )}
+                            </Button>
+                          </div>
+
+                          {/* 답변 */}
+                          {showAnswers.has(index.toString()) && (
+                            <div className="border-l-4 border-primary/20 pl-4 ml-2 bg-muted/30 p-3 rounded-r">
+                              <div className="text-xs text-muted-foreground mb-1">💡 답변:</div>
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                {qa.answer}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* 태그 */}
+                          {qa.tags && qa.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {qa.tags.map((tag, tagIndex) => (
+                                <Badge key={tagIndex} variant="outline" className="text-xs">
+                                  #{tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="p-6 text-center text-muted-foreground">
+                    <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">Q&A 카드가 없습니다</p>
+                    <p className="text-sm mt-2">좌측 정리글만 저장된 대화입니다.</p>
+                  </Card>
+                )}
+              </ScrollArea>
+            </div>
           </div>
         )}
         
