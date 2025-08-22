@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Plus, Minus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Plus, Archive, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -18,12 +18,14 @@ interface Node {
 
 interface NodeTreeProps {
   onAddAI: (nodeId: string) => void;
+  onViewArchives: (nodeId: string, nodeName: string) => void;
   onCreateSubNode: (parentId: string) => void;
   onNodeDeleted: () => void;
 }
 
 export const NodeTree: React.FC<NodeTreeProps> = ({
   onAddAI,
+  onViewArchives,
   onCreateSubNode,
   onNodeDeleted
 }) => {
@@ -184,6 +186,17 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
 
             {/* 액션 버튼들 */}
             <div className="flex gap-1">
+              {/* Archive 보기 버튼 */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onViewArchives(node.id, node.name)}
+                className="h-8 px-2"
+              >
+                <Archive size={14} className="mr-1" />
+                Archive
+              </Button>
+              
               {/* + 버튼 */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
