@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuthMock';
+import { handleNetworkError, isInIframe } from '@/utils/errorHandler';
 import { toast } from 'sonner';
 
 interface CreateNodeModalProps {
@@ -33,14 +34,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 환경 정보 로깅
-    console.log('=== 실행 환경 정보 ===');
-    console.log('현재 URL:', window.location.href);
-    console.log('User Agent:', navigator.userAgent);
-    console.log('iframe 여부:', window.parent !== window);
-    console.log('Supabase 연결 상태: 정상');
-    console.log('===================');
     
     if (!name.trim()) {
       toast.error('노드 이름을 입력해주세요.');
@@ -79,8 +72,6 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
           display_order: nextOrder
         });
 
-      console.log('DB 요청 결과:', { error, 환경: window.parent !== window ? 'iframe' : '직접브라우저' });
-
       if (error) throw error;
 
       toast.success('노드가 생성되었습니다.');
@@ -89,8 +80,11 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
       onNodeCreated();
       onClose();
     } catch (error) {
-      console.error('노드 생성 실패:', error);
-      toast.error('노드 생성에 실패했습니다.');
+      handleNetworkError({
+        error,
+        operation: '노드 생성',
+        isIframe: isInIframe()
+      });
     } finally {
       setIsLoading(false);
     }

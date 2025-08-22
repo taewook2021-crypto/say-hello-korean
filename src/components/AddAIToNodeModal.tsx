@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuthMock';
 import { parseAROFormat, validateParsedData } from '@/utils/aroParser';
 import { SummaryAndQAPreview } from '@/components/SummaryAndQAPreview';
+import { handleNetworkError, isInIframe } from '@/utils/errorHandler';
 import { toast } from 'sonner';
 
 interface AddAIToNodeModalProps {
@@ -196,8 +197,11 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
       onContentAdded();
       onClose();
     } catch (error) {
-      console.error('❌ 저장 실패:', error);
-      toast.error('AI 대화 저장에 실패했습니다.');
+      handleNetworkError({
+        error,
+        operation: 'AI 대화 저장',
+        isIframe: isInIframe()
+      });
     } finally {
       setIsLoading(false);
     }
