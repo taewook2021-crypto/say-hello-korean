@@ -57,16 +57,22 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
 
   useEffect(() => {
     if (isOpen && conversationId) {
-      console.log('=== ConversationDetailModal 열림 ===');
-      console.log('props - conversationId:', conversationId);
-      console.log('props - isOpen:', isOpen);
-      loadConversation();
+      console.log('🚀 === ConversationDetailModal 열림 ===');
+      console.log('📋 props - conversationId:', conversationId);
+      console.log('🔍 conversationId 타입:', typeof conversationId);
+      console.log('✅ props - isOpen:', isOpen);
+      
+      // 임시 테스트용으로 하드코딩된 ID 사용
+      const testConversationId = 'c7efb1f5-39c8-4a83-ad41-82f26ec024bd';
+      console.log('🧪 테스트용 conversation ID:', testConversationId);
+      
+      loadConversation(testConversationId);
     }
   }, [isOpen, conversationId]);
 
-  const loadConversation = async () => {
-    console.log('🚀 === 대화 불러오기 시작 ===');
-    console.log('📋 conversation ID:', conversationId);
+  const loadConversation = async (testId?: string) => {
+    const actualId = testId || conversationId;
+    console.log('📋 사용할 conversation ID:', actualId);
     console.log('🌐 현재 환경:', {
       url: window.location.href,
       isIframe: window.parent !== window,
@@ -84,7 +90,7 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       const { data: archiveData, error: archiveError } = await supabase
         .from('node_archives')
         .select('*')
-        .eq('conversation_id', conversationId);
+        .eq('conversation_id', actualId);
 
       if (archiveError) {
         console.error('아카이브 조회 오류:', archiveError);
@@ -97,7 +103,7 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       const { data: conversationOnly, error: convOnlyError } = await supabase
         .from('conversations')
         .select('*')
-        .eq('id', conversationId)
+        .eq('id', actualId)
         .maybeSingle();
 
       console.log('conversation 기본 정보:', { conversationOnly, convOnlyError });
@@ -107,7 +113,7 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       const { data: summariesData, error: summariesError } = await supabase
         .from('summaries')
         .select('*')
-        .eq('conversation_id', conversationId);
+        .eq('conversation_id', actualId);
 
       console.log('summaries 결과:', { summariesData, summariesError });
 
@@ -116,7 +122,7 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
       const { data: qaPairsData, error: qaPairsError } = await supabase
         .from('qa_pairs')
         .select('*')
-        .eq('conversation_id', conversationId);
+        .eq('conversation_id', actualId);
 
       console.log('qa_pairs 결과:', { qaPairsData, qaPairsError });
 
@@ -129,7 +135,7 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
           qa_pairs (*),
           summaries (*)
         `)
-        .eq('id', conversationId)
+        .eq('id', actualId)
         .maybeSingle();
 
       console.log('조회 쿼리 결과:', { data, error });
