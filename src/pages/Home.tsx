@@ -6,9 +6,7 @@ import { CreateNodeModal } from "@/components/CreateNodeModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
 import { AIConversationList } from "@/components/AIConversationList";
 import { ConversationDetailModal } from "@/components/ConversationDetailModal";
-import { TodayReviews } from "@/components/TodayReviews";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Home = () => {
   const { user } = useAuth();
@@ -66,27 +64,29 @@ const Home = () => {
           <h1 className="text-3xl font-bold text-primary">ARO</h1>
         </div>
 
-        <Tabs defaultValue="nodes" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="nodes">프로젝트 트리</TabsTrigger>
-            <TabsTrigger value="reviews">오늘의 복습</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="nodes" className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 좌측: 프로젝트 트리 */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold">프로젝트 트리</h2>
             <NodeTree
               onAddAI={handleAddAI}
               onCreateSubNode={handleCreateSubNode}
               onNodeDeleted={handleNodeDeleted}
             />
-          </TabsContent>
+          </div>
 
-          <TabsContent value="reviews" className="space-y-6">
-            <TodayReviews />
-            <div className="mt-8">
-              <AIConversationList refreshTrigger={refreshTrigger} />
-            </div>
-          </TabsContent>
-        </Tabs>
+          {/* 우측: 저장된 대화 목록 */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold">저장된 대화</h2>
+            <AIConversationList 
+              refreshTrigger={refreshTrigger} 
+              onConversationClick={(conversationId) => {
+                setSelectedConversationId(conversationId);
+                setShowConversationModal(true);
+              }}
+            />
+          </div>
+        </div>
 
         {/* 모달들 */}
         <CreateNodeModal

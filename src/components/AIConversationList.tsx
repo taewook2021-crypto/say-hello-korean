@@ -18,9 +18,10 @@ interface Conversation {
 
 interface AIConversationListProps {
   refreshTrigger?: number;
+  onConversationClick?: (conversationId: string) => void;
 }
 
-export const AIConversationList: React.FC<AIConversationListProps> = ({ refreshTrigger }) => {
+export const AIConversationList: React.FC<AIConversationListProps> = ({ refreshTrigger, onConversationClick }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -112,7 +113,11 @@ export const AIConversationList: React.FC<AIConversationListProps> = ({ refreshT
               </p>
               
               <div className="flex justify-end">
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => onConversationClick?.(conversation.id)}
+                >
                   <Eye size={14} className="mr-1" />
                   자세히 보기
                 </Button>
