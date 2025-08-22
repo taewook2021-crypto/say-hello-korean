@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import StudySummaryTemplate from '@/components/StudySummaryTemplate';
+import AROTemplate from '@/components/AROTemplate';
 
 // 컴포넌트에서 사용할 WrongNote 타입 정의
 interface WrongNote {
@@ -443,7 +444,7 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
             <DialogHeader>
               <DialogTitle>학습 정리 템플릿</DialogTitle>
             </DialogHeader>
-            <StudySummaryTemplate />
+            <AROTemplate />
           </DialogContent>
         </Dialog>
       </DialogContent>
