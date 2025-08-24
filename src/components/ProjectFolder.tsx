@@ -10,7 +10,8 @@ interface ProjectFolderProps {
   project: {
     id: string;
     name: string;
-    description?: string;
+    description?: string; // 프로젝트 목표
+    deadline?: string;
     archive_count?: number;
     project_status?: string;
     is_completed?: boolean;
@@ -100,6 +101,20 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
   };
 
   const handleCompleteProject = async () => {
+    // 기한 체크
+    const now = new Date();
+    const deadline = project.deadline ? new Date(project.deadline) : null;
+    
+    if (deadline && now < deadline) {
+      // 기한이 남았다면 목표 달성 여부 확인
+      const goalText = project.description || '설정된 목표';
+      const confirmed = confirm(`"${goalText}"라는 목표를 달성하셨나요?\n\n기한이 아직 남았지만, 목표를 달성한 경우에만 프로젝트를 완성할 수 있습니다.`);
+      
+      if (!confirmed) {
+        return;
+      }
+    }
+
     try {
       const { error } = await supabase
         .from('nodes')
@@ -283,7 +298,12 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
           </h3>
           {project.description && (
             <p className="text-xs text-muted-foreground mb-1">
-              {project.description}
+              🎯 목표: {project.description}
+            </p>
+          )}
+          {project.deadline && (
+            <p className="text-xs text-muted-foreground mb-1">
+              📅 기한: {new Date(project.deadline).toLocaleDateString('ko-KR')}
             </p>
           )}
           <p className="text-sm text-muted-foreground">
