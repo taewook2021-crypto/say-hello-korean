@@ -199,16 +199,6 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
                 Archive
               </Button>
               
-              {/* 캘린더 보기 버튼 */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onViewProjectDetail(node.id, node.name)}
-                className="h-8 px-2"
-              >
-                <Calendar size={14} className="mr-1" />
-                캘린더
-              </Button>
               
               {/* + 버튼 */}
               <DropdownMenu>
