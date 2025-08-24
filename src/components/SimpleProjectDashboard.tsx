@@ -13,6 +13,7 @@ import { parseAROFormat as parseAROTeacher } from '@/utils/aroFormatParser';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { AddArchiveModal } from '@/components/AddArchiveModal';
 import { AddFolderModal } from '@/components/AddFolderModal';
+import { ConversationDetailModal } from '@/components/ConversationDetailModal';
 
 interface Project {
   id: string;
@@ -196,6 +197,8 @@ export const SimpleProjectDashboard: React.FC = () => {
     // Modal states
     const [archiveModalOpen, setArchiveModalOpen] = useState(false);
     const [folderModalOpen, setFolderModalOpen] = useState(false);
+    const [conversationModalOpen, setConversationModalOpen] = useState(false);
+    const [selectedConversationId, setSelectedConversationId] = useState<string>('');
 
     const fetchItems = async () => {
       setLoading(true);
@@ -458,7 +461,56 @@ export const SimpleProjectDashboard: React.FC = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {items.map((item) => (
-                <Card key={item.id} className="p-4 cursor-pointer hover:bg-accent">
+                <Card 
+                  key={item.id} 
+                  className="p-4 cursor-pointer hover:bg-accent"
+                  onClick={async () => {
+                    if (item.item_type === 'archive') {
+                      // 아카이브 클릭 시 해당하는 conversation을 찾아서 ConversationDetailModal 열기
+                      console.log('🎯 아카이브 클릭:', item.id, item.title);
+                      try {
+                        // item의 title과 content로 matching하는 conversation 찾기
+                        const { data: conversations, error } = await supabase
+                          .from('conversations')
+                          .select('id')
+                          .eq('title', item.title)
+                          .is('node_id', null)
+                          .order('created_at', { ascending: false })
+                          .limit(1);
+
+                        if (error) {
+                          console.error('❌ conversation 조회 오류:', error);
+                          toast({
+                            title: "오류",
+                            description: "아카이브를 열 수 없습니다",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+
+                        if (conversations && conversations.length > 0) {
+                          console.log('✅ conversation 찾음:', conversations[0].id);
+                          setSelectedConversationId(conversations[0].id);
+                          setConversationModalOpen(true);
+                        } else {
+                          console.log('❌ conversation을 찾을 수 없음');
+                          toast({
+                            title: "오류",
+                            description: "해당 아카이브의 내용을 찾을 수 없습니다",
+                            variant: "destructive"
+                          });
+                        }
+                      } catch (error) {
+                        console.error('💥 아카이브 열기 실패:', error);
+                        toast({
+                          title: "오류",
+                          description: "아카이브를 여는 중 오류가 발생했습니다",
+                          variant: "destructive"
+                        });
+                      }
+                    }
+                  }}
+                >
                   <div className="flex items-center gap-3">
                     {item.item_type === 'folder' ? (
                       <Folder className="w-8 h-8 text-blue-500" />
@@ -502,6 +554,12 @@ export const SimpleProjectDashboard: React.FC = () => {
           isOpen={folderModalOpen}
           onClose={() => setFolderModalOpen(false)}
           onSubmit={handleCreateFolder}
+        />
+
+        <ConversationDetailModal
+          isOpen={conversationModalOpen}
+          onClose={() => setConversationModalOpen(false)}
+          conversationId={selectedConversationId}
         />
       </div>
     );
