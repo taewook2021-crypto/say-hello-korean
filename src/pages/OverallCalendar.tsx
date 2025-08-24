@@ -302,12 +302,19 @@ const OverallCalendar: React.FC = () => {
         // 파란색 일정(review): 학습 모드 선택 화면으로 이동
         if (selectedEvent.projectName && selectedEvent.projectName !== '복습') {
           window.location.href = `/notes?archive=${encodeURIComponent(selectedEvent.projectName)}&study=true`;
+        } else if (selectedEvent.nodeId) {
+          // nodeId가 있으면 해당 프로젝트 상세로 이동
+          window.location.href = `/?project=${selectedEvent.nodeId}`;
         } else {
-          window.location.href = `/project/${selectedEvent.nodeId}`;
+          window.location.href = `/`;
         }
       } else {
-        // 기타 경우: 프로젝트 페이지로 이동
-        window.location.href = `/project/${selectedEvent.nodeId}`;
+        // 기타 경우: nodeId가 있으면 프로젝트 상세로 이동
+        if (selectedEvent.nodeId) {
+          window.location.href = `/?project=${selectedEvent.nodeId}`;
+        } else {
+          window.location.href = `/`;
+        }
       }
       setShowEventModal(false);
     }
