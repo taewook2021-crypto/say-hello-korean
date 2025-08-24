@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/hooks/useAuthMock";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { NodeTree } from "@/components/NodeTree";
 import { CreateNodeModal } from "@/components/CreateNodeModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
@@ -11,6 +11,7 @@ import { ProjectDetailModal } from "@/components/ProjectDetailModal";
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   // 모달 상태
   const [showCreateNodeModal, setShowCreateNodeModal] = useState(false);
@@ -64,6 +65,16 @@ const Home = () => {
     setSelectedNodeName(nodeName);
     setShowProjectDetailModal(true);
   };
+
+  // URL 파라미터에서 project ID를 확인하여 자동으로 프로젝트 상세 모달 열기
+  useEffect(() => {
+    const projectId = searchParams.get('project');
+    if (projectId) {
+      setSelectedNodeId(projectId);
+      setSelectedNodeName('선택된 프로젝트');
+      setShowProjectDetailModal(true);
+    }
+  }, [searchParams]);
 
   // 임시로 인증 체크 비활성화
   // if (!user) {

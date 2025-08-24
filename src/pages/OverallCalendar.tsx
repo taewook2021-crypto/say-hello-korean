@@ -292,9 +292,9 @@ const OverallCalendar: React.FC = () => {
           toast.success(`${selectedEvent.title} 할일 상세 보기`);
         }
       } else if (selectedEvent.type === 'deadline') {
-        // 빨간색 일정(deadline): 해당 프로젝트의 아카이브 목록으로 이동
+        // 빨간색 일정(deadline): 홈페이지로 이동하여 해당 프로젝트 상세보기
         if (selectedEvent.nodeId) {
-          window.location.href = `/project/${selectedEvent.nodeId}`;
+          window.location.href = `/?project=${selectedEvent.nodeId}`;
         } else {
           window.location.href = `/`;
         }
