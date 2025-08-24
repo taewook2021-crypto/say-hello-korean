@@ -163,24 +163,33 @@ const Index = () => {
   };
 
   const loadArchiveNotes = async (archiveName: string) => {
+    console.log('Loading archive notes for:', archiveName);
     try {
-      // 아카이브 이름에서 subject, book, chapter 추출 (임시로 아카이브 이름을 그대로 사용)
+      // 아카이브 이름으로 subject_name, book_name, chapter_name에서 모두 검색
       const { data, error } = await (supabase as any)
         .from('wrong_notes')
         .select('*')
-        .ilike('subject_name', `%${archiveName}%`) // 부분 일치로 검색
+        .or(`subject_name.ilike.%${archiveName}%,book_name.ilike.%${archiveName}%,chapter_name.ilike.%${archiveName}%`)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      console.log('Archive search result:', data);
       
-      setNotes(data.map((note: any) => ({
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
+      
+      const mappedNotes = data.map((note: any) => ({
         id: note.id,
         question: note.question,
         wrongAnswer: note.wrong_answer || '',
         correctAnswer: note.correct_answer,
         createdAt: new Date(note.created_at),
         isResolved: note.is_resolved
-      })));
+      }));
+      
+      console.log('Mapped notes count:', mappedNotes.length);
+      setNotes(mappedNotes);
     } catch (error) {
       console.error('Error loading archive notes:', error);
       toast({
