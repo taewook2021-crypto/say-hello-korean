@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Image as ImageIcon, X, Check } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Check, Plus, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ interface ProjectFolderProps {
   project: {
     id: string;
     name: string;
+    description?: string;
     archive_count?: number;
     project_status?: string;
     is_completed?: boolean;
@@ -19,6 +20,9 @@ interface ProjectFolderProps {
   };
   onClick: () => void;
   onImageUpload?: (projectId: string, imageUrl: string) => void;
+  onAddArchive?: (projectId: string) => void;
+  onAddSubFolder?: (projectId: string) => void;
+  onDeleteProject?: (projectId: string) => void;
 }
 
 const getProjectEmoji = (status: string, archiveCount: number, isCompleted: boolean, milestoneAchieved: boolean) => {
@@ -40,10 +44,14 @@ const getAnimationClass = (status: string, archiveCount: number, isCompleted: bo
 export const ProjectFolder: React.FC<ProjectFolderProps> = ({ 
   project, 
   onClick, 
-  onImageUpload 
+  onImageUpload,
+  onAddArchive,
+  onAddSubFolder,
+  onDeleteProject
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [showActions, setShowActions] = useState(false);
 
   const emoji = getProjectEmoji(
     project.project_status || 'new', 
@@ -109,6 +117,26 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!confirm(`"${project.name}" 프로젝트를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('nodes')
+        .update({ is_active: false })
+        .eq('id', project.id);
+
+      if (error) throw error;
+      toast.success('프로젝트가 삭제되었습니다.');
+      onDeleteProject?.(project.id);
+    } catch (error) {
+      console.error('프로젝트 삭제 오류:', error);
+      toast.error('프로젝트 삭제에 실패했습니다.');
+    }
+  };
+
   return (
     <Card 
       className={`
@@ -143,6 +171,18 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
           <ImageIcon className="w-4 h-4" />
         </Button>
         
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-8 h-8 p-0 bg-white/90"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowActions(!showActions);
+          }}
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+        
         {!project.is_completed && (
           <Button
             variant="outline"
@@ -156,6 +196,18 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
             <Check className="w-4 h-4" />
           </Button>
         )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-8 h-8 p-0 bg-white/90 text-destructive hover:text-destructive"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteProject();
+          }}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* 파일 업로드 영역 */}
@@ -185,6 +237,40 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
         </div>
       )}
 
+      {/* 액션 메뉴 */}
+      {showActions && (
+        <div className="absolute top-12 right-2 z-10">
+          <Card className="p-1 bg-white shadow-lg">
+            <div className="flex flex-col gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-xs px-2 py-1 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddArchive?.(project.id);
+                  setShowActions(false);
+                }}
+              >
+                📄 아카이브 추가
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-xs px-2 py-1 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddSubFolder?.(project.id);
+                  setShowActions(false);
+                }}
+              >
+                📁 하위 폴더 추가
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* 프로젝트 아이콘과 정보 */}
       <div className="relative z-5 text-center space-y-3">
         <div className={`text-6xl ${animationClass}`}>
@@ -195,6 +281,11 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
           <h3 className="font-bold text-lg text-foreground">
             {project.name}
           </h3>
+          {project.description && (
+            <p className="text-xs text-muted-foreground mb-1">
+              {project.description}
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
             아카이브 {project.archive_count || 0}개
           </p>

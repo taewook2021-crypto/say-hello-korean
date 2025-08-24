@@ -401,6 +401,13 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
               // 이미지 업로드 완료 후 노드 다시 로드
               loadNodes();
             }}
+            onAddArchive={(projectId) => onAddAI(projectId)}
+            onAddSubFolder={(projectId) => onCreateSubNode(projectId)}
+            onDeleteProject={(projectId) => {
+              // 프로젝트 삭제 후 노드 다시 로드
+              loadNodes();
+              onNodeDeleted();
+            }}
           />
         ))}
       </div>
