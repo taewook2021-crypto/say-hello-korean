@@ -462,6 +462,45 @@ export type Database = {
         }
         Relationships: []
       }
+      todos: {
+        Row: {
+          archive_name: string | null
+          created_at: string
+          description: string | null
+          due_date: string
+          id: string
+          is_completed: boolean
+          is_review_task: boolean
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archive_name?: string | null
+          created_at?: string
+          description?: string | null
+          due_date: string
+          id?: string
+          is_completed?: boolean
+          is_review_task?: boolean
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archive_name?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string
+          id?: string
+          is_completed?: boolean
+          is_review_task?: boolean
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wrong_notes: {
         Row: {
           book_name: string

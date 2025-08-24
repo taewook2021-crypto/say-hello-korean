@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Copy, Check } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuthMock';
+import { createReviewTask } from '@/utils/reviewScheduler';
 
 interface AddAIToNodeModalProps {
   isOpen: boolean;
@@ -28,6 +30,7 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
   nodeName,
   onContentAdded
 }) => {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,6 +71,11 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
 
       console.log('✅ 저장 성공:', conversation);
       toast.success('대화가 성공적으로 저장되었습니다!');
+      
+      // 복습 일정 자동 생성 (Q&A 카드가 있는 경우)
+      if (user?.id && title) {
+        await createReviewTask(user.id, title);
+      }
       
       // 저장 완료 후 대화보기 모달 열기
       onContentAdded(conversation.id);
