@@ -111,6 +111,21 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
         await createReviewTask(user.id, title);
         console.log('✅ 복습 일정 생성 완료');
       }
+
+      // 4. 프로젝트 상태 업데이트 (아카이브 추가로 인한 성장)
+      if (nodeId) {
+        // 현재 노드의 아카이브 수를 가져와서 업데이트
+        const { data: nodeData } = await supabase
+          .from('nodes')
+          .select('archive_count')
+          .eq('id', nodeId)
+          .single();
+        
+        if (nodeData) {
+          const { updateProjectStatus } = await import('@/utils/projectStatusManager');
+          await updateProjectStatus(nodeId, (nodeData.archive_count || 0) + 1);
+        }
+      }
       
       toast.success('대화와 Q&A가 성공적으로 저장되었습니다!');
       

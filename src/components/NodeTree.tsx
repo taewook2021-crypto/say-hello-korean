@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuthMock';
 import { toast } from 'sonner';
 import { ProjectIcon } from '@/components/ProjectIcon';
+import { ProjectFolder } from '@/components/ProjectFolder';
 
 interface Node {
   id: string;
@@ -389,9 +390,91 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
         </Button>
       </div>
       
-      <div className="space-y-2">
-        {nodes.map(node => renderNode(node))}
+      {/* 최상위 프로젝트들을 폴더 형태로 표시 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+        {nodes.filter(node => !node.parent_id).map(project => (
+          <ProjectFolder
+            key={project.id}
+            project={project}
+            onClick={() => onViewProjectDetail(project.id, project.name)}
+            onImageUpload={(projectId, imageUrl) => {
+              // 이미지 업로드 완료 후 노드 다시 로드
+              loadNodes();
+            }}
+          />
+        ))}
       </div>
+
+      {/* 하위 노드들이 있는 경우 트리 형태로 표시 */}
+      {nodes.some(node => node.children && node.children.length > 0) && (
+        <div className="mt-8">
+          <h3 className="text-lg font-semibold mb-4 text-muted-foreground">📁 세부 구조</h3>
+          <div className="space-y-2">
+            {nodes.map(node => {
+              if (node.children && node.children.length > 0) {
+                return renderSubNodes(node);
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  // 하위 노드들만 렌더링하는 함수
+  function renderSubNodes(parentNode: Node) {
+    const isExpanded = expandedNodes.has(parentNode.id);
+    
+    return (
+      <div key={parentNode.id} className="border rounded-lg p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleExpanded(parentNode.id)}
+            className="p-1 h-8 w-8"
+          >
+            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </Button>
+          
+          <span className="font-medium text-lg">{parentNode.name}</span>
+          
+          <div className="flex gap-1 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onViewArchives(parentNode.id, parentNode.name)}
+              className="h-8 px-2"
+            >
+              <Archive size={14} className="mr-1" />
+              Archive
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 px-2">
+                  <Plus size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onAddAI(parentNode.id)}>
+                  Archive 추가
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onCreateSubNode(parentNode.id)}>
+                  Node 추가
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        
+        {isExpanded && parentNode.children && (
+          <div className="ml-6 space-y-2">
+            {parentNode.children.map(child => renderNode(child, 1))}
+          </div>
+        )}
+      </div>
+    );
+  }
 };
