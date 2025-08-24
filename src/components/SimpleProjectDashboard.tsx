@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -12,7 +12,7 @@ interface Project {
   borderColor: string;
 }
 
-const projects: Project[] = [
+const initialProjects: Project[] = [
   {
     id: '1',
     name: '영어 학습',
@@ -55,16 +55,42 @@ const projects: Project[] = [
   }
 ];
 
-
 export const SimpleProjectDashboard: React.FC = () => {
+  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+
+  const deleteProject = (projectId: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation(); // 프로젝트 카드 클릭 이벤트 방지
+    }
+    
+    const projectToDelete = projects.find(p => p.id === projectId);
+    if (projectToDelete && confirm(`"${projectToDelete.name}" 프로젝트를 삭제하시겠습니까?`)) {
+      setProjects(projects.filter(p => p.id !== projectId));
+      
+      // 만약 현재 선택된 프로젝트가 삭제되는 경우 메인 화면으로 돌아가기
+      if (selectedProject?.id === projectId) {
+        setSelectedProject(null);
+      }
+    }
+  };
 
   const ProjectCard: React.FC<{ project: Project }> = ({ project }) => (
     <Card
-      className="p-6 cursor-pointer border-l-4 h-48"
+      className="group relative p-6 cursor-pointer border-l-4 h-48"
       style={{ borderLeftColor: project.borderColor }}
       onClick={() => setSelectedProject(project)}
     >
+      {/* 삭제 버튼 */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute top-2 right-2 p-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+        onClick={(e) => deleteProject(project.id, e)}
+      >
+        <X className="w-4 h-4" />
+      </Button>
+
       <div className="h-full flex flex-col justify-between">
         <div>
           <div className="text-3xl mb-3">{project.icon}</div>
@@ -81,16 +107,29 @@ export const SimpleProjectDashboard: React.FC = () => {
   const ProjectDetail: React.FC<{ project: Project }> = ({ project }) => (
     <div className="min-h-screen bg-background p-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedProject(null)}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            뒤로
+          </Button>
+          <h1 className="text-2xl font-bold">{project.name}</h1>
+        </div>
+        
+        {/* 프로젝트 삭제 버튼 */}
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          onClick={() => setSelectedProject(null)}
+          className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          onClick={() => deleteProject(project.id)}
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          뒤로
+          <Trash2 className="w-4 h-4 mr-2" />
+          프로젝트 삭제
         </Button>
-        <h1 className="text-2xl font-bold">{project.name}</h1>
       </div>
 
       {/* Radial Layout */}
