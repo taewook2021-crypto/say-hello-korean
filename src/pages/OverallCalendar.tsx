@@ -278,90 +278,9 @@ const OverallCalendar: React.FC = () => {
     }
   };
 
-  const renderWeekView = () => {
-    const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
-    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-    return (
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-lg">
-              {format(weekStart, 'yyyy년 M월', { locale: ko })} 주간
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 gap-2">
-            {weekDays.map((day) => {
-              const dayEvents = getEventsForDate(day);
-              const isToday = isSameDay(day, new Date());
-              
-              return (
-                <div
-                  key={day.toISOString()}
-                  className={`p-3 border rounded-lg cursor-pointer min-h-[120px] ${
-                    isToday ? 'bg-primary/10 border-primary' : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => handleDateClick(day)}
-                >
-                  <div className={`font-semibold text-center mb-2 ${isToday ? 'text-primary' : ''}`}>
-                    {format(day, 'E', { locale: ko })}
-                  </div>
-                  <div className={`text-center mb-2 ${isToday ? 'text-primary font-bold' : ''}`}>
-                    {format(day, 'd')}
-                  </div>
-                  <div className="space-y-1">
-                    {dayEvents.slice(0, 3).map((event) => (
-                      <div
-                        key={event.id}
-                        className={`text-xs p-1 rounded truncate ${
-                          event.type === 'deadline' 
-                            ? 'bg-destructive text-destructive-foreground'
-                            : event.type === 'review'
-                            ? 'bg-primary text-primary-foreground'
-                            : event.isCompleted
-                            ? 'bg-muted text-muted-foreground line-through'
-                            : 'bg-accent text-accent-foreground'
-                        }`}
-                      >
-                        {event.title}
-                      </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div className="text-xs text-muted-foreground text-center">
-                        +{dayEvents.length - 3} 더보기
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
+      <div className="w-full px-6 py-6">
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h1 className="text-3xl font-bold text-primary">전체 프로젝트 캘린더</h1>
@@ -375,113 +294,191 @@ const OverallCalendar: React.FC = () => {
             </div>
           </div>
 
-          {viewMode === 'week' ? renderWeekView() : (
-            <Card>
-              <CardContent className="p-4">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateClick}
-                  className="w-full pointer-events-auto"
-                  locale={ko}
-                  modifiers={{
-                    hasEvent: (date) => getEventsForDate(date).length > 0,
-                    deadline: (date) => scheduleItems.some(item => 
-                      isSameDay(item.date, date) && item.type === 'deadline'
-                    ),
-                    review: (date) => scheduleItems.some(item => 
-                      isSameDay(item.date, date) && item.type === 'review'
-                    ),
-                    todo: (date) => scheduleItems.some(item => 
-                      isSameDay(item.date, date) && item.type === 'todo'
-                    )
-                  }}
-                  modifiersClassNames={{
-                    hasEvent: 'bg-accent text-accent-foreground',
-                    deadline: 'bg-destructive text-destructive-foreground',
-                    review: 'bg-primary text-primary-foreground',
-                    todo: 'bg-secondary text-secondary-foreground'
-                  }}
-                  disabled={(date) => isBefore(date, new Date()) || isAfter(date, maxDisplayDate)}
-                />
+          {viewMode === 'week' ? (
+            <Card className="w-full">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg">
+                    {format(startOfWeek(currentWeek, { weekStartsOn: 1 }), 'yyyy년 M월', { locale: ko })} 주간
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-4">
+                  {Array.from({ length: 7 }, (_, i) => {
+                    const day = addDays(startOfWeek(currentWeek, { weekStartsOn: 1 }), i);
+                    const dayEvents = getEventsForDate(day);
+                    const isToday = isSameDay(day, new Date());
+                    
+                    return (
+                      <div
+                        key={day.toISOString()}
+                        className={`p-4 border rounded-lg cursor-pointer min-h-[300px] ${
+                          isToday ? 'bg-primary/10 border-primary' : 'hover:bg-muted/50'
+                        }`}
+                        onClick={() => handleDateClick(day)}
+                      >
+                        <div className={`font-semibold text-center mb-2 ${isToday ? 'text-primary' : ''}`}>
+                          {format(day, 'EEEE', { locale: ko })}
+                        </div>
+                        <div className={`text-xl text-center mb-4 ${isToday ? 'text-primary font-bold' : ''}`}>
+                          {format(day, 'd')}
+                        </div>
+                        <div className="space-y-2">
+                          {dayEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              className={`text-xs p-2 rounded-md cursor-pointer border ${
+                                event.type === 'deadline' 
+                                  ? 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20'
+                                  : event.type === 'review'
+                                  ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
+                                  : event.isCompleted
+                                  ? 'bg-muted text-muted-foreground border-muted/40 line-through'
+                                  : 'bg-accent/50 text-accent-foreground border-accent/40 hover:bg-accent'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (event.type === 'todo') {
+                                  handleToggleTodo(event.id, event.isCompleted || false);
+                                } else {
+                                  handleEventClick(event);
+                                }
+                              }}
+                            >
+                              <div className="font-medium truncate">{event.title}</div>
+                              <div className="text-xs opacity-75 truncate mt-1">
+                                {event.projectName}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="w-full">
+              <CardContent className="p-6">
+                <div className="grid grid-cols-7 gap-2 mb-4">
+                  {['월', '화', '수', '목', '금', '토', '일'].map((day) => (
+                    <div key={day} className="text-center font-medium p-2 text-muted-foreground">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="grid grid-cols-7 gap-2">
+                  {(() => {
+                    const start = startOfWeek(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1), { weekStartsOn: 1 });
+                    const end = endOfWeek(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0), { weekStartsOn: 1 });
+                    const days = [];
+                    let day = start;
+                    
+                    while (day <= end) {
+                      days.push(day);
+                      day = addDays(day, 1);
+                    }
+                    
+                    return days.map((day) => {
+                      const dayEvents = getEventsForDate(day);
+                      const isToday = isSameDay(day, new Date());
+                      const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                      
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={`p-2 border rounded-lg cursor-pointer min-h-[120px] ${
+                            isToday ? 'bg-primary/10 border-primary' : 
+                            isCurrentMonth ? 'hover:bg-muted/50' : 'bg-muted/20 text-muted-foreground'
+                          }`}
+                          onClick={() => handleDateClick(day)}
+                        >
+                          <div className={`text-sm text-center mb-2 ${
+                            isToday ? 'text-primary font-bold' : 
+                            isCurrentMonth ? '' : 'text-muted-foreground'
+                          }`}>
+                            {format(day, 'd')}
+                          </div>
+                          <div className="space-y-1">
+                            {dayEvents.slice(0, 2).map((event) => (
+                              <div
+                                key={event.id}
+                                className={`text-xs p-1 rounded-sm cursor-pointer truncate ${
+                                  event.type === 'deadline' 
+                                    ? 'bg-destructive/80 text-white'
+                                    : event.type === 'review'
+                                    ? 'bg-primary/80 text-white'
+                                    : event.isCompleted
+                                    ? 'bg-muted text-muted-foreground line-through'
+                                    : 'bg-accent/80 text-white'
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (event.type === 'todo') {
+                                    handleToggleTodo(event.id, event.isCompleted || false);
+                                  } else {
+                                    handleEventClick(event);
+                                  }
+                                }}
+                              >
+                                {event.title}
+                              </div>
+                            ))}
+                            {dayEvents.length > 2 && (
+                              <div className="text-xs text-muted-foreground text-center">
+                                +{dayEvents.length - 2}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+                
+                <div className="flex justify-between items-center mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentDate(addMonths(currentDate, -1))}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    이전 달
+                  </Button>
+                  <h3 className="text-lg font-semibold">
+                    {format(currentDate, 'yyyy년 M월', { locale: ko })}
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+                  >
+                    다음 달
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
-
-          {/* 일정 목록 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">다가오는 일정</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {scheduleItems
-                  .filter(item => isAfter(item.date, new Date()) || isSameDay(item.date, new Date()))
-                  .sort((a, b) => a.date.getTime() - b.date.getTime())
-                  .slice(0, 15)
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-2 border rounded-lg cursor-pointer hover:bg-muted/50"
-                      onClick={() => {
-                        if (item.type === 'todo') {
-                          handleToggleTodo(item.id, item.isCompleted || false);
-                        } else {
-                          handleEventClick(item);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        {item.type === 'deadline' ? (
-                          <CalendarDays className="h-4 w-4 text-destructive" />
-                        ) : item.type === 'review' ? (
-                          <Clock className="h-4 w-4 text-primary" />
-                        ) : (
-                          <div className="flex items-center">
-                            <div
-                              className={`w-4 h-4 border-2 rounded-sm mr-2 flex items-center justify-center cursor-pointer ${
-                                item.isCompleted ? 'bg-primary border-primary' : 'border-muted-foreground'
-                              }`}
-                            >
-                              {item.isCompleted && <Check className="h-3 w-3 text-white" />}
-                            </div>
-                          </div>
-                        )}
-                        <div>
-                          <div className={`font-medium text-sm ${
-                            item.isCompleted && item.type === 'todo' ? 'line-through text-muted-foreground' : ''
-                          }`}>
-                            {item.title}
-                            {item.isReviewTask && item.archiveName && (
-                              <span className="text-xs text-muted-foreground ml-1">
-                                ({item.archiveName}_Review)
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-1">
-                            <FolderOpen className="h-3 w-3" />
-                            {item.projectName || '프로젝트'} | {format(item.date, 'PPP', { locale: ko })}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge variant={
-                        item.type === 'deadline' ? 'destructive' : 
-                        item.type === 'review' ? 'default' :
-                        item.isCompleted ? 'secondary' : 'outline'
-                      }>
-                        {item.type === 'deadline' ? '마감' : 
-                         item.type === 'review' ? '복습' : '할일'}
-                      </Badge>
-                    </div>
-                  ))}
-                {scheduleItems.length === 0 && (
-                  <div className="text-center text-muted-foreground py-4">
-                    등록된 일정이 없습니다.
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* 더 보기 버튼 */}
           <div className="text-center">
