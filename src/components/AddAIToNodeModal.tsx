@@ -52,8 +52,9 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
 
     setLoading(true);
     try {
-      console.log('💾 단순 저장 시작:', { title, content });
+      console.log('💾 저장 시작:', { title, content });
 
+      // 1. 대화 저장
       const { data: conversation, error } = await supabase
         .from('conversations')
         .insert({
@@ -65,17 +66,53 @@ export const AddAIToNodeModal: React.FC<AddAIToNodeModalProps> = ({
         .single();
 
       if (error) {
-        console.error('❌ 저장 오류:', error);
+        console.error('❌ 대화 저장 오류:', error);
         throw error;
       }
 
-      console.log('✅ 저장 성공:', conversation);
-      toast.success('대화가 성공적으로 저장되었습니다!');
-      
-      // 복습 일정 자동 생성 (Q&A 카드가 있는 경우)
+      console.log('✅ 대화 저장 성공:', conversation);
+
+      // 2. Q&A 파싱 및 저장
+      try {
+        const { parseAROFormat } = await import('@/utils/aroParser');
+        const parsedData = parseAROFormat(content.trim());
+        
+        console.log('📝 파싱 결과:', parsedData);
+
+        if (parsedData.qaPairs && parsedData.qaPairs.length > 0) {
+          // Q&A를 wrong_notes 테이블에 저장
+          const wrongNotesData = parsedData.qaPairs.map(qa => ({
+            question: qa.question,
+            correct_answer: qa.answer,
+            wrong_answer: null,
+            explanation: qa.tags?.length > 0 ? `태그: ${qa.tags.join(', ')}` : null,
+            subject_name: title.trim(),
+            book_name: "아카이브",
+            chapter_name: `${title.trim().substring(0, 20)}...`,
+            is_resolved: false
+          }));
+
+          const { error: qaError } = await supabase
+            .from('wrong_notes')
+            .insert(wrongNotesData);
+
+          if (qaError) {
+            console.error('❌ Q&A 저장 오류:', qaError);
+          } else {
+            console.log(`✅ ${parsedData.qaPairs.length}개 Q&A 저장 성공`);
+          }
+        }
+      } catch (parseError) {
+        console.error('❌ Q&A 파싱 오류:', parseError);
+      }
+
+      // 3. 복습 일정 자동 생성
       if (user?.id && title) {
         await createReviewTask(user.id, title);
+        console.log('✅ 복습 일정 생성 완료');
       }
+      
+      toast.success('대화와 Q&A가 성공적으로 저장되었습니다!');
       
       // 저장 완료 후 대화보기 모달 열기
       onContentAdded(conversation.id);
