@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useReactToPrint } from 'react-to-print';
 
 interface QAItem {
   question: string;
@@ -44,8 +43,6 @@ const AROTemplate: React.FC<AROTemplateProps> = ({ conversationData }) => {
     qaList: Array.from({ length: 20 }, () => ({ question: '', answer: '' }))
   });
 
-  const pdfRef = useRef<HTMLDivElement>(null);
-
   // 대화 데이터가 변경될 때 자동으로 템플릿에 채우기
   useEffect(() => {
     if (conversationData) {
@@ -68,20 +65,6 @@ const AROTemplate: React.FC<AROTemplateProps> = ({ conversationData }) => {
     const newQaList = [...formData.qaList];
     newQaList[index] = { ...newQaList[index], [field]: value };
     setFormData({ ...formData, qaList: newQaList });
-  };
-
-  const handlePrint = useReactToPrint({
-    contentRef: pdfRef,
-    pageStyle: `
-      @page { 
-        size: A4 landscape; 
-        margin: 0; 
-      }
-    `
-  });
-
-  const generatePDF = () => {
-    handlePrint();
   };
 
   return (
@@ -152,243 +135,7 @@ const AROTemplate: React.FC<AROTemplateProps> = ({ conversationData }) => {
           ))}
         </div>
 
-        <Button onClick={generatePDF} className="w-full">PDF 생성</Button>
       </div>
-
-      {/* PDF 템플릿 */}
-      <div className="pdf-container p-4 overflow-auto print:p-0">
-        <div ref={pdfRef}>
-          {/* 첫 번째 페이지 */}
-          <div className="pdf-page">
-            <div className="page-content">
-              {/* Project */}
-              <div className="project-column">
-                <div className="section-title">Project</div>
-                <div className="section-content">
-                  {formData.project}
-                </div>
-              </div>
-              
-              {/* Content */}
-              <div className="content-column">
-                <div className="section-title">Content</div>
-                <div className="section-content">
-                  {formData.content.substring(0, 2000)}
-                </div>
-              </div>
-              
-              {/* Q&A */}
-              <div className="qa-column">
-                <div className="section-title">Q&A</div>
-                <div className="qa-content">
-                  {formData.qaList.slice(0, 8).map((qa, index) => (
-                    <div key={index} className="qa-item">
-                      <div className="qa-question">
-                        Q{index + 1}: {qa.question}
-                      </div>
-                      <div className="qa-answer">
-                        A{index + 1}: {qa.answer}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            {/* 하단 */}
-            <div className="page-footer">
-              <div className="footer-left">
-                <div>Node: {formData.node}</div>
-                <div>Archive: {formData.archive}</div>
-              </div>
-              <div className="footer-right">Made By ARO</div>
-            </div>
-          </div>
-          
-          {/* 두 번째 페이지 */}
-          {formData.qaList.slice(8).some(qa => qa.question || qa.answer) && (
-            <div className="pdf-page">
-              <div className="page-content page-2">
-                {/* Content 계속 */}
-                <div className="content-column-2">
-                  <div className="section-title">Content (계속)</div>
-                  <div className="section-content">
-                    {formData.content.substring(2000)}
-                  </div>
-                </div>
-                
-                {/* Q&A 계속 */}
-                <div className="qa-column-2">
-                  <div className="section-title">Q&A (계속)</div>
-                  <div className="qa-content">
-                    {formData.qaList.slice(8, 16).map((qa, index) => (
-                      <div key={index + 8} className="qa-item">
-                        <div className="qa-question">
-                          Q{index + 9}: {qa.question}
-                        </div>
-                        <div className="qa-answer">
-                          A{index + 9}: {qa.answer}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="page-footer">
-                <div className="footer-right">Made By ARO</div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <style>{`
-        .pdf-page {
-          width: 794px;
-          height: 559px;
-          border: 1px solid #000;
-          margin: 20px auto;
-          padding: 20px;
-          box-sizing: border-box;
-          background: white;
-          display: flex;
-          flex-direction: column;
-          font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-          page-break-after: always;
-        }
-
-        .pdf-page:last-child {
-          page-break-after: avoid;
-        }
-
-        .page-content {
-          flex: 1;
-          display: flex;
-          gap: 15px;
-        }
-
-        .page-2 {
-          gap: 15px;
-        }
-
-        .project-column {
-          width: 15%;
-          border: 1px solid #ccc;
-          padding: 10px;
-          overflow: hidden;
-        }
-
-        .content-column {
-          width: 45%;
-          border: 1px solid #ccc;
-          padding: 10px;
-          overflow: hidden;
-        }
-
-        .content-column-2 {
-          width: 60%;
-          border: 1px solid #ccc;
-          padding: 10px;
-          overflow: hidden;
-        }
-
-        .qa-column {
-          width: 40%;
-          border: 1px solid #ccc;
-          padding: 10px;
-          overflow: hidden;
-        }
-
-        .qa-column-2 {
-          width: 40%;
-          border: 1px solid #ccc;
-          padding: 10px;
-          overflow: hidden;
-        }
-
-        .section-title {
-          font-size: 12px;
-          font-weight: bold;
-          margin-bottom: 10px;
-          border-bottom: 1px solid #ccc;
-          padding-bottom: 5px;
-        }
-
-        .section-content {
-          font-size: 10px;
-          line-height: 1.4;
-          overflow: hidden;
-        }
-
-        .qa-content {
-          max-height: 100%;
-          overflow: hidden;
-        }
-
-        .qa-item {
-          margin-bottom: 8px;
-          font-size: 9px;
-        }
-
-        .qa-question {
-          font-weight: bold;
-          margin-bottom: 2px;
-        }
-
-        .qa-answer {
-          margin-left: 8px;
-          margin-bottom: 4px;
-        }
-
-        .page-footer {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 15px;
-          font-size: 10px;
-          height: 30px;
-        }
-
-        .footer-left div {
-          margin-bottom: 2px;
-        }
-
-        .footer-right {
-          align-self: flex-end;
-        }
-
-        @media print {
-          @page { 
-            size: A4 landscape; 
-            margin: 0; 
-          }
-          
-          body * {
-            visibility: hidden;
-          }
-          
-          .pdf-container, .pdf-container * {
-            visibility: visible;
-          }
-          
-          .pdf-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-          }
-
-          .pdf-page {
-            margin: 0;
-            width: 100vw;
-            height: 100vh;
-            padding: 20px;
-          }
-        }
-      `}</style>
     </div>
   );
 };
