@@ -69,10 +69,18 @@ const Home = () => {
   // URL 파라미터에서 project ID를 확인하여 자동으로 프로젝트 상세 모달 열기
   useEffect(() => {
     const projectId = searchParams.get('project');
+    const archivesId = searchParams.get('archives');
+    const nodeName = searchParams.get('name');
+    
     if (projectId) {
       setSelectedNodeId(projectId);
       setSelectedNodeName('선택된 프로젝트');
       setShowProjectDetailModal(true);
+    } else if (archivesId) {
+      // 아카이브 목록 모달을 열어야 함
+      setSelectedNodeId(archivesId);
+      setSelectedNodeName(nodeName || '선택된 노드');
+      setShowArchivesModal(true);
     }
   }, [searchParams]);
 
