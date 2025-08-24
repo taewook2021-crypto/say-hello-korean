@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/hooks/useAuthMock";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ProjectForest } from "@/components/ProjectForest";
-import { ForestLayout } from "@/components/ForestLayout";
+import { SimpleProjectDashboard } from "@/components/SimpleProjectDashboard";
 import { CreateNodeModal } from "@/components/CreateNodeModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
 import { NodeArchivesModal } from "@/components/NodeArchivesModal";
@@ -96,53 +95,50 @@ const Home = () => {
   // }
 
   return (
-    <ForestLayout>
-      <ProjectForest
-        onCreateProject={() => handleCreateSubNode('')}
-        onProjectClick={handleViewProjectDetail}
+    <div className="min-h-screen bg-background">
+      <SimpleProjectDashboard />
+
+      {/* 모달들 */}
+      <CreateNodeModal
+        isOpen={showCreateNodeModal}
+        onClose={() => setShowCreateNodeModal(false)}
+        parentId={createNodeParentId}
+        onNodeCreated={handleNodeCreated}
       />
 
-        {/* 모달들 */}
-        <CreateNodeModal
-          isOpen={showCreateNodeModal}
-          onClose={() => setShowCreateNodeModal(false)}
-          parentId={createNodeParentId}
-          onNodeCreated={handleNodeCreated}
-        />
+      <AddAIToNodeModal
+        isOpen={showAddAIModal}
+        onClose={() => setShowAddAIModal(false)}
+        nodeId={selectedNodeId}
+        nodeName={selectedNodeName}
+        onContentAdded={handleContentAdded}
+      />
 
-        <AddAIToNodeModal
-          isOpen={showAddAIModal}
-          onClose={() => setShowAddAIModal(false)}
-          nodeId={selectedNodeId}
-          nodeName={selectedNodeName}
-          onContentAdded={handleContentAdded}
-        />
+      <NodeArchivesModal
+        isOpen={showArchivesModal}
+        onClose={() => setShowArchivesModal(false)}
+        nodeId={selectedNodeId}
+        nodeName={selectedNodeName}
+        onConversationClick={(conversationId) => {
+          setSelectedConversationId(conversationId);
+          setShowArchivesModal(false);
+          setShowConversationModal(true);
+        }}
+      />
 
-        <NodeArchivesModal
-          isOpen={showArchivesModal}
-          onClose={() => setShowArchivesModal(false)}
-          nodeId={selectedNodeId}
-          nodeName={selectedNodeName}
-          onConversationClick={(conversationId) => {
-            setSelectedConversationId(conversationId);
-            setShowArchivesModal(false);
-            setShowConversationModal(true);
-          }}
-        />
+      <ConversationDetailModal
+        isOpen={showConversationModal}
+        onClose={() => setShowConversationModal(false)}
+        conversationId={selectedConversationId}
+      />
 
-        <ConversationDetailModal
-          isOpen={showConversationModal}
-          onClose={() => setShowConversationModal(false)}
-          conversationId={selectedConversationId}
-        />
-
-        <ProjectDetailModal
-          isOpen={showProjectDetailModal}
-          onClose={() => setShowProjectDetailModal(false)}
-          nodeId={selectedNodeId}
-          nodeName={selectedNodeName}
-        />
-    </ForestLayout>
+      <ProjectDetailModal
+        isOpen={showProjectDetailModal}
+        onClose={() => setShowProjectDetailModal(false)}
+        nodeId={selectedNodeId}
+        nodeName={selectedNodeName}
+      />
+    </div>
   );
 };
 
