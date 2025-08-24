@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CalendarDays, Clock, ArrowRight, Plus, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { format, addMonths, isSameDay, isAfter, isBefore, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, startOfDay, endOfDay } from 'date-fns';
-import { ko } from 'date-fns/locale/ko';
+import { ko } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuthMock';
 import { toast } from 'sonner';
