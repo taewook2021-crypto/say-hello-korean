@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { EnvironmentChecker } from "@/components/EnvironmentChecker";
-import { Navigation } from "@/components/Navigation";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 import Home from "./pages/Home";
 import OverallCalendar from "./pages/OverallCalendar";
 import Notes from "./pages/Notes";
@@ -32,18 +33,28 @@ const App = () => (
             <EnvironmentChecker />
           </div>
           <BrowserRouter>
-            <Navigation />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/calendar" element={<OverallCalendar />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/subject/:subjectName" element={<Subject />} />
-              <Route path="/book/:subjectName/:bookName" element={<Book />} />
-              <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <SidebarProvider>
+              <div className="min-h-screen flex w-full">
+                <AppSidebar />
+                <main className="flex-1">
+                  <header className="h-12 flex items-center border-b px-4">
+                    <SidebarTrigger />
+                    <h1 className="text-xl font-bold text-primary ml-4">ARO</h1>
+                  </header>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/calendar" element={<OverallCalendar />} />
+                    <Route path="/account" element={<Account />} />
+                    <Route path="/subject/:subjectName" element={<Subject />} />
+                    <Route path="/book/:subjectName/:bookName" element={<Book />} />
+                    <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </main>
+              </div>
+            </SidebarProvider>
           </BrowserRouter>
         </div>
       </TooltipProvider>
