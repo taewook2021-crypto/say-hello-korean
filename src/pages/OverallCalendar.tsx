@@ -292,13 +292,8 @@ const OverallCalendar: React.FC = () => {
           toast.success(`${selectedEvent.title} 할일 상세 보기`);
         }
       } else if (selectedEvent.type === 'deadline') {
-        // 빨간색 일정(deadline): 아카이브 목록으로 이동
-        if (selectedEvent.projectName && selectedEvent.projectName !== '복습') {
-          // 아카이브 목록 페이지로 이동 (특정 아카이브를 선택하지 않고 목록만 표시)
-          window.location.href = `/notes`;
-        } else {
-          window.location.href = `/project/${selectedEvent.nodeId}`;
-        }
+        // 빨간색 일정(deadline): 홈페이지(아카이브 목록)로 이동
+        window.location.href = `/`;
       } else if (selectedEvent.type === 'review') {
         // 파란색 일정(review): 학습 모드 선택 화면으로 이동
         if (selectedEvent.projectName && selectedEvent.projectName !== '복습') {
