@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { PdfTemplateSelector, PdfTemplate } from "@/components/PdfTemplateSelector";
 import { useToast } from "@/hooks/use-toast";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { FlashCard } from "@/components/study/FlashCard";
 import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
@@ -82,6 +82,7 @@ const Index = () => {
     bookName: string;
     chapterName: string;
   }>();
+  const [searchParams] = useSearchParams();
   const [notes, setNotes] = useState<WrongNote[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
@@ -101,6 +102,10 @@ const Index = () => {
   const subject = decodeURIComponent(subjectName || '');
   const book = decodeURIComponent(bookName || '');
   const chapter = decodeURIComponent(chapterName || '');
+  
+  // URL 파라미터에서 archive와 study 모드 확인
+  const archiveName = searchParams.get('archive');
+  const isStudyMode = searchParams.get('study') === 'true';
 
   const [newNote, setNewNote] = useState({
     question: "",
@@ -112,8 +117,18 @@ const Index = () => {
   useEffect(() => {
     if (subject && book && chapter) {
       loadNotes();
+    } else if (archiveName) {
+      // archive 파라미터가 있으면 해당 아카이브의 노트들을 로드
+      loadArchiveNotes(archiveName);
     }
-  }, [subject, book, chapter]);
+  }, [subject, book, chapter, archiveName]);
+
+  // study 모드인 경우 자동으로 학습 모드 선택 모달 표시
+  useEffect(() => {
+    if (isStudyMode) {
+      setShowStudyModal(true);
+    }
+  }, [isStudyMode]);
 
   const loadNotes = async () => {
     try {
@@ -140,6 +155,37 @@ const Index = () => {
       toast({
         title: "오류",
         description: "오답노트를 불러오는데 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadArchiveNotes = async (archiveName: string) => {
+    try {
+      // 아카이브 이름에서 subject, book, chapter 추출 (임시로 아카이브 이름을 그대로 사용)
+      const { data, error } = await (supabase as any)
+        .from('wrong_notes')
+        .select('*')
+        .ilike('subject_name', `%${archiveName}%`) // 부분 일치로 검색
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      setNotes(data.map((note: any) => ({
+        id: note.id,
+        question: note.question,
+        wrongAnswer: note.wrong_answer || '',
+        correctAnswer: note.correct_answer,
+        createdAt: new Date(note.created_at),
+        isResolved: note.is_resolved
+      })));
+    } catch (error) {
+      console.error('Error loading archive notes:', error);
+      toast({
+        title: "오류",
+        description: "아카이브 오답노트를 불러오는데 실패했습니다.",
         variant: "destructive",
       });
     } finally {
