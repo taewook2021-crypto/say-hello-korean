@@ -117,18 +117,41 @@ export const SimpleProjectDashboard: React.FC = () => {
     });
   };
 
-  const deleteProject = (projectId: string, e?: React.MouseEvent) => {
+  const deleteProject = async (projectId: string, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation(); // 프로젝트 카드 클릭 이벤트 방지
     }
     
     const projectToDelete = projects.find(p => p.id === projectId);
     if (projectToDelete && confirm(`"${projectToDelete.name}" 프로젝트를 삭제하시겠습니까?`)) {
-      setProjects(projects.filter(p => p.id !== projectId));
-      
-      // 만약 현재 선택된 프로젝트가 삭제되는 경우 메인 화면으로 돌아가기
-      if (selectedProject?.id === projectId) {
-        setSelectedProject(null);
+      try {
+        // 데이터베이스에서 프로젝트 삭제
+        const { error } = await supabase
+          .from('nodes')
+          .delete()
+          .eq('id', projectId);
+
+        if (error) throw error;
+
+        // UI에서 프로젝트 제거
+        setProjects(projects.filter(p => p.id !== projectId));
+        
+        // 만약 현재 선택된 프로젝트가 삭제되는 경우 메인 화면으로 돌아가기
+        if (selectedProject?.id === projectId) {
+          setSelectedProject(null);
+        }
+
+        toast({
+          title: "프로젝트 삭제됨",
+          description: "프로젝트가 성공적으로 삭제되었습니다"
+        });
+      } catch (error) {
+        console.error('Error deleting project:', error);
+        toast({
+          title: "삭제 실패",
+          description: "프로젝트 삭제에 실패했습니다",
+          variant: "destructive"
+        });
       }
     }
   };
