@@ -282,8 +282,8 @@ const OverallCalendar: React.FC = () => {
     if (selectedEvent) {
       if (selectedEvent.type === 'todo') {
         if (selectedEvent.isReviewTask && selectedEvent.archiveName) {
-          // 파란색 할일(리마인드): 학습 모드 선택 화면으로 이동
-          window.location.href = `/notes?archive=${encodeURIComponent(selectedEvent.archiveName)}&study=true`;
+          // 파란색 할일(리마인드): 홈페이지로 이동하여 학습 모드 선택 화면 열기
+          window.location.href = `/?study=${encodeURIComponent(selectedEvent.archiveName)}`;
         } else if (selectedEvent.archiveName) {
           // 일반 할일인 경우 해당 아카이브로 이동
           window.location.href = `/notes?archive=${encodeURIComponent(selectedEvent.archiveName)}`;

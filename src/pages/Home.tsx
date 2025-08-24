@@ -71,6 +71,7 @@ const Home = () => {
     const projectId = searchParams.get('project');
     const archivesId = searchParams.get('archives');
     const nodeName = searchParams.get('name');
+    const studyArchive = searchParams.get('study');
     
     if (projectId) {
       setSelectedNodeId(projectId);
@@ -81,6 +82,9 @@ const Home = () => {
       setSelectedNodeId(archivesId);
       setSelectedNodeName(nodeName || '선택된 노드');
       setShowArchivesModal(true);
+    } else if (studyArchive) {
+      // 학습 모드 선택 모달을 열어야 함 - Notes 페이지로 이동
+      window.location.href = `/notes?archive=${encodeURIComponent(studyArchive)}&study=true`;
     }
   }, [searchParams]);
 
