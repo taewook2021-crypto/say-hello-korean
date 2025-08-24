@@ -241,30 +241,66 @@ export const SimpleProjectDashboard: React.FC = () => {
       if (!archiveTitle.trim() || !archiveContent.trim()) return;
       
       try {
-        // AI 기반 아카이브 생성: 대화 저장 및 Q&A 파싱
+        console.log('💾 아카이브 저장 시작:', { archiveTitle, archiveContent });
+
+        // 1. conversations 테이블에 대화 저장
         const { data: conversation, error: conversationError } = await supabase
           .from('conversations')
-          .insert([{
-            node_id: project.id, // 프로젝트 ID를 node_id로 사용
+          .insert({
             title: archiveTitle.trim(),
             content: archiveContent.trim(),
-            conversation_type: 'ai_generated'
-          }])
+            node_id: project.id
+          })
           .select()
           .single();
 
-        if (conversationError) throw conversationError;
+        if (conversationError) {
+          console.error('❌ 대화 저장 오류:', conversationError);
+          throw conversationError;
+        }
 
-        // ARO 포맷 파싱을 위한 import (이미 있는 유틸리티 사용)
-        const { parseAROFormat } = await import('../utils/aroParser');
-        const parsed = parseAROFormat(archiveContent);
+        console.log('✅ 대화 저장 성공:', conversation);
 
-        // Items 테이블에 아카이브 아이템 생성
+        // 2. ARO 포맷 파싱 및 Q&A 저장
+        try {
+          const { parseAROFormat } = await import('@/utils/aroParser');
+          const parsedData = parseAROFormat(archiveContent.trim());
+          
+          console.log('📝 파싱 결과:', parsedData);
+
+          if (parsedData.qaPairs && parsedData.qaPairs.length > 0) {
+            // Q&A를 wrong_notes 테이블에 저장
+            const wrongNotesData = parsedData.qaPairs.map(qa => ({
+              question: qa.question,
+              correct_answer: qa.answer,
+              wrong_answer: null,
+              explanation: qa.tags?.length > 0 ? `태그: ${qa.tags.join(', ')}` : null,
+              subject_name: archiveTitle.trim(),
+              book_name: "아카이브",
+              chapter_name: `${archiveTitle.trim().substring(0, 20)}...`,
+              is_resolved: false
+            }));
+
+            const { error: qaError } = await supabase
+              .from('wrong_notes')
+              .insert(wrongNotesData);
+
+            if (qaError) {
+              console.error('❌ Q&A 저장 오류:', qaError);
+            } else {
+              console.log(`✅ ${parsedData.qaPairs.length}개 Q&A 저장 성공`);
+            }
+          }
+        } catch (parseError) {
+          console.error('❌ Q&A 파싱 오류:', parseError);
+        }
+
+        // 3. items 테이블에도 아카이브 아이템으로 저장 (UI 표시용)
         const newItem = {
           project_id: project.id,
           item_type: 'archive' as const,
           title: archiveTitle.trim(),
-          description: archiveDescription.trim() || `${parsed.qaPairs.length}개의 Q&A가 포함된 아카이브`,
+          description: `${archiveDescription.trim() || ''} (Q&A 파싱 완료)`,
           source_type: 'text' as const,
           raw_content: archiveContent.trim(),
           parent_id: currentFolderId
@@ -276,30 +312,47 @@ export const SimpleProjectDashboard: React.FC = () => {
           .select()
           .single();
 
-        if (itemError) throw itemError;
+        if (itemError) {
+          console.error('❌ 아이템 저장 오류:', itemError);
+        } else {
+          console.log('✅ 아이템 저장 성공:', item);
+          // UI에 새 아이템 추가
+          setItems([item as Item, ...items]);
+        }
 
-        // 생성된 아이템을 UI에 추가
-        setItems([item as Item, ...items]);
+        // 4. 프로젝트 상태 업데이트 (아카이브 추가로 인한 성장)
+        try {
+          const { data: nodeData } = await supabase
+            .from('nodes')
+            .select('archive_count')
+            .eq('id', project.id)
+            .single();
+          
+          if (nodeData) {
+            const { updateProjectStatus } = await import('@/utils/projectStatusManager');
+            await updateProjectStatus(project.id, (nodeData.archive_count || 0) + 1);
+          }
+        } catch (statusError) {
+          console.error('❌ 프로젝트 상태 업데이트 오류:', statusError);
+        }
 
-        // UI 상태 업데이트
+        // UI 상태 초기화
         setArchiveModalOpen(false);
         setArchiveTitle('');
         setArchiveDescription('');
         setArchiveContent('');
         setArchiveUrl('');
         
-        // 아이템 목록 새로고침
-        await fetchItems();
-        
         toast({
-          title: "Archive created",
-          description: `${parsed.qaPairs.length}개의 Q&A가 생성되었습니다`
+          title: "아카이브 생성 완료",
+          description: "Q&A 파싱과 복습 일정이 설정되었습니다"
         });
+
       } catch (error) {
-        console.error('Error creating archive:', error);
+        console.error('💥 아카이브 생성 실패:', error);
         toast({
           title: "Error",
-          description: "Failed to create archive",
+          description: "아카이브 생성에 실패했습니다",
           variant: "destructive"
         });
       }
