@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, X, Plus, File, Folder, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Trash2, X, Plus, File, Folder, MoreVertical, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -205,6 +205,12 @@ export const SimpleProjectDashboard: React.FC = () => {
     // Delete dialog states
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+    
+    // Edit dialog states
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editContent, setEditContent] = useState('');
 
     const fetchItems = async () => {
       setLoading(true);
@@ -482,6 +488,112 @@ export const SimpleProjectDashboard: React.FC = () => {
         setItemToDelete(null);
       }
     };
+    
+    const handleEditItem = async () => {
+      if (!itemToEdit) return;
+
+      try {
+        // 아카이브의 경우에만 편집 가능
+        if (itemToEdit.item_type === 'archive') {
+          // conversations 테이블 업데이트
+          const { data: conversations, error: conversationSelectError } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('title', itemToEdit.title)
+            .is('node_id', null)
+            .limit(1);
+
+          if (conversationSelectError) {
+            console.error('❌ conversation 조회 오류:', conversationSelectError);
+          } else if (conversations && conversations.length > 0) {
+            const { error: conversationUpdateError } = await supabase
+              .from('conversations')
+              .update({
+                title: editTitle.trim(),
+                content: editContent.trim()
+              })
+              .eq('id', conversations[0].id);
+
+            if (conversationUpdateError) {
+              console.error('❌ conversation 업데이트 오류:', conversationUpdateError);
+            } else {
+              console.log('✅ conversation 업데이트 완료');
+            }
+          }
+
+          // items 테이블 업데이트
+          const { error: itemUpdateError } = await supabase
+            .from('items')
+            .update({
+              title: editTitle.trim(),
+              raw_content: editContent.trim(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', itemToEdit.id);
+
+          if (itemUpdateError) {
+            console.error('❌ 아이템 업데이트 오류:', itemUpdateError);
+            throw itemUpdateError;
+          }
+
+          // UI에서 아이템 업데이트
+          setItems(items.map(item => 
+            item.id === itemToEdit.id 
+              ? { ...item, title: editTitle.trim(), raw_content: editContent.trim() }
+              : item
+          ));
+          
+          toast({
+            title: "편집 완료",
+            description: "아카이브가 성공적으로 수정되었습니다",
+          });
+        }
+
+      } catch (error) {
+        console.error('💥 편집 실패:', error);
+        toast({
+          title: "편집 실패",
+          description: "편집 중 오류가 발생했습니다",
+          variant: "destructive"
+        });
+      } finally {
+        setEditDialogOpen(false);
+        setItemToEdit(null);
+        setEditTitle('');
+        setEditContent('');
+      }
+    };
+
+    const openEditDialog = async (item: Item) => {
+      if (item.item_type !== 'archive') return;
+      
+      setItemToEdit(item);
+      setEditTitle(item.title || '');
+      
+      // conversation에서 원본 내용 가져오기
+      try {
+        const { data: conversations, error } = await supabase
+          .from('conversations')
+          .select('content')
+          .eq('title', item.title)
+          .is('node_id', null)
+          .limit(1);
+
+        if (error) {
+          console.error('❌ conversation 조회 오류:', error);
+          setEditContent(item.raw_content || '');
+        } else if (conversations && conversations.length > 0) {
+          setEditContent(conversations[0].content || '');
+        } else {
+          setEditContent(item.raw_content || '');
+        }
+      } catch (error) {
+        console.error('💥 편집 데이터 로딩 실패:', error);
+        setEditContent(item.raw_content || '');
+      }
+      
+      setEditDialogOpen(true);
+    };
 
     return (
       <div className="min-h-screen bg-background p-6 relative">
@@ -621,6 +733,17 @@ export const SimpleProjectDashboard: React.FC = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {item.item_type === 'archive' && (
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditDialog(item);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            편집
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem 
                           className="text-destructive hover:text-destructive focus:text-destructive"
                           onClick={(e) => {
@@ -665,6 +788,52 @@ export const SimpleProjectDashboard: React.FC = () => {
           onClose={() => setConversationModalOpen(false)}
           conversationId={selectedConversationId}
         />
+        
+        {/* Edit Archive Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-2xl max-h-[80vh]">
+            <DialogHeader>
+              <DialogTitle>아카이브 편집</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-title">제목</Label>
+                <Input
+                  id="edit-title"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="아카이브 제목"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="edit-content">내용</Label>
+                <Textarea
+                  id="edit-content"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  placeholder="아카이브 내용"
+                  className="min-h-[400px] resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setEditDialogOpen(false)}
+                >
+                  취소
+                </Button>
+                <Button 
+                  onClick={handleEditItem} 
+                  disabled={!editTitle.trim() || !editContent.trim()}
+                >
+                  저장
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
         
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
