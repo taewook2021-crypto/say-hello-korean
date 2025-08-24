@@ -72,6 +72,9 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
 
   useEffect(() => {
     if (isOpen && conversationId) {
+      // 모달이 열릴 때마다 데이터 초기화 후 새로 로드
+      setConversation(null);
+      setParsedData(null);
       loadConversation();
     }
   }, [isOpen, conversationId]);
