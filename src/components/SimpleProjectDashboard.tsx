@@ -55,19 +55,6 @@ const projects: Project[] = [
   }
 ];
 
-const archiveItems = [
-  { id: '1', title: '삼성전자 분석', count: 5, position: { top: '20%', left: '75%' } },
-  { id: '2', title: '부동산 투자', count: 3, position: { top: '40%', left: '15%' } },
-  { id: '3', title: '주식 포트폴리오', count: 7, position: { top: '65%', left: '80%' } },
-  { id: '4', title: '암호화폐 연구', count: 4, position: { top: '75%', left: '25%' } },
-  { id: '5', title: '경제 뉴스', count: 9, position: { top: '30%', left: '85%' } }
-];
-
-const folderItems = [
-  { id: '1', title: '투자 전략', count: 12, position: { top: '15%', left: '30%' } },
-  { id: '2', title: '재무 분석', count: 8, position: { top: '80%', left: '70%' } },
-  { id: '3', title: '시장 동향', count: 15, position: { top: '55%', left: '10%' } }
-];
 
 export const SimpleProjectDashboard: React.FC = () => {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -109,82 +96,38 @@ export const SimpleProjectDashboard: React.FC = () => {
       {/* Radial Layout */}
       <div className="relative w-full h-96">
         {/* Center Hub */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-primary rounded-full flex items-center justify-center text-3xl z-10">
-          🌳
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background border-2 border-primary rounded-lg p-6 z-10">
+          <h2 className="text-2xl font-bold text-center text-primary">{project.name}</h2>
         </div>
 
-        {/* Archive Items */}
-        {archiveItems.map((item) => (
-          <div key={item.id} className="absolute">
-            {/* Line to center */}
-            <svg className="absolute w-full h-full pointer-events-none">
-              <line
-                x1="50%"
-                y1="50%"
-                x2={item.position.left}
-                y2={item.position.top}
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth="1"
-                strokeDasharray="5,5"
-                className="opacity-60"
-              />
-            </svg>
-            
-            {/* Item */}
-            <div
-              className="absolute transform -translate-x-1/2 -translate-y-1/2"
-              style={item.position}
-            >
-              <Card className="p-3 bg-background border shadow-md">
-                <div className="flex flex-col items-center gap-1 min-w-20">
-                  <div className="text-xl">💬</div>
-                  <div className="text-center">
-                    <div className="font-medium text-xs">{item.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {item.count}개 대화
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+        {/* Empty State Helpers */}
+        <div className="absolute top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2">
+          <div className="text-center text-muted-foreground">
+            <div className="text-lg mb-1">💬</div>
+            <div className="text-xs">Add Archive</div>
           </div>
-        ))}
+        </div>
 
-        {/* Folder Items */}
-        {folderItems.map((item) => (
-          <div key={item.id} className="absolute">
-            {/* Line to center */}
-            <svg className="absolute w-full h-full pointer-events-none">
-              <line
-                x1="50%"
-                y1="50%"
-                x2={item.position.left}
-                y2={item.position.top}
-                stroke="hsl(var(--muted-foreground))"
-                strokeWidth="2"
-                className="opacity-80"
-              />
-            </svg>
-            
-            {/* Item */}
-            <div
-              className="absolute transform -translate-x-1/2 -translate-y-1/2"
-              style={item.position}
-            >
-              <Card className="p-3 bg-background border shadow-md">
-                <div className="flex flex-col items-center gap-1 min-w-20">
-                  <div className="text-xl">📁</div>
-                  <div className="text-center">
-                    <div className="font-medium text-xs">{item.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {item.count}개 항목
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+        <div className="absolute top-1/4 right-1/4 transform translate-x-1/2 -translate-y-1/2">
+          <div className="text-center text-muted-foreground">
+            <div className="text-lg mb-1">📁</div>
+            <div className="text-xs">Add Folder</div>
           </div>
-        ))}
+        </div>
+
+        <div className="absolute bottom-1/4 left-1/3 transform -translate-x-1/2 translate-y-1/2">
+          <div className="text-center text-muted-foreground">
+            <div className="text-lg mb-1">💬</div>
+            <div className="text-xs">Add Archive</div>
+          </div>
+        </div>
+
+        <div className="absolute bottom-1/4 right-1/3 transform translate-x-1/2 translate-y-1/2">
+          <div className="text-center text-muted-foreground">
+            <div className="text-lg mb-1">📁</div>
+            <div className="text-xs">Add Folder</div>
+          </div>
+        </div>
       </div>
     </div>
   );
