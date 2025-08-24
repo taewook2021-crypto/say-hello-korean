@@ -248,41 +248,56 @@ export type Database = {
       }
       nodes: {
         Row: {
+          archive_count: number | null
           color: string | null
+          cover_image: string | null
           created_at: string
           deadline: string | null
           description: string | null
           display_order: number
           id: string
           is_active: boolean
+          is_completed: boolean | null
+          milestone_achieved: boolean | null
           name: string
           parent_id: string | null
+          project_status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          archive_count?: number | null
           color?: string | null
+          cover_image?: string | null
           created_at?: string
           deadline?: string | null
           description?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
+          is_completed?: boolean | null
+          milestone_achieved?: boolean | null
           name: string
           parent_id?: string | null
+          project_status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          archive_count?: number | null
           color?: string | null
+          cover_image?: string | null
           created_at?: string
           deadline?: string | null
           description?: string | null
           display_order?: number
           id?: string
           is_active?: boolean
+          is_completed?: boolean | null
+          milestone_achieved?: boolean | null
           name?: string
           parent_id?: string | null
+          project_status?: string | null
           updated_at?: string
           user_id?: string
         }
