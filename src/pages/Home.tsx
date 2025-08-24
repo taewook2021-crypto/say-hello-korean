@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/hooks/useAuthMock";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { NodeTree } from "@/components/NodeTree";
+import { ProjectForest } from "@/components/ProjectForest";
+import { ForestLayout } from "@/components/ForestLayout";
 import { CreateNodeModal } from "@/components/CreateNodeModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
 import { NodeArchivesModal } from "@/components/NodeArchivesModal";
@@ -95,18 +96,11 @@ const Home = () => {
   // }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold">프로젝트 트리</h2>
-          <NodeTree
-            onAddAI={handleAddAI}
-            onViewArchives={handleViewArchives}
-            onCreateSubNode={handleCreateSubNode}
-            onNodeDeleted={handleNodeDeleted}
-            onViewProjectDetail={handleViewProjectDetail}
-          />
-        </div>
+    <ForestLayout>
+      <ProjectForest
+        onCreateProject={() => handleCreateSubNode('')}
+        onProjectClick={handleViewProjectDetail}
+      />
 
         {/* 모달들 */}
         <CreateNodeModal
@@ -148,8 +142,7 @@ const Home = () => {
           nodeId={selectedNodeId}
           nodeName={selectedNodeName}
         />
-      </div>
-    </div>
+    </ForestLayout>
   );
 };
 

@@ -15,9 +15,9 @@ import {
 } from '@/components/ui/sidebar';
 
 const navItems = [
-  { title: '프로젝트', url: '/', icon: Home },
+  { title: '홈 프로젝트', url: '/', icon: Home },
   { title: '전체 캘린더', url: '/calendar', icon: Calendar },
-  { title: '계정', url: '/account', icon: User },
+  { title: '개정', url: '/account', icon: User },
 ];
 
 export function AppSidebar() {
