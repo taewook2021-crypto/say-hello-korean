@@ -59,15 +59,16 @@ export const NodeArchivesModal: React.FC<NodeArchivesModalProps> = ({
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ 조회 오류:', error);
+        console.error('❌ 아카이브 조회 오류:', error);
         throw error;
       }
 
-      console.log('✅ 조회 성공:', data?.length || 0, '개의 아카이브');
+      console.log('✅ 아카이브 조회 성공:', data?.length || 0, '개의 아카이브');
+      console.log('📋 아카이브 데이터:', data);
       setArchives(data || []);
       
     } catch (error) {
-      console.error('💥 조회 실패:', error);
+      console.error('💥 아카이브 조회 실패:', error);
       toast.error('아카이브를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);

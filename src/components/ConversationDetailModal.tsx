@@ -81,32 +81,36 @@ export const ConversationDetailModal: React.FC<ConversationDetailModalProps> = (
     try {
       console.log('📋 대화 조회 시작:', conversationId);
 
-      // 단순한 SELECT 쿼리만 사용
+      // maybeSingle 사용으로 변경하여 더 안전하게 처리
       const { data, error } = await supabase
         .from('conversations')
         .select('*')
         .eq('id', conversationId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.error('❌ 조회 오류:', error);
-        if (error.code === 'PGRST116') {
-          throw new Error('해당 대화를 찾을 수 없습니다.');
-        }
+        console.error('❌ 대화 조회 오류:', error);
         throw error;
       }
 
-      console.log('✅ 조회 성공:', data);
+      if (!data) {
+        console.error('❌ 대화를 찾을 수 없음:', conversationId);
+        throw new Error('해당 대화를 찾을 수 없습니다.');
+      }
+
+      console.log('✅ 대화 조회 성공:', data);
+      console.log('📄 대화 내용 길이:', data.content?.length || 0);
       setConversation(data);
       
       // content 파싱하여 좌우 분할 준비
       const parsed = parseAROFormat(data.content);
       console.log('📋 파싱 결과:', parsed);
+      console.log('📊 파싱된 Q&A 개수:', parsed?.qaPairs?.length || 0);
       setParsedData(parsed);
       
     } catch (error) {
-      console.error('💥 조회 실패:', error);
-      toast.error('대화를 불러오는데 실패했습니다.');
+      console.error('💥 대화 조회 실패:', error);
+      toast.error(error instanceof Error ? error.message : '대화를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
