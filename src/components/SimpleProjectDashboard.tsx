@@ -44,52 +44,11 @@ interface Item {
   is_deleted: boolean;
 }
 
-const initialProjects: Project[] = [
-  {
-    id: crypto.randomUUID(),
-    name: '영어 학습',
-    icon: '🌱',
-    goal: '목표: 입이 트이기 활용',
-    archiveCount: 3,
-    borderColor: '#8B5CF6' // purple
-  },
-  {
-    id: crypto.randomUUID(),
-    name: '재테크',
-    icon: '🌿',
-    goal: '목표: 순자산 1000만원',
-    archiveCount: 5,
-    borderColor: '#22C55E' // green
-  },
-  {
-    id: crypto.randomUUID(),
-    name: '서울대학교 25\'2',
-    icon: '🌳',
-    goal: '목표: 합격하기',
-    archiveCount: 8,
-    borderColor: '#EF4444' // red
-  },
-  {
-    id: crypto.randomUUID(),
-    name: '면접 대비',
-    icon: '🌱',
-    goal: '목표: 자신감 향상',
-    archiveCount: 2,
-    borderColor: '#6B7280' // gray
-  },
-  {
-    id: crypto.randomUUID(),
-    name: '회계사 시험',
-    icon: '🌿',
-    goal: '목표: 1차 합격',
-    archiveCount: 6,
-    borderColor: '#F97316' // orange
-  }
-];
 
 export const SimpleProjectDashboard: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(false);
   
   // Add project modal state
   const [addProjectModalOpen, setAddProjectModalOpen] = useState(false);
@@ -98,29 +57,96 @@ export const SimpleProjectDashboard: React.FC = () => {
   const [newProjectIcon, setNewProjectIcon] = useState('🌱');
   const [newProjectColor, setNewProjectColor] = useState('#8B5CF6');
 
-  const createProject = () => {
+  // 데이터베이스에서 프로젝트 로드
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('nodes')
+        .select('*')
+        .is('parent_id', null)
+        .eq('is_active', true)  // is_active가 true인 것만 가져오기
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // nodes 데이터를 Project 형식으로 변환
+      const formattedProjects: Project[] = (data || []).map(node => ({
+        id: node.id,
+        name: node.name,
+        icon: '🌱', // 기본값, 나중에 추가 가능
+        goal: node.description || '목표 설정 안함',
+        archiveCount: node.archive_count || 0,
+        borderColor: node.color || '#8B5CF6'
+      }));
+      
+      setProjects(formattedProjects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load projects",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 프로젝트 로드
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const createProject = async () => {
     if (!newProjectName.trim()) return;
     
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      name: newProjectName.trim(),
-      icon: newProjectIcon,
-      goal: newProjectGoal.trim() || '목표 설정 안함',
-      archiveCount: 0,
-      borderColor: newProjectColor
-    };
+    try {
+      // 데이터베이스에 프로젝트 생성
+      const { data, error } = await supabase
+        .from('nodes')
+        .insert({
+          name: newProjectName.trim(),
+          description: newProjectGoal.trim() || '목표 설정 안함',
+          color: newProjectColor,
+          user_id: 'temp-user-id', // 인증이 구현되면 실제 user ID 사용
+          is_active: true,
+          archive_count: 0
+        })
+        .select()
+        .single();
 
-    setProjects([newProject, ...projects]);
-    setAddProjectModalOpen(false);
-    setNewProjectName('');
-    setNewProjectGoal('');
-    setNewProjectIcon('🌱');
-    setNewProjectColor('#8B5CF6');
-    
-    toast({
-      title: "프로젝트 생성됨",
-      description: "새 프로젝트가 성공적으로 추가되었습니다"
-    });
+      if (error) throw error;
+
+      // UI에 새 프로젝트 추가
+      const newProject: Project = {
+        id: data.id,
+        name: data.name,
+        icon: newProjectIcon,
+        goal: data.description || '목표 설정 안함',
+        archiveCount: 0,
+        borderColor: data.color || newProjectColor
+      };
+
+      setProjects([newProject, ...projects]);
+      setAddProjectModalOpen(false);
+      setNewProjectName('');
+      setNewProjectGoal('');
+      setNewProjectIcon('🌱');
+      setNewProjectColor('#8B5CF6');
+      
+      toast({
+        title: "프로젝트 생성됨",
+        description: "새 프로젝트가 성공적으로 추가되었습니다"
+      });
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: "생성 실패",
+        description: "프로젝트 생성에 실패했습니다",
+        variant: "destructive"
+      });
+    }
   };
 
   const deleteProject = async (projectId: string, e?: React.MouseEvent) => {
@@ -131,10 +157,10 @@ export const SimpleProjectDashboard: React.FC = () => {
     const projectToDelete = projects.find(p => p.id === projectId);
     if (projectToDelete && confirm(`"${projectToDelete.name}" 프로젝트를 삭제하시겠습니까?`)) {
       try {
-        // 데이터베이스에서 프로젝트 삭제
+        // 데이터베이스에서 프로젝트를 논리적 삭제 (is_active = false)
         const { error } = await supabase
           .from('nodes')
-          .delete()
+          .update({ is_active: false })
           .eq('id', projectId);
 
         if (error) throw error;
