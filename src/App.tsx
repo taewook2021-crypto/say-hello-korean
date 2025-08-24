@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { EnvironmentChecker } from "@/components/EnvironmentChecker";
+import { Navigation } from "@/components/Navigation";
 import Home from "./pages/Home";
+import OverallCalendar from "./pages/OverallCalendar";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
@@ -29,10 +31,12 @@ const App = () => (
           <div className="container mx-auto px-4 py-2">
             <EnvironmentChecker />
           </div>
+          <Navigation />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/home" element={<Home />} />
+              <Route path="/calendar" element={<OverallCalendar />} />
               <Route path="/account" element={<Account />} />
               <Route path="/subject/:subjectName" element={<Subject />} />
               <Route path="/book/:subjectName/:bookName" element={<Book />} />
