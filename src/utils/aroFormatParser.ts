@@ -14,12 +14,14 @@ export interface ParsedAROContent {
 
 export const parseAROFormat = (content: string): ParsedAROContent => {
   try {
-    // Sanitize input: trim whitespace, normalize line breaks, strip leading backslashes
+    // Sanitize input: trim whitespace, normalize line breaks, strip leading backslashes and escape sequences
     let sanitized = content.trim()
       .replace(/\r\n/g, '\n')
       .replace(/\r/g, '\n')
       .replace(/^\\===\s*ARO\s*START\s*===/gim, '===ARO START===')
-      .replace(/^\\===\s*ARO\s*END\s*===/gim, '===ARO END===');
+      .replace(/^\\===\s*ARO\s*END\s*===/gim, '===ARO END===')
+      .replace(/Q\\&A/g, 'Q&A')
+      .replace(/\\&/g, '&');
 
     // Validate ARO markers
     const startMatch = sanitized.match(/===\s*ARO\s*START\s*===/i);
