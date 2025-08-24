@@ -44,6 +44,7 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('NodeTree useEffect 실행:', { user: user?.id });
@@ -396,33 +397,32 @@ export const NodeTree: React.FC<NodeTreeProps> = ({
           <ProjectFolder
             key={project.id}
             project={project}
-            onClick={() => onViewProjectDetail(project.id, project.name)}
+            onClick={() => {
+              setSelectedProjectId(selectedProjectId === project.id ? null : project.id);
+            }}
             onImageUpload={(projectId, imageUrl) => {
-              // 이미지 업로드 완료 후 노드 다시 로드
               loadNodes();
             }}
             onAddArchive={(projectId) => onAddAI(projectId)}
             onAddSubFolder={(projectId) => onCreateSubNode(projectId)}
             onDeleteProject={(projectId) => {
-              // 프로젝트 삭제 후 노드 다시 로드
               loadNodes();
               onNodeDeleted();
             }}
+            isSelected={selectedProjectId === project.id}
           />
         ))}
       </div>
 
-      {/* 하위 노드들이 있는 경우 트리 형태로 표시 */}
-      {nodes.some(node => node.children && node.children.length > 0) && (
+      {/* 선택된 프로젝트의 세부 구조만 표시 */}
+      {selectedProjectId && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-4 text-muted-foreground">📁 세부 구조</h3>
           <div className="space-y-2">
-            {nodes.map(node => {
-              if (node.children && node.children.length > 0) {
-                return renderSubNodes(node);
-              }
-              return null;
-            })}
+            {nodes
+              .filter(node => node.id === selectedProjectId && node.children && node.children.length > 0)
+              .map(node => renderSubNodes(node))
+            }
           </div>
         </div>
       )}

@@ -24,6 +24,7 @@ interface ProjectFolderProps {
   onAddArchive?: (projectId: string) => void;
   onAddSubFolder?: (projectId: string) => void;
   onDeleteProject?: (projectId: string) => void;
+  isSelected?: boolean;
 }
 
 const getProjectEmoji = (status: string, archiveCount: number, isCompleted: boolean, milestoneAchieved: boolean) => {
@@ -48,7 +49,8 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
   onImageUpload,
   onAddArchive,
   onAddSubFolder,
-  onDeleteProject
+  onDeleteProject,
+  isSelected = false
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -157,6 +159,7 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
       className={`
         relative p-6 cursor-pointer transition-all duration-300 hover:shadow-lg group
         ${animationClass}
+        ${isSelected ? 'ring-2 ring-primary ring-offset-2 shadow-lg' : ''}
       `}
       style={{
         borderColor: project.color || '#22c55e',
