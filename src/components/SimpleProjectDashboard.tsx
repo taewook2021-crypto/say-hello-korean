@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, X, Plus, File, Folder, MoreVertical, Edit } from 'lucide-react';
+import { ArrowLeft, Trash2, X, Plus, File, Folder, MoreVertical, Edit, ChevronRight, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -220,6 +220,7 @@ export const SimpleProjectDashboard: React.FC = () => {
   const ProjectDetail: React.FC<{ project: Project }> = ({ project }) => {
     const [items, setItems] = useState<Item[]>([]);
     const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+    const [currentFolderPath, setCurrentFolderPath] = useState<{ id: string; name: string }[]>([]);
     const [loading, setLoading] = useState(false);
     
     // Modal states
@@ -269,9 +270,52 @@ export const SimpleProjectDashboard: React.FC = () => {
       }
     };
 
+    // 폴더 경로 업데이트
+    const updateFolderPath = async (folderId: string | null) => {
+      if (!folderId) {
+        setCurrentFolderPath([]);
+        return;
+      }
+
+      try {
+        // 현재 폴더부터 루트까지의 경로 구성
+        const path: { id: string; name: string }[] = [];
+        let currentId = folderId;
+
+        while (currentId) {
+          const { data, error } = await supabase
+            .from('items')
+            .select('id, name, parent_id')
+            .eq('id', currentId)
+            .eq('item_type', 'folder')
+            .single();
+
+          if (error || !data) break;
+
+          path.unshift({ id: data.id, name: data.name || '이름 없음' });
+          currentId = data.parent_id;
+        }
+
+        setCurrentFolderPath(path);
+      } catch (error) {
+        console.error('Error updating folder path:', error);
+      }
+    };
+
     useEffect(() => {
       fetchItems();
+      updateFolderPath(currentFolderId);
     }, [project.id, currentFolderId]);
+
+    // 폴더 클릭 핸들러
+    const handleFolderClick = (folderId: string) => {
+      setCurrentFolderId(folderId);
+    };
+
+    // 상위 폴더로 이동
+    const navigateToFolder = (folderId: string | null) => {
+      setCurrentFolderId(folderId);
+    };
 
     const handleCreateArchive = async (data: {
       title: string;
@@ -663,12 +707,45 @@ export const SimpleProjectDashboard: React.FC = () => {
           </Button>
         </div>
 
+        {/* Breadcrumb Navigation */}
+        {(currentFolderId || currentFolderPath.length > 0) && (
+          <div className="mb-6">
+            <nav className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigateToFolder(null)}
+                className="p-1 h-auto font-normal"
+              >
+                <Home className="w-4 h-4 mr-1" />
+                {project.name}
+              </Button>
+              
+              {currentFolderPath.map((folder, index) => (
+                <React.Fragment key={folder.id}>
+                  <ChevronRight className="w-4 h-4" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigateToFolder(folder.id)}
+                    className="p-1 h-auto font-normal"
+                  >
+                    {folder.name}
+                  </Button>
+                </React.Fragment>
+              ))}
+            </nav>
+          </div>
+        )}
+
         {/* Content Area */}
         <div className="relative w-full min-h-96">
           {/* Center Hub */}
           <div className="flex justify-center mb-8">
             <div className="bg-background border-2 border-primary rounded-lg p-6">
-              <h2 className="text-2xl font-bold text-center text-primary">{project.name}</h2>
+              <h2 className="text-2xl font-bold text-center text-primary">
+                {currentFolderId ? currentFolderPath[currentFolderPath.length - 1]?.name || '폴더' : project.name}
+              </h2>
             </div>
           </div>
 
@@ -694,7 +771,11 @@ export const SimpleProjectDashboard: React.FC = () => {
                         return;
                       }
                       
-                      if (item.item_type === 'archive') {
+                      if (item.item_type === 'folder') {
+                        // 폴더 클릭 시 해당 폴더로 이동
+                        console.log('📁 폴더 클릭:', item.id, item.name);
+                        handleFolderClick(item.id);
+                      } else if (item.item_type === 'archive') {
                         // 아카이브 클릭 시 해당하는 conversation을 찾아서 ConversationDetailModal 열기
                         console.log('🎯 아카이브 클릭:', item.id, item.title);
                         try {
