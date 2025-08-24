@@ -14,9 +14,16 @@ export interface ParsedAROContent {
 
 export const parseAROFormat = (content: string): ParsedAROContent => {
   try {
+    // Sanitize input: trim whitespace, normalize line breaks, strip leading backslashes
+    let sanitized = content.trim()
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/^\\===\s*ARO\s*START\s*===/gim, '===ARO START===')
+      .replace(/^\\===\s*ARO\s*END\s*===/gim, '===ARO END===');
+
     // Validate ARO markers
-    const startMatch = content.match(/===\s*ARO\s*START\s*===/i);
-    const endMatch = content.match(/===\s*ARO\s*END\s*===/i);
+    const startMatch = sanitized.match(/===\s*ARO\s*START\s*===/i);
+    const endMatch = sanitized.match(/===\s*ARO\s*END\s*===/i);
     
     if (!startMatch || !endMatch) {
       return {
@@ -27,14 +34,14 @@ export const parseAROFormat = (content: string): ParsedAROContent => {
       };
     }
 
-    // Extract content between markers
+    // Extract content between markers, ignoring content outside START/END
     const startIndex = startMatch.index! + startMatch[0].length;
     const endIndex = endMatch.index!;
-    const aroContent = content.substring(startIndex, endIndex).trim();
+    const aroContent = sanitized.substring(startIndex, endIndex).trim();
 
-    // Find <1> and <2> sections
-    const section1Match = aroContent.match(/^\s*<1>\s*$/m);
-    const section2Match = aroContent.match(/^\s*<2>\s*$/m);
+    // Find <1> and <2> sections - more flexible matching
+    const section1Match = aroContent.match(/^\s*<1>\s*.*$/m);
+    const section2Match = aroContent.match(/^\s*<2>\s*.*$/m);
 
     if (!section1Match || !section2Match) {
       return {
@@ -57,9 +64,12 @@ export const parseAROFormat = (content: string): ParsedAROContent => {
     // Parse Q&A pairs
     const qaEntries = parseQAPairs(qaBlock);
 
+    // Limit to 200 pairs max as specified
+    const limitedQaEntries = qaEntries.slice(0, 200);
+
     return {
       explanation,
-      qaEntries,
+      qaEntries: limitedQaEntries,
       isValid: true
     };
   } catch (error) {
