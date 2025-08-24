@@ -281,16 +281,24 @@ const OverallCalendar: React.FC = () => {
   const navigateToNote = () => {
     if (selectedEvent) {
       if (selectedEvent.type === 'todo') {
-        if (selectedEvent.archiveName) {
-          // 아카이브가 있는 경우 해당 아카이브로 이동
+        if (selectedEvent.isReviewTask && selectedEvent.archiveName) {
+          // 리마인드 할일인 경우 학습 모드 선택 화면으로 이동
+          window.location.href = `/notes?archive=${encodeURIComponent(selectedEvent.archiveName)}&study=true`;
+        } else if (selectedEvent.archiveName) {
+          // 아카이브가 있는 일반 할일인 경우 해당 아카이브로 이동
           window.location.href = `/notes?archive=${encodeURIComponent(selectedEvent.archiveName)}`;
         } else {
           // 일반 할일인 경우 할일 목록으로 이동하거나 상세보기
           toast.success(`${selectedEvent.title} 할일 상세 보기`);
         }
       } else {
-        // 프로젝트 페이지로 이동하는 로직
-        window.location.href = `/project/${selectedEvent.nodeId}`;
+        // 일정(deadline/review)인 경우 아카이브 전체 화면으로 이동
+        if (selectedEvent.projectName && selectedEvent.projectName !== '복습') {
+          window.location.href = `/notes?archive=${encodeURIComponent(selectedEvent.projectName)}`;
+        } else {
+          // 프로젝트 페이지로 이동하는 로직
+          window.location.href = `/project/${selectedEvent.nodeId}`;
+        }
       }
       setShowEventModal(false);
     }
