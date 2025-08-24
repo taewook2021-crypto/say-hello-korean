@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarDays, Clock, ArrowRight, Plus, ChevronLeft, ChevronRight, Check, FolderOpen, Square, Circle, Trash2, X } from 'lucide-react';
+import { CalendarDays, Clock, ArrowRight, Plus, ChevronLeft, ChevronRight, Check, FolderOpen, Square, Circle, Trash2 } from 'lucide-react';
 import { format, addMonths, isSameDay, isAfter, isBefore, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, startOfDay, endOfDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -449,45 +449,29 @@ const OverallCalendar: React.FC = () => {
                                  color: event.projectColor
                                } : {}}
                              >
-                              <div 
-                                className="cursor-pointer hover:bg-black/5 rounded pr-6"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEventClick(event);
-                                }}
-                              >
-                                <div className="font-medium truncate">{event.title}</div>
-                                <div className="text-xs opacity-75 truncate mt-1">
-                                  {event.projectName}
-                                </div>
-                              </div>
-                               <div className="absolute top-1 right-1 flex gap-1">
-                                 {(event.type === 'todo' || event.type === 'deadline' || event.type === 'review') && (
-                                   <button
-                                     className="w-4 h-4 rounded-sm bg-white/20 hover:bg-red-500/70 flex items-center justify-center border border-current/30"
-                                     onClick={(e) => {
-                                       e.stopPropagation();
-                                       setSelectedEvent(event);
-                                       handleDeleteEvent();
-                                     }}
-                                     title="삭제"
-                                   >
-                                     <X className="w-3 h-3" />
-                                   </button>
-                                 )}
-                                 {event.type === 'todo' && (
-                                   <button
-                                     className="w-4 h-4 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30"
-                                     onClick={(e) => {
-                                       e.stopPropagation();
-                                       handleToggleTodo(event.id, event.isCompleted || false);
-                                     }}
-                                     title="완료 체크"
-                                   >
-                                     {event.isCompleted && <Check className="w-3 h-3" />}
-                                   </button>
-                                 )}
+                               <div 
+                                 className="cursor-pointer hover:bg-black/5 rounded pr-6"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   handleEventClick(event);
+                                 }}
+                               >
+                                 <div className="font-medium truncate">{event.title}</div>
+                                 <div className="text-xs opacity-75 truncate mt-1">
+                                   {event.projectName}
+                                 </div>
                                </div>
+                               {event.type === 'todo' && (
+                                 <button
+                                   className="absolute top-1 right-1 w-4 h-4 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleToggleTodo(event.id, event.isCompleted || false);
+                                   }}
+                                 >
+                                   {event.isCompleted && <Check className="w-3 h-3" />}
+                                 </button>
+                               )}
                             </div>
                           ))}
                         </div>
@@ -557,42 +541,26 @@ const OverallCalendar: React.FC = () => {
                                    backgroundColor: event.projectColor
                                  } : {}}
                                >
-                                <div 
-                                  className="flex-1 cursor-pointer truncate pr-1"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEventClick(event);
-                                  }}
-                                >
-                                 {event.title}
+                                 <div 
+                                   className="flex-1 cursor-pointer truncate pr-1"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleEventClick(event);
+                                   }}
+                                 >
+                                   {event.title}
                                  </div>
-                                 <div className="flex gap-1 ml-1">
-                                   {(event.type === 'todo' || event.type === 'deadline' || event.type === 'review') && (
-                                     <button
-                                       className="w-3 h-3 rounded-sm bg-white/20 hover:bg-red-500/70 flex items-center justify-center border border-current/30"
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         setSelectedEvent(event);
-                                         handleDeleteEvent();
-                                       }}
-                                       title="삭제"
-                                     >
-                                       <X className="w-2 h-2" />
-                                     </button>
-                                   )}
-                                   {event.type === 'todo' && (
-                                     <button
-                                       className="w-3 h-3 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30"
-                                       onClick={(e) => {
-                                         e.stopPropagation();
-                                         handleToggleTodo(event.id, event.isCompleted || false);
-                                       }}
-                                       title="완료 체크"
-                                     >
-                                       {event.isCompleted && <Check className="w-2 h-2" />}
-                                     </button>
-                                   )}
-                                 </div>
+                                 {event.type === 'todo' && (
+                                   <button
+                                     className="w-3 h-3 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30 ml-1"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleToggleTodo(event.id, event.isCompleted || false);
+                                     }}
+                                   >
+                                     {event.isCompleted && <Check className="w-2 h-2" />}
+                                   </button>
+                                 )}
                               </div>
                             ))}
                             {dayEvents.length > 2 && (
