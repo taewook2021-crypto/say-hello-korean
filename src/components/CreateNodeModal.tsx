@@ -9,6 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuthMock';
 import { handleNetworkError, isInIframe } from '@/utils/errorHandler';
@@ -30,6 +35,7 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
   const { user } = useAuth();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState<Date | undefined>();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,7 +75,8 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
           description: description.trim() || null,
           parent_id: parentId,
           user_id: user?.id,
-          display_order: nextOrder
+          display_order: nextOrder,
+          deadline: deadline ? deadline.toISOString() : null
         });
 
       if (error) throw error;
@@ -77,6 +84,7 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
       toast.success('노드가 생성되었습니다.');
       setName('');
       setDescription('');
+      setDeadline(undefined);
       onNodeCreated();
       onClose();
     } catch (error) {
@@ -120,6 +128,34 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
               placeholder="노드에 대한 간단한 설명을 입력하세요 (선택사항)"
               rows={3}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="deadline">마감일 설정 (선택사항)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !deadline && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {deadline ? format(deadline, "PPP") : <span>마감일을 선택하세요</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={deadline}
+                  onSelect={setDeadline}
+                  disabled={(date) => date < new Date()}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

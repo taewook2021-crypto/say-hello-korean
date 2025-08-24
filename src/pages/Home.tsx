@@ -6,6 +6,7 @@ import { CreateNodeModal } from "@/components/CreateNodeModal";
 import { AddAIToNodeModal } from "@/components/AddAIToNodeModal";
 import { NodeArchivesModal } from "@/components/NodeArchivesModal";
 import { ConversationDetailModal } from "@/components/ConversationDetailModal";
+import { ProjectDetailModal } from "@/components/ProjectDetailModal";
 
 const Home = () => {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ const Home = () => {
   const [showAddAIModal, setShowAddAIModal] = useState(false);
   const [showConversationModal, setShowConversationModal] = useState(false);
   const [showArchivesModal, setShowArchivesModal] = useState(false);
+  const [showProjectDetailModal, setShowProjectDetailModal] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string>('');
   const [selectedNodeName, setSelectedNodeName] = useState<string>('');
   const [selectedConversationId, setSelectedConversationId] = useState<string>('');
@@ -57,6 +59,12 @@ const Home = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const handleViewProjectDetail = (nodeId: string, nodeName: string) => {
+    setSelectedNodeId(nodeId);
+    setSelectedNodeName(nodeName);
+    setShowProjectDetailModal(true);
+  };
+
   // 임시로 인증 체크 비활성화
   // if (!user) {
   //   navigate('/auth');
@@ -77,6 +85,7 @@ const Home = () => {
             onViewArchives={handleViewArchives}
             onCreateSubNode={handleCreateSubNode}
             onNodeDeleted={handleNodeDeleted}
+            onViewProjectDetail={handleViewProjectDetail}
           />
         </div>
 
@@ -112,6 +121,13 @@ const Home = () => {
           isOpen={showConversationModal}
           onClose={() => setShowConversationModal(false)}
           conversationId={selectedConversationId}
+        />
+
+        <ProjectDetailModal
+          isOpen={showProjectDetailModal}
+          onClose={() => setShowProjectDetailModal(false)}
+          nodeId={selectedNodeId}
+          nodeName={selectedNodeName}
         />
       </div>
     </div>
