@@ -40,7 +40,7 @@ interface Item {
 
 const initialProjects: Project[] = [
   {
-    id: '1',
+    id: crypto.randomUUID(),
     name: '영어 학습',
     icon: '🌱',
     goal: '목표: 입이 트이기 활용',
@@ -48,7 +48,7 @@ const initialProjects: Project[] = [
     borderColor: '#8B5CF6' // purple
   },
   {
-    id: '2',
+    id: crypto.randomUUID(),
     name: '재테크',
     icon: '🌿',
     goal: '목표: 순자산 1000만원',
@@ -56,7 +56,7 @@ const initialProjects: Project[] = [
     borderColor: '#22C55E' // green
   },
   {
-    id: '3',
+    id: crypto.randomUUID(),
     name: '서울대학교 25\'2',
     icon: '🌳',
     goal: '목표: 합격하기',
@@ -64,7 +64,7 @@ const initialProjects: Project[] = [
     borderColor: '#EF4444' // red
   },
   {
-    id: '4',
+    id: crypto.randomUUID(),
     name: '면접 대비',
     icon: '🌱',
     goal: '목표: 자신감 향상',
@@ -72,7 +72,7 @@ const initialProjects: Project[] = [
     borderColor: '#6B7280' // gray
   },
   {
-    id: '5',
+    id: crypto.randomUUID(),
     name: '회계사 시험',
     icon: '🌿',
     goal: '목표: 1차 합격',
@@ -84,6 +84,38 @@ const initialProjects: Project[] = [
 export const SimpleProjectDashboard: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  
+  // Add project modal state
+  const [addProjectModalOpen, setAddProjectModalOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectGoal, setNewProjectGoal] = useState('');
+  const [newProjectIcon, setNewProjectIcon] = useState('🌱');
+  const [newProjectColor, setNewProjectColor] = useState('#8B5CF6');
+
+  const createProject = () => {
+    if (!newProjectName.trim()) return;
+    
+    const newProject: Project = {
+      id: crypto.randomUUID(),
+      name: newProjectName.trim(),
+      icon: newProjectIcon,
+      goal: newProjectGoal.trim() || '목표 설정 안함',
+      archiveCount: 0,
+      borderColor: newProjectColor
+    };
+
+    setProjects([newProject, ...projects]);
+    setAddProjectModalOpen(false);
+    setNewProjectName('');
+    setNewProjectGoal('');
+    setNewProjectIcon('🌱');
+    setNewProjectColor('#8B5CF6');
+    
+    toast({
+      title: "프로젝트 생성됨",
+      description: "새 프로젝트가 성공적으로 추가되었습니다"
+    });
+  };
 
   const deleteProject = (projectId: string, e?: React.MouseEvent) => {
     if (e) {
@@ -484,12 +516,96 @@ export const SimpleProjectDashboard: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-8 relative">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl">
           {projects.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>
+        
+        {/* Add Project FAB */}
+        <Button 
+          size="lg"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+          onClick={() => setAddProjectModalOpen(true)}
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
+        
+        {/* Add Project Modal */}
+        <Dialog open={addProjectModalOpen} onOpenChange={setAddProjectModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>새 프로젝트 추가</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="project-name">프로젝트 이름 *</Label>
+                <Input
+                  id="project-name"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="프로젝트 이름을 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="project-goal">목표</Label>
+                <Input
+                  id="project-goal"
+                  value={newProjectGoal}
+                  onChange={(e) => setNewProjectGoal(e.target.value)}
+                  placeholder="목표를 입력하세요 (선택사항)"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="project-icon">아이콘</Label>
+                <Select value={newProjectIcon} onValueChange={setNewProjectIcon}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="🌱">🌱 새싹</SelectItem>
+                    <SelectItem value="🌿">🌿 잎</SelectItem>
+                    <SelectItem value="🌳">🌳 나무</SelectItem>
+                    <SelectItem value="📚">📚 책</SelectItem>
+                    <SelectItem value="💼">💼 비즈니스</SelectItem>
+                    <SelectItem value="🎯">🎯 목표</SelectItem>
+                    <SelectItem value="⚡">⚡ 에너지</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="project-color">테마 색상</Label>
+                <Select value={newProjectColor} onValueChange={setNewProjectColor}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="#8B5CF6">보라색</SelectItem>
+                    <SelectItem value="#22C55E">초록색</SelectItem>
+                    <SelectItem value="#EF4444">빨간색</SelectItem>
+                    <SelectItem value="#3B82F6">파란색</SelectItem>
+                    <SelectItem value="#F97316">주황색</SelectItem>
+                    <SelectItem value="#6B7280">회색</SelectItem>
+                    <SelectItem value="#EC4899">분홍색</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setAddProjectModalOpen(false)}>
+                  취소
+                </Button>
+                <Button onClick={createProject} disabled={!newProjectName.trim()}>
+                  프로젝트 생성
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
