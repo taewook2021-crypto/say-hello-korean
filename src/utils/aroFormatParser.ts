@@ -61,7 +61,10 @@ export const parseAROFormat = (content: string): ParsedAROContent => {
 
     // Extract Q&A block (after <2>)
     const qaBlockStart = section2Index + section2Match[0].length;
-    const qaBlock = aroContent.substring(qaBlockStart).trim();
+    let qaBlock = aroContent.substring(qaBlockStart).trim();
+    
+    // Remove the "<2> Q&A" title line if it exists at the beginning
+    qaBlock = qaBlock.replace(/^Q&A\s*\n?/i, '');
 
     // Parse Q&A pairs
     const qaEntries = parseQAPairs(qaBlock);
