@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { parseAROFormat as parseAROTeacher, getTeacherPrompt } from '@/utils/aroFormatParser';
+import { Copy, Globe } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -197,6 +199,7 @@ export const SimpleProjectDashboard: React.FC = () => {
     const [archiveSourceType, setArchiveSourceType] = useState<'text' | 'pdf' | 'link'>('text');
     const [archiveContent, setArchiveContent] = useState('');
     const [archiveUrl, setArchiveUrl] = useState('');
+    const [promptLanguage, setPromptLanguage] = useState<'KR' | 'EN'>('KR');
     
     // Folder modal state
     const [folderModalOpen, setFolderModalOpen] = useState(false);
@@ -237,18 +240,106 @@ export const SimpleProjectDashboard: React.FC = () => {
       fetchItems();
     }, [project.id, currentFolderId]);
 
+    const copyTeacherPrompt = async () => {
+      try {
+        const prompt = getTeacherPrompt(promptLanguage);
+        await navigator.clipboard.writeText(prompt);
+        toast({
+          title: "프롬프트 복사됨",
+          description: `${promptLanguage} 교사 프롬프트가 클립보드에 복사되었습니다`
+        });
+      } catch (error) {
+        console.error('Failed to copy prompt:', error);
+        toast({
+          title: "복사 실패",
+          description: "프롬프트 복사에 실패했습니다",
+          variant: "destructive"
+        });
+      }
+    };
+
     const createArchive = async () => {
-      if (!archiveTitle.trim() || !archiveContent.trim()) return;
+      if (!archiveTitle.trim()) {
+        toast({
+          title: "제목 입력 필요",
+          description: "아카이브 제목을 입력해주세요",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (archiveSourceType === 'text' && !archiveContent.trim()) {
+        toast({
+          title: "내용 입력 필요", 
+          description: "텍스트 내용을 입력해주세요",
+          variant: "destructive"
+        });
+        return;
+      }
       
       try {
         console.log('💾 아카이브 저장 시작:', { archiveTitle, archiveContent });
+
+        let explanation = '';
+        let qaCount = 0;
+
+        // ARO 포맷 파싱 시도 (text 타입인 경우만)
+        if (archiveSourceType === 'text' && archiveContent.trim()) {
+          const parsedARO = parseAROTeacher(archiveContent.trim());
+          
+          if (!parsedARO.isValid) {
+            // ARO 형식이 아니면 경고 표시하고 일반 텍스트로 처리
+            if (parsedARO.error?.includes('ARO START')) {
+              toast({
+                title: "ARO 형식 오류",
+                description: parsedARO.error,
+                variant: "destructive"
+              });
+              return;
+            }
+            // 다른 오류는 일반 텍스트로 계속 진행
+            explanation = archiveContent.trim();
+          } else {
+            explanation = parsedARO.explanation;
+            
+            // Q&A를 wrong_notes 테이블에 저장
+            if (parsedARO.qaEntries.length > 0) {
+              const wrongNotesData = parsedARO.qaEntries.map(qa => ({
+                question: qa.question,
+                correct_answer: qa.answer,
+                wrong_answer: null,
+                explanation: `ARO 아카이브: ${archiveTitle.trim()}`,
+                subject_name: archiveTitle.trim(),
+                book_name: "ARO 아카이브",
+                chapter_name: archiveTitle.trim().substring(0, 50),
+                is_resolved: false
+              }));
+
+              const { error: qaError } = await supabase
+                .from('wrong_notes')
+                .insert(wrongNotesData);
+
+              if (qaError) {
+                console.error('❌ Q&A 저장 오류:', qaError);
+                toast({
+                  title: "Q&A 저장 실패",
+                  description: "Q&A 파싱은 성공했지만 저장에 실패했습니다",
+                  variant: "destructive"
+                });
+              } else {
+                qaCount = parsedARO.qaEntries.length;
+                console.log(`✅ ${qaCount}개 Q&A 저장 성공`);
+              }
+            }
+          }
+        }
 
         // 1. conversations 테이블에 대화 저장
         const { data: conversation, error: conversationError } = await supabase
           .from('conversations')
           .insert({
             title: archiveTitle.trim(),
-            content: archiveContent.trim(),
+            content: archiveContent.trim() || `[${archiveSourceType.toUpperCase()}] ${archiveUrl || '외부 소스'}`,
             node_id: project.id
           })
           .select()
@@ -261,48 +352,17 @@ export const SimpleProjectDashboard: React.FC = () => {
 
         console.log('✅ 대화 저장 성공:', conversation);
 
-        // 2. ARO 포맷 파싱 및 Q&A 저장
-        try {
-          const { parseAROFormat } = await import('@/utils/aroParser');
-          const parsedData = parseAROFormat(archiveContent.trim());
-          
-          console.log('📝 파싱 결과:', parsedData);
-
-          if (parsedData.qaPairs && parsedData.qaPairs.length > 0) {
-            // Q&A를 wrong_notes 테이블에 저장
-            const wrongNotesData = parsedData.qaPairs.map(qa => ({
-              question: qa.question,
-              correct_answer: qa.answer,
-              wrong_answer: null,
-              explanation: qa.tags?.length > 0 ? `태그: ${qa.tags.join(', ')}` : null,
-              subject_name: archiveTitle.trim(),
-              book_name: "아카이브",
-              chapter_name: `${archiveTitle.trim().substring(0, 20)}...`,
-              is_resolved: false
-            }));
-
-            const { error: qaError } = await supabase
-              .from('wrong_notes')
-              .insert(wrongNotesData);
-
-            if (qaError) {
-              console.error('❌ Q&A 저장 오류:', qaError);
-            } else {
-              console.log(`✅ ${parsedData.qaPairs.length}개 Q&A 저장 성공`);
-            }
-          }
-        } catch (parseError) {
-          console.error('❌ Q&A 파싱 오류:', parseError);
-        }
-
-        // 3. items 테이블에도 아카이브 아이템으로 저장 (UI 표시용)
+        // 2. items 테이블에 아카이브 아이템으로 저장 (UI 표시용)
         const newItem = {
           project_id: project.id,
           item_type: 'archive' as const,
           title: archiveTitle.trim(),
-          description: `${archiveDescription.trim() || ''} (Q&A 파싱 완료)`,
-          source_type: 'text' as const,
-          raw_content: archiveContent.trim(),
+          description: qaCount > 0 
+            ? `${archiveDescription.trim() || ''} (Q&A ${qaCount}개 파싱됨)`.trim()
+            : archiveDescription.trim() || null,
+          source_type: archiveSourceType,
+          raw_content: archiveContent.trim() || null,
+          link_url: archiveSourceType === 'link' ? archiveUrl.trim() || null : null,
           parent_id: currentFolderId
         };
 
@@ -314,13 +374,14 @@ export const SimpleProjectDashboard: React.FC = () => {
 
         if (itemError) {
           console.error('❌ 아이템 저장 오류:', itemError);
-        } else {
-          console.log('✅ 아이템 저장 성공:', item);
-          // UI에 새 아이템 추가
-          setItems([item as Item, ...items]);
+          throw itemError;
         }
 
-        // 4. 프로젝트 상태 업데이트 (아카이브 추가로 인한 성장)
+        console.log('✅ 아이템 저장 성공:', item);
+        // UI에 새 아이템 추가
+        setItems([item as Item, ...items]);
+
+        // 3. 프로젝트 상태 업데이트 (아카이브 추가로 인한 성장)
         try {
           const { data: nodeData } = await supabase
             .from('nodes')
@@ -345,13 +406,15 @@ export const SimpleProjectDashboard: React.FC = () => {
         
         toast({
           title: "아카이브 생성 완료",
-          description: "Q&A 파싱과 복습 일정이 설정되었습니다"
+          description: qaCount > 0 
+            ? `Q&A ${qaCount}개가 파싱되어 복습 일정이 설정되었습니다`
+            : "아카이브가 성공적으로 생성되었습니다"
         });
 
       } catch (error) {
         console.error('💥 아카이브 생성 실패:', error);
         toast({
-          title: "Error",
+          title: "생성 실패",
           description: "아카이브 생성에 실패했습니다",
           variant: "destructive"
         });
@@ -522,14 +585,49 @@ export const SimpleProjectDashboard: React.FC = () => {
               </div>
 
               {archiveSourceType === 'text' && (
-                <div>
-                  <Label htmlFor="archive-content">Content</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="archive-content">Content</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center border rounded-md">
+                        <Button
+                          type="button"
+                          variant={promptLanguage === 'KR' ? 'default' : 'ghost'}
+                          size="sm"
+                          className="px-2 py-1 h-6 text-xs rounded-r-none"
+                          onClick={() => setPromptLanguage('KR')}
+                        >
+                          KR
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={promptLanguage === 'EN' ? 'default' : 'ghost'}
+                          size="sm"
+                          className="px-2 py-1 h-6 text-xs rounded-l-none border-l"
+                          onClick={() => setPromptLanguage('EN')}
+                        >
+                          EN
+                        </Button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs flex items-center gap-1 h-6"
+                        onClick={copyTeacherPrompt}
+                      >
+                        <Copy className="w-3 h-3" />
+                        Copy Teacher Prompt
+                      </Button>
+                    </div>
+                  </div>
                   <Textarea
                     id="archive-content"
                     value={archiveContent}
                     onChange={(e) => setArchiveContent(e.target.value)}
-                    placeholder="Enter text content"
-                    rows={4}
+                    placeholder="Paste AI output that follows the ARO format. Use 'Copy Teacher Prompt' above."
+                    rows={6}
+                    className="text-sm"
                   />
                 </div>
               )}
