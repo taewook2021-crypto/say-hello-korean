@@ -493,19 +493,26 @@ export const SimpleProjectDashboard: React.FC = () => {
       if (!itemToEdit) return;
 
       try {
+        console.log('🔧 아카이브 편집 시작:', itemToEdit.id, itemToEdit.title);
+        console.log('📝 새로운 제목:', editTitle);
+        console.log('📄 새로운 내용 길이:', editContent.length);
+
         // 아카이브의 경우에만 편집 가능
         if (itemToEdit.item_type === 'archive') {
           // conversations 테이블 업데이트
+          console.log('🔍 conversation 조회 중...');
           const { data: conversations, error: conversationSelectError } = await supabase
             .from('conversations')
-            .select('id')
+            .select('id, title')
             .eq('title', itemToEdit.title)
-            .is('node_id', null)
-            .limit(1);
+            .is('node_id', null);
+
+          console.log('📋 찾은 conversations:', conversations);
 
           if (conversationSelectError) {
             console.error('❌ conversation 조회 오류:', conversationSelectError);
           } else if (conversations && conversations.length > 0) {
+            console.log('📝 conversation 업데이트 중:', conversations[0].id);
             const { error: conversationUpdateError } = await supabase
               .from('conversations')
               .update({
@@ -516,12 +523,16 @@ export const SimpleProjectDashboard: React.FC = () => {
 
             if (conversationUpdateError) {
               console.error('❌ conversation 업데이트 오류:', conversationUpdateError);
+              throw conversationUpdateError;
             } else {
               console.log('✅ conversation 업데이트 완료');
             }
+          } else {
+            console.log('⚠️ conversation을 찾을 수 없음');
           }
 
           // items 테이블 업데이트
+          console.log('📦 items 테이블 업데이트 중...');
           const { error: itemUpdateError } = await supabase
             .from('items')
             .update({
@@ -536,13 +547,17 @@ export const SimpleProjectDashboard: React.FC = () => {
             throw itemUpdateError;
           }
 
+          console.log('✅ items 테이블 업데이트 완료');
+
           // UI에서 아이템 업데이트
-          setItems(items.map(item => 
+          console.log('🔄 UI 상태 업데이트 중...');
+          setItems(prevItems => prevItems.map(item => 
             item.id === itemToEdit.id 
               ? { ...item, title: editTitle.trim(), raw_content: editContent.trim() }
               : item
           ));
           
+          console.log('🎉 편집 완료!');
           toast({
             title: "편집 완료",
             description: "아카이브가 성공적으로 수정되었습니다",
