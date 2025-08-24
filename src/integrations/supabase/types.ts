@@ -163,6 +163,68 @@ export type Database = {
           },
         ]
       }
+      items: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_url: string | null
+          id: string
+          is_deleted: boolean
+          item_type: string
+          link_url: string | null
+          name: string | null
+          parent_id: string | null
+          project_id: string
+          raw_content: string | null
+          source_type: string | null
+          title: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_deleted?: boolean
+          item_type: string
+          link_url?: string | null
+          name?: string | null
+          parent_id?: string | null
+          project_id: string
+          raw_content?: string | null
+          source_type?: string | null
+          title?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_deleted?: boolean
+          item_type?: string
+          link_url?: string | null
+          name?: string | null
+          parent_id?: string | null
+          project_id?: string
+          raw_content?: string | null
+          source_type?: string | null
+          title?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       major_chapters: {
         Row: {
           book_name: string

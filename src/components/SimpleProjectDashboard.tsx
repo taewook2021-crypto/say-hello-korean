@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Trash2, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Trash2, X, Plus, File, Folder, Upload, Link } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface Project {
   id: string;
@@ -10,6 +18,24 @@ interface Project {
   goal: string;
   archiveCount: number;
   borderColor: string;
+}
+
+interface Item {
+  id: string;
+  project_id: string;
+  item_type: 'archive' | 'folder';
+  title?: string | null;
+  name?: string | null;
+  source_type?: 'text' | 'pdf' | 'link' | null;
+  raw_content?: string | null;
+  file_url?: string | null;
+  link_url?: string | null;
+  description?: string | null;
+  parent_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  version: number;
+  is_deleted: boolean;
 }
 
 const initialProjects: Project[] = [
@@ -104,72 +130,345 @@ export const SimpleProjectDashboard: React.FC = () => {
     </Card>
   );
 
-  const ProjectDetail: React.FC<{ project: Project }> = ({ project }) => (
-    <div className="min-h-screen bg-background p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedProject(null)}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            뒤로
-          </Button>
-          <h1 className="text-2xl font-bold">{project.name}</h1>
-        </div>
+  const ProjectDetail: React.FC<{ project: Project }> = ({ project }) => {
+    const [items, setItems] = useState<Item[]>([]);
+    const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    
+    // Archive modal state
+    const [archiveModalOpen, setArchiveModalOpen] = useState(false);
+    const [archiveTitle, setArchiveTitle] = useState('');
+    const [archiveDescription, setArchiveDescription] = useState('');
+    const [archiveSourceType, setArchiveSourceType] = useState<'text' | 'pdf' | 'link'>('text');
+    const [archiveContent, setArchiveContent] = useState('');
+    const [archiveUrl, setArchiveUrl] = useState('');
+    
+    // Folder modal state
+    const [folderModalOpen, setFolderModalOpen] = useState(false);
+    const [folderName, setFolderName] = useState('');
+
+    const fetchItems = async () => {
+      setLoading(true);
+      try {
+        let query = supabase
+          .from('items')
+          .select('*')
+          .eq('project_id', project.id)
+          .eq('is_deleted', false);
         
-        {/* 프로젝트 삭제 버튼 */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-          onClick={() => deleteProject(project.id)}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          프로젝트 삭제
-        </Button>
+        if (currentFolderId) {
+          query = query.eq('parent_id', currentFolderId);
+        } else {
+          query = query.is('parent_id', null);
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setItems((data || []) as Item[]);
+      } catch (error) {
+        console.error('Error fetching items:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load items",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      fetchItems();
+    }, [project.id, currentFolderId]);
+
+    const createArchive = async () => {
+      if (!archiveTitle.trim()) return;
+      
+      try {
+        const newItem = {
+          project_id: project.id,
+          item_type: 'archive' as const,
+          title: archiveTitle.trim(),
+          description: archiveDescription.trim() || null,
+          source_type: archiveSourceType,
+          raw_content: archiveSourceType === 'text' ? archiveContent : null,
+          link_url: archiveSourceType === 'link' ? archiveUrl : null,
+          parent_id: currentFolderId
+        };
+
+        const { data, error } = await supabase
+          .from('items')
+          .insert([newItem])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setItems([data as Item, ...items]);
+        setArchiveModalOpen(false);
+        setArchiveTitle('');
+        setArchiveDescription('');
+        setArchiveContent('');
+        setArchiveUrl('');
+        
+        toast({
+          title: "Archive created",
+          description: "Your archive has been added successfully"
+        });
+      } catch (error) {
+        console.error('Error creating archive:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create archive",
+          variant: "destructive"
+        });
+      }
+    };
+
+    const createFolder = async () => {
+      if (!folderName.trim()) return;
+      
+      try {
+        const newItem = {
+          project_id: project.id,
+          item_type: 'folder' as const,
+          name: folderName.trim(),
+          parent_id: currentFolderId
+        };
+
+        const { data, error } = await supabase
+          .from('items')
+          .insert([newItem])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setItems([data as Item, ...items]);
+        setFolderModalOpen(false);
+        setFolderName('');
+        
+        toast({
+          title: "Folder created",
+          description: "Your folder has been added successfully"
+        });
+      } catch (error) {
+        console.error('Error creating folder:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create folder",
+          variant: "destructive"
+        });
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-background p-6 relative">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedProject(null)}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              뒤로
+            </Button>
+            <h1 className="text-2xl font-bold">{project.name}</h1>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={() => deleteProject(project.id)}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            프로젝트 삭제
+          </Button>
+        </div>
+
+        {/* Content Area */}
+        <div className="relative w-full min-h-96">
+          {/* Center Hub */}
+          <div className="flex justify-center mb-8">
+            <div className="bg-background border-2 border-primary rounded-lg p-6">
+              <h2 className="text-2xl font-bold text-center text-primary">{project.name}</h2>
+            </div>
+          </div>
+
+          {/* Items Grid */}
+          {loading ? (
+            <div className="text-center text-muted-foreground">Loading...</div>
+          ) : items.length === 0 ? (
+            <div className="text-center text-muted-foreground py-12">
+              <p>No items yet. Use the + button to add archives or folders.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {items.map((item) => (
+                <Card key={item.id} className="p-4 cursor-pointer hover:bg-accent">
+                  <div className="flex items-center gap-3">
+                    {item.item_type === 'folder' ? (
+                      <Folder className="w-8 h-8 text-blue-500" />
+                    ) : (
+                      <File className="w-8 h-8 text-green-500" />
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-medium">
+                        {item.item_type === 'folder' ? item.name : item.title}
+                      </h3>
+                      {item.description && (
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                      )}
+                      {item.source_type && (
+                        <span className="text-xs text-muted-foreground">
+                          {item.source_type.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Floating Action Button */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              size="lg"
+              className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+            >
+              <Plus className="w-6 h-6" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="mb-2">
+            <DropdownMenuItem onClick={() => setArchiveModalOpen(true)}>
+              <File className="w-4 h-4 mr-2" />
+              Add Archive
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setFolderModalOpen(true)}>
+              <Folder className="w-4 h-4 mr-2" />
+              Add Folder
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Archive Modal */}
+        <Dialog open={archiveModalOpen} onOpenChange={setArchiveModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Archive</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="archive-title">Title *</Label>
+                <Input
+                  id="archive-title"
+                  value={archiveTitle}
+                  onChange={(e) => setArchiveTitle(e.target.value)}
+                  placeholder="Enter archive title"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="source-type">Source Type</Label>
+                <Select value={archiveSourceType} onValueChange={(value: 'text' | 'pdf' | 'link') => setArchiveSourceType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="pdf">PDF</SelectItem>
+                    <SelectItem value="link">Link</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {archiveSourceType === 'text' && (
+                <div>
+                  <Label htmlFor="archive-content">Content</Label>
+                  <Textarea
+                    id="archive-content"
+                    value={archiveContent}
+                    onChange={(e) => setArchiveContent(e.target.value)}
+                    placeholder="Enter text content"
+                    rows={4}
+                  />
+                </div>
+              )}
+
+              {archiveSourceType === 'link' && (
+                <div>
+                  <Label htmlFor="archive-url">URL</Label>
+                  <Input
+                    id="archive-url"
+                    value={archiveUrl}
+                    onChange={(e) => setArchiveUrl(e.target.value)}
+                    placeholder="Enter URL"
+                    type="url"
+                  />
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="archive-description">Description</Label>
+                <Textarea
+                  id="archive-description"
+                  value={archiveDescription}
+                  onChange={(e) => setArchiveDescription(e.target.value)}
+                  placeholder="Optional description"
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setArchiveModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={createArchive} disabled={!archiveTitle.trim()}>
+                  Create Archive
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Folder Modal */}
+        <Dialog open={folderModalOpen} onOpenChange={setFolderModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Folder</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="folder-name">Name *</Label>
+                <Input
+                  id="folder-name"
+                  value={folderName}
+                  onChange={(e) => setFolderName(e.target.value)}
+                  placeholder="Enter folder name"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setFolderModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={createFolder} disabled={!folderName.trim()}>
+                  Create Folder
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Radial Layout */}
-      <div className="relative w-full h-96">
-        {/* Center Hub */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background border-2 border-primary rounded-lg p-6 z-10">
-          <h2 className="text-2xl font-bold text-center text-primary">{project.name}</h2>
-        </div>
-
-        {/* Empty State Helpers */}
-        <div className="absolute top-1/4 left-1/4 transform -translate-x-1/2 -translate-y-1/2">
-          <div className="text-center text-muted-foreground">
-            <div className="text-lg mb-1">💬</div>
-            <div className="text-xs">Add Archive</div>
-          </div>
-        </div>
-
-        <div className="absolute top-1/4 right-1/4 transform translate-x-1/2 -translate-y-1/2">
-          <div className="text-center text-muted-foreground">
-            <div className="text-lg mb-1">📁</div>
-            <div className="text-xs">Add Folder</div>
-          </div>
-        </div>
-
-        <div className="absolute bottom-1/4 left-1/3 transform -translate-x-1/2 translate-y-1/2">
-          <div className="text-center text-muted-foreground">
-            <div className="text-lg mb-1">💬</div>
-            <div className="text-xs">Add Archive</div>
-          </div>
-        </div>
-
-        <div className="absolute bottom-1/4 right-1/3 transform translate-x-1/2 translate-y-1/2">
-          <div className="text-center text-muted-foreground">
-            <div className="text-lg mb-1">📁</div>
-            <div className="text-xs">Add Folder</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   if (selectedProject) {
     return <ProjectDetail project={selectedProject} />;
