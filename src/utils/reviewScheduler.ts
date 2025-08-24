@@ -9,7 +9,9 @@ export const createReviewTask = async (
   try {
     const reviewDate = dueDate || addDays(new Date(), 1); // 기본적으로 내일 복습
     
-    const { error } = await supabase
+    console.log('📅 복습 일정 생성 시작:', { userId, archiveName, reviewDate });
+    
+    const { data, error } = await supabase
       .from('todos')
       .insert({
         title: `${archiveName}_Review`,
@@ -18,11 +20,17 @@ export const createReviewTask = async (
         user_id: userId,
         is_review_task: true,
         archive_name: archiveName
-      });
+      })
+      .select()
+      .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ 복습 일정 생성 실패:', error);
+      throw error;
+    }
     
-    return { success: true };
+    console.log('✅ 복습 일정 생성 성공:', data);
+    return { success: true, data };
   } catch (error) {
     console.error('복습 일정 생성 오류:', error);
     return { success: false, error };

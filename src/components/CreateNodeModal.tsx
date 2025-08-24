@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuthMock';
 import { handleNetworkError, isInIframe } from '@/utils/errorHandler';
 import { toast } from 'sonner';
+import { ProjectColorSelector } from '@/components/ProjectColorSelector';
 
 interface CreateNodeModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState<Date | undefined>();
+  const [color, setColor] = useState('#3b82f6');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,7 +78,8 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
           parent_id: parentId,
           user_id: user?.id,
           display_order: nextOrder,
-          deadline: deadline ? deadline.toISOString() : null
+          deadline: deadline ? deadline.toISOString() : null,
+          color: color
         });
 
       if (error) throw error;
@@ -85,6 +88,7 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
       setName('');
       setDescription('');
       setDeadline(undefined);
+      setColor('#3b82f6');
       onNodeCreated();
       onClose();
     } catch (error) {
@@ -157,6 +161,13 @@ export const CreateNodeModal: React.FC<CreateNodeModalProps> = ({
               </PopoverContent>
             </Popover>
           </div>
+
+          {!parentId && (
+            <ProjectColorSelector
+              selectedColor={color}
+              onColorSelect={setColor}
+            />
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>

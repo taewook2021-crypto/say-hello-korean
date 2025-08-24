@@ -248,6 +248,7 @@ export type Database = {
       }
       nodes: {
         Row: {
+          color: string | null
           created_at: string
           deadline: string | null
           description: string | null
@@ -260,6 +261,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           deadline?: string | null
           description?: string | null
@@ -272,6 +274,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           deadline?: string | null
           description?: string | null

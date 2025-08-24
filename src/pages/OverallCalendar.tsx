@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarDays, Clock, ArrowRight, Plus, ChevronLeft, ChevronRight, Check, FolderOpen, Square, Circle } from 'lucide-react';
+import { CalendarDays, Clock, ArrowRight, Plus, ChevronLeft, ChevronRight, Check, FolderOpen, Square, Circle, Trash2, X } from 'lucide-react';
 import { format, addMonths, isSameDay, isAfter, isBefore, startOfWeek, endOfWeek, addDays, addWeeks, subWeeks, startOfDay, endOfDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +23,7 @@ interface OverallScheduleItem {
   nodeId: string;
   nodeName?: string;
   projectName?: string;
+  projectColor?: string;
   isCompleted?: boolean;
   isReviewTask?: boolean;
   archiveName?: string;
@@ -41,6 +42,7 @@ interface TodoItem {
 interface ProjectNode {
   id: string;
   name: string;
+  color?: string;
 }
 
 const OverallCalendar: React.FC = () => {
@@ -74,7 +76,7 @@ const OverallCalendar: React.FC = () => {
     try {
       const { data } = await supabase
         .from('nodes')
-        .select('id, name')
+        .select('id, name, color')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .is('parent_id', null) // 최상위 프로젝트만
@@ -147,13 +149,15 @@ const OverallCalendar: React.FC = () => {
       if (nodeData) {
         nodeData.forEach((node: any) => {
           const projectName = node.parent_id ? '하위 노드' : node.name;
+          const projectColor = projects.find(p => p.id === node.id)?.color || '#3b82f6';
           items.push({
             id: node.id,
             title: `${node.name} 마감`,
             type: 'deadline',
             date: new Date(node.deadline),
             nodeId: node.id,
-            projectName
+            projectName,
+            projectColor
           });
         });
       }
@@ -320,6 +324,50 @@ const OverallCalendar: React.FC = () => {
     }
   };
 
+  const handleDeleteEvent = async () => {
+    if (!selectedEvent) return;
+
+    try {
+      if (selectedEvent.type === 'todo') {
+        // 할일 삭제
+        const { error } = await supabase
+          .from('todos')
+          .delete()
+          .eq('id', selectedEvent.id);
+
+        if (error) throw error;
+        toast.success('할일이 삭제되었습니다.');
+      } else if (selectedEvent.type === 'deadline') {
+        // 마감일 삭제 (deadline을 null로 설정)
+        const { error } = await supabase
+          .from('nodes')
+          .update({ deadline: null })
+          .eq('id', selectedEvent.nodeId);
+
+        if (error) throw error;
+        toast.success('마감일이 삭제되었습니다.');
+      } else if (selectedEvent.type === 'review') {
+        // 복습 일정 삭제
+        const { error } = await supabase
+          .from('review_schedule')
+          .delete()
+          .eq('id', selectedEvent.id);
+
+        if (error) throw error;
+        toast.success('복습 일정이 삭제되었습니다.');
+      }
+
+      setShowEventModal(false);
+      loadScheduleData();
+      if (selectedDate) {
+        loadDayTodos(selectedDate);
+      }
+    } catch (error) {
+      console.error('일정 삭제 오류:', error);
+      toast.error('일정 삭제에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="w-full px-6 py-6">
@@ -383,19 +431,24 @@ const OverallCalendar: React.FC = () => {
                           {format(day, 'd')}
                         </div>
                         <div className="space-y-2">
-                           {dayEvents.map((event) => (
-                            <div
-                              key={event.id}
-                              className={`text-xs p-2 rounded-md border relative ${
-                                event.type === 'deadline' 
-                                  ? 'bg-destructive/10 text-destructive border-destructive/20'
-                                  : event.type === 'review'
-                                  ? 'bg-primary/10 text-primary border-primary/20'
-                                  : event.isCompleted
-                                  ? 'bg-muted text-muted-foreground border-muted/40 line-through'
-                                  : 'bg-accent/50 text-accent-foreground border-accent/40'
-                              }`}
-                            >
+                            {dayEvents.map((event) => (
+                             <div
+                               key={event.id}
+                               className={`text-xs p-2 rounded-md border relative ${
+                                 event.type === 'deadline' 
+                                   ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                   : event.type === 'review'
+                                   ? 'bg-primary/10 text-primary border-primary/20'
+                                   : event.isCompleted
+                                   ? 'bg-muted text-muted-foreground border-muted/40 line-through'
+                                   : 'bg-accent/50 text-accent-foreground border-accent/40'
+                               }`}
+                               style={event.projectColor && event.type === 'deadline' ? {
+                                 backgroundColor: `${event.projectColor}20`,
+                                 borderColor: `${event.projectColor}40`,
+                                 color: event.projectColor
+                               } : {}}
+                             >
                               <div 
                                 className="cursor-pointer hover:bg-black/5 rounded pr-6"
                                 onClick={(e) => {
@@ -408,17 +461,33 @@ const OverallCalendar: React.FC = () => {
                                   {event.projectName}
                                 </div>
                               </div>
-                              {event.type === 'todo' && (
-                                <button
-                                  className="absolute top-1 right-1 w-4 h-4 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleToggleTodo(event.id, event.isCompleted || false);
-                                  }}
-                                >
-                                  {event.isCompleted && <Check className="w-3 h-3" />}
-                                </button>
-                              )}
+                               <div className="absolute top-1 right-1 flex gap-1">
+                                 {(event.type === 'todo' || event.type === 'deadline' || event.type === 'review') && (
+                                   <button
+                                     className="w-4 h-4 rounded-sm bg-white/20 hover:bg-red-500/70 flex items-center justify-center border border-current/30"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       setSelectedEvent(event);
+                                       handleDeleteEvent();
+                                     }}
+                                     title="삭제"
+                                   >
+                                     <X className="w-3 h-3" />
+                                   </button>
+                                 )}
+                                 {event.type === 'todo' && (
+                                   <button
+                                     className="w-4 h-4 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleToggleTodo(event.id, event.isCompleted || false);
+                                     }}
+                                     title="완료 체크"
+                                   >
+                                     {event.isCompleted && <Check className="w-3 h-3" />}
+                                   </button>
+                                 )}
+                               </div>
                             </div>
                           ))}
                         </div>
@@ -473,18 +542,21 @@ const OverallCalendar: React.FC = () => {
                           </div>
                           <div className="space-y-1">
                             {dayEvents.slice(0, 2).map((event) => (
-                              <div
-                                key={event.id}
-                                className={`text-xs p-1 rounded-sm relative flex items-center ${
-                                  event.type === 'deadline' 
-                                    ? 'bg-destructive/80 text-white'
-                                    : event.type === 'review'
-                                    ? 'bg-primary/80 text-white'
-                                    : event.isCompleted
-                                    ? 'bg-muted text-muted-foreground line-through'
-                                    : 'bg-accent/80 text-white'
-                                }`}
-                              >
+                               <div
+                                 key={event.id}
+                                 className={`text-xs p-1 rounded-sm relative flex items-center ${
+                                   event.type === 'deadline' 
+                                     ? 'bg-destructive/80 text-white'
+                                     : event.type === 'review'
+                                     ? 'bg-primary/80 text-white'
+                                     : event.isCompleted
+                                     ? 'bg-muted text-muted-foreground line-through'
+                                     : 'bg-accent/80 text-white'
+                                 }`}
+                                 style={event.projectColor && event.type === 'deadline' ? {
+                                   backgroundColor: event.projectColor
+                                 } : {}}
+                               >
                                 <div 
                                   className="flex-1 cursor-pointer truncate pr-1"
                                   onClick={(e) => {
@@ -492,19 +564,35 @@ const OverallCalendar: React.FC = () => {
                                     handleEventClick(event);
                                   }}
                                 >
-                                  {event.title}
-                                </div>
-                                {event.type === 'todo' && (
-                                  <button
-                                    className="w-3 h-3 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30 ml-1"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleTodo(event.id, event.isCompleted || false);
-                                    }}
-                                  >
-                                    {event.isCompleted && <Check className="w-2 h-2" />}
-                                  </button>
-                                )}
+                                 {event.title}
+                                 </div>
+                                 <div className="flex gap-1 ml-1">
+                                   {(event.type === 'todo' || event.type === 'deadline' || event.type === 'review') && (
+                                     <button
+                                       className="w-3 h-3 rounded-sm bg-white/20 hover:bg-red-500/70 flex items-center justify-center border border-current/30"
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         setSelectedEvent(event);
+                                         handleDeleteEvent();
+                                       }}
+                                       title="삭제"
+                                     >
+                                       <X className="w-2 h-2" />
+                                     </button>
+                                   )}
+                                   {event.type === 'todo' && (
+                                     <button
+                                       className="w-3 h-3 rounded-sm bg-white/20 hover:bg-white/40 flex items-center justify-center border border-current/30"
+                                       onClick={(e) => {
+                                         e.stopPropagation();
+                                         handleToggleTodo(event.id, event.isCompleted || false);
+                                       }}
+                                       title="완료 체크"
+                                     >
+                                       {event.isCompleted && <Check className="w-2 h-2" />}
+                                     </button>
+                                   )}
+                                 </div>
                               </div>
                             ))}
                             {dayEvents.length > 2 && (
@@ -584,6 +672,14 @@ const OverallCalendar: React.FC = () => {
                   <Button onClick={navigateToNote} className="flex-1">
                     <ArrowRight className="mr-2 h-4 w-4" />
                     해당 노트로 이동
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={handleDeleteEvent}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    삭제
                   </Button>
                   <Button variant="outline" onClick={() => setShowEventModal(false)}>
                     닫기
