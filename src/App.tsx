@@ -31,8 +31,8 @@ const App = () => (
           <div className="container mx-auto px-4 py-2">
             <EnvironmentChecker />
           </div>
-          <Navigation />
           <BrowserRouter>
+            <Navigation />
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/home" element={<Home />} />
