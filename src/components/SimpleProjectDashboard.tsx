@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, X, Plus, File, Folder } from 'lucide-react';
+import { ArrowLeft, Trash2, X, Plus, File, Folder, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { parseAROFormat as parseAROTeacher } from '@/utils/aroFormatParser';
@@ -199,6 +201,10 @@ export const SimpleProjectDashboard: React.FC = () => {
     const [folderModalOpen, setFolderModalOpen] = useState(false);
     const [conversationModalOpen, setConversationModalOpen] = useState(false);
     const [selectedConversationId, setSelectedConversationId] = useState<string>('');
+    
+    // Delete dialog states
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
 
     const fetchItems = async () => {
       setLoading(true);
@@ -415,6 +421,68 @@ export const SimpleProjectDashboard: React.FC = () => {
       }
     };
 
+    const handleDeleteItem = async () => {
+      if (!itemToDelete) return;
+
+      try {
+        // 아카이브의 경우 관련된 conversation도 함께 삭제
+        if (itemToDelete.item_type === 'archive') {
+          // 먼저 해당 아카이브와 연결된 conversation 찾기
+          const { data: conversations, error: conversationError } = await supabase
+            .from('conversations')
+            .select('id')
+            .eq('title', itemToDelete.title)
+            .is('node_id', null);
+
+          if (conversationError) {
+            console.error('❌ conversation 조회 오류:', conversationError);
+          } else if (conversations && conversations.length > 0) {
+            // conversation 삭제
+            const { error: deleteConversationError } = await supabase
+              .from('conversations')
+              .delete()
+              .in('id', conversations.map(c => c.id));
+
+            if (deleteConversationError) {
+              console.error('❌ conversation 삭제 오류:', deleteConversationError);
+            } else {
+              console.log('✅ 연결된 conversation 삭제 완료');
+            }
+          }
+        }
+
+        // items 테이블에서 아이템 삭제 (실제로는 is_deleted 플래그 설정)
+        const { error: itemError } = await supabase
+          .from('items')
+          .update({ is_deleted: true })
+          .eq('id', itemToDelete.id);
+
+        if (itemError) {
+          console.error('❌ 아이템 삭제 오류:', itemError);
+          throw itemError;
+        }
+
+        // UI에서 아이템 제거
+        setItems(items.filter(item => item.id !== itemToDelete.id));
+        
+        toast({
+          title: "삭제 완료",
+          description: `${itemToDelete.item_type === 'folder' ? '폴더' : '아카이브'}가 삭제되었습니다`,
+        });
+
+      } catch (error) {
+        console.error('💥 삭제 실패:', error);
+        toast({
+          title: "삭제 실패",
+          description: "삭제 중 오류가 발생했습니다",
+          variant: "destructive"
+        });
+      } finally {
+        setDeleteDialogOpen(false);
+        setItemToDelete(null);
+      }
+    };
+
     return (
       <div className="min-h-screen bg-background p-6 relative">
         {/* Header */}
@@ -463,55 +531,62 @@ export const SimpleProjectDashboard: React.FC = () => {
               {items.map((item) => (
                 <Card 
                   key={item.id} 
-                  className="p-4 cursor-pointer hover:bg-accent"
-                  onClick={async () => {
-                    if (item.item_type === 'archive') {
-                      // 아카이브 클릭 시 해당하는 conversation을 찾아서 ConversationDetailModal 열기
-                      console.log('🎯 아카이브 클릭:', item.id, item.title);
-                      try {
-                        // item의 title과 content로 matching하는 conversation 찾기
-                        const { data: conversations, error } = await supabase
-                          .from('conversations')
-                          .select('id')
-                          .eq('title', item.title)
-                          .is('node_id', null)
-                          .order('created_at', { ascending: false })
-                          .limit(1);
-
-                        if (error) {
-                          console.error('❌ conversation 조회 오류:', error);
-                          toast({
-                            title: "오류",
-                            description: "아카이브를 열 수 없습니다",
-                            variant: "destructive"
-                          });
-                          return;
-                        }
-
-                        if (conversations && conversations.length > 0) {
-                          console.log('✅ conversation 찾음:', conversations[0].id);
-                          setSelectedConversationId(conversations[0].id);
-                          setConversationModalOpen(true);
-                        } else {
-                          console.log('❌ conversation을 찾을 수 없음');
-                          toast({
-                            title: "오류",
-                            description: "해당 아카이브의 내용을 찾을 수 없습니다",
-                            variant: "destructive"
-                          });
-                        }
-                      } catch (error) {
-                        console.error('💥 아카이브 열기 실패:', error);
-                        toast({
-                          title: "오류",
-                          description: "아카이브를 여는 중 오류가 발생했습니다",
-                          variant: "destructive"
-                        });
-                      }
-                    }
-                  }}
+                  className="p-4 relative group"
                 >
-                  <div className="flex items-center gap-3">
+                  <div 
+                    className="flex items-center gap-3 cursor-pointer hover:bg-accent rounded p-2 -m-2"
+                    onClick={async (e) => {
+                      // 드롭다운 메뉴가 클릭된 경우 이벤트 전파 중지
+                      if ((e.target as HTMLElement).closest('[data-dropdown-trigger]')) {
+                        return;
+                      }
+                      
+                      if (item.item_type === 'archive') {
+                        // 아카이브 클릭 시 해당하는 conversation을 찾아서 ConversationDetailModal 열기
+                        console.log('🎯 아카이브 클릭:', item.id, item.title);
+                        try {
+                          // item의 title과 content로 matching하는 conversation 찾기
+                          const { data: conversations, error } = await supabase
+                            .from('conversations')
+                            .select('id')
+                            .eq('title', item.title)
+                            .is('node_id', null)
+                            .order('created_at', { ascending: false })
+                            .limit(1);
+
+                          if (error) {
+                            console.error('❌ conversation 조회 오류:', error);
+                            toast({
+                              title: "오류",
+                              description: "아카이브를 열 수 없습니다",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+
+                          if (conversations && conversations.length > 0) {
+                            console.log('✅ conversation 찾음:', conversations[0].id);
+                            setSelectedConversationId(conversations[0].id);
+                            setConversationModalOpen(true);
+                          } else {
+                            console.log('❌ conversation을 찾을 수 없음');
+                            toast({
+                              title: "오류",
+                              description: "해당 아카이브의 내용을 찾을 수 없습니다",
+                              variant: "destructive"
+                            });
+                          }
+                        } catch (error) {
+                          console.error('💥 아카이브 열기 실패:', error);
+                          toast({
+                            title: "오류",
+                            description: "아카이브를 여는 중 오류가 발생했습니다",
+                            variant: "destructive"
+                          });
+                        }
+                      }
+                    }}
+                  >
                     {item.item_type === 'folder' ? (
                       <Folder className="w-8 h-8 text-blue-500" />
                     ) : (
@@ -530,6 +605,35 @@ export const SimpleProjectDashboard: React.FC = () => {
                         </span>
                       )}
                     </div>
+                  </div>
+                  
+                  {/* 삭제 메뉴 */}
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          data-dropdown-trigger="true"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          className="text-destructive hover:text-destructive focus:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setItemToDelete(item);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </Card>
               ))}
@@ -561,6 +665,34 @@ export const SimpleProjectDashboard: React.FC = () => {
           onClose={() => setConversationModalOpen(false)}
           conversationId={selectedConversationId}
         />
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {itemToDelete && (
+                  <>
+                    "{itemToDelete.item_type === 'folder' ? itemToDelete.name : itemToDelete.title}"을(를) 삭제하시겠습니까?
+                    <br />
+                    {itemToDelete.item_type === 'archive' && '연결된 Q&A와 대화 내용도 함께 삭제됩니다.'}
+                    이 작업은 되돌릴 수 없습니다.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteItem}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   };
