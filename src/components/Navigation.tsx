@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar, Home, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export const Navigation: React.FC = () => {
   const navigate = useNavigate();
@@ -38,6 +39,10 @@ export const Navigation: React.FC = () => {
                 </Button>
               ))}
             </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <ThemeToggle />
           </div>
           
           {/* 모바일 네비게이션 */}

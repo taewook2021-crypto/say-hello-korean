@@ -159,7 +159,7 @@ export const ProjectFolder: React.FC<ProjectFolderProps> = ({
         ${animationClass}
       `}
       style={{
-        borderColor: project.color || '#3b82f6',
+        borderColor: project.color || '#22c55e',
         borderWidth: '2px'
       }}
       onClick={onClick}
