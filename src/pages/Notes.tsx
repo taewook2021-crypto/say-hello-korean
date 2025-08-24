@@ -165,21 +165,56 @@ const Index = () => {
   const loadArchiveNotes = async (archiveName: string) => {
     console.log('Loading archive notes for:', archiveName);
     try {
-      // 아카이브 이름으로 subject_name, book_name, chapter_name에서 모두 검색
-      const { data, error } = await (supabase as any)
+      // 먼저 모든 데이터를 가져와서 확인
+      const { data: allData, error: allError } = await (supabase as any)
         .from('wrong_notes')
         .select('*')
-        .or(`subject_name.ilike.%${archiveName}%,book_name.ilike.%${archiveName}%,chapter_name.ilike.%${archiveName}%`)
         .order('created_at', { ascending: false });
       
-      console.log('Archive search result:', data);
-      
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
+      console.log('All wrong notes in database:', allData?.length || 0);
+      if (allData?.length > 0) {
+        console.log('Sample data:', allData.slice(0, 3));
       }
+
+      // 아카이브 이름으로 여러 방식으로 검색
+      const searchQueries = [
+        // 정확한 이름 검색
+        (supabase as any)
+          .from('wrong_notes')
+          .select('*')
+          .or(`subject_name.ilike.%${archiveName}%,book_name.ilike.%${archiveName}%,chapter_name.ilike.%${archiveName}%`),
+        
+        // 아카이브 이름을 공백으로 분리해서 검색
+        ...archiveName.split(' ').map(keyword => 
+          (supabase as any)
+            .from('wrong_notes')
+            .select('*')
+            .or(`subject_name.ilike.%${keyword}%,book_name.ilike.%${keyword}%,chapter_name.ilike.%${keyword}%`)
+        )
+      ];
+
+      let combinedData: any[] = [];
       
-      const mappedNotes = data.map((note: any) => ({
+      for (const query of searchQueries) {
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (!error && data) {
+          combinedData = [...combinedData, ...data];
+        }
+      }
+
+      // 중복 제거
+      const uniqueData = combinedData.reduce((acc, current) => {
+        const exists = acc.find((item: any) => item.id === current.id);
+        if (!exists) {
+          acc.push(current);
+        }
+        return acc;
+      }, []);
+
+      console.log('Archive search results for', archiveName, ':', uniqueData.length);
+      console.log('Found notes:', uniqueData);
+      
+      const mappedNotes = uniqueData.map((note: any) => ({
         id: note.id,
         question: note.question,
         wrongAnswer: note.wrong_answer || '',
@@ -188,7 +223,6 @@ const Index = () => {
         isResolved: note.is_resolved
       }));
       
-      console.log('Mapped notes count:', mappedNotes.length);
       setNotes(mappedNotes);
     } catch (error) {
       console.error('Error loading archive notes:', error);
