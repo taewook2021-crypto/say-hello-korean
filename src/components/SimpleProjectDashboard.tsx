@@ -302,7 +302,7 @@ export const SimpleProjectDashboard: React.FC = () => {
           .insert({
             title: data.title.trim(),
             content: data.content.trim() || `[${data.sourceType.toUpperCase()}] ${data.url || '외부 소스'}`,
-            node_id: project.id
+            node_id: null // 임시로 null 설정 (프로젝트가 DB에 없으므로)
           })
           .select()
           .single();
