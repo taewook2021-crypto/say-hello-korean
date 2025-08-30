@@ -6,12 +6,10 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 import * as pdfjsLib from 'pdfjs-dist';
-// @ts-ignore
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
 
-// PDF.js 워커 설정 - URL 로더로 제대로 붙이기
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-console.log('PDF.js worker attached:', pdfWorkerUrl);
+// PDF.js 워커 설정 - CDN 방식으로 안정적 로드
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+console.log('PDF.js worker attached via CDN:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
