@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// PDF.js 워커 설정 - CDN 방식으로 안정적 로드
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-console.log('PDF.js worker attached via CDN:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+// PDF.js 워커 비활성화 - 메인 스레드에서 실행 (가장 안정적)
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+console.log('PDF.js 워커 비활성화됨 - 메인 스레드에서 실행');
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -51,11 +51,6 @@ const PDFAnnotator = () => {
       const blobUrl = URL.createObjectURL(file);
       const loadingTask = pdfjsLib.getDocument({
         url: blobUrl,
-        // 성능 최적화 옵션들
-        cMapUrl: 'https://unpkg.com/pdfjs-dist/cmaps/',
-        cMapPacked: true,
-        enableXfa: false,
-        useSystemFonts: true,
         verbosity: 0,
       });
       
