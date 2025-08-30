@@ -1,31 +1,23 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Upload, Pen, Highlighter, Eraser, RotateCcw, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Upload, Pen, Highlighter, Eraser, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush, Path } from 'fabric';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// PDF.js 간단 설정 - 워커 문제 해결을 위해 빈 워커 사용
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'data:application/javascript;base64,';
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [scale, setScale] = useState(1.5);
+  const [pdfUrl, setPdfUrl] = useState<string>('');
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [currentTool, setCurrentTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
   const [brushSize, setBrushSize] = useState([5]);
   const [brushColor, setBrushColor] = useState('#000000');
   const [isDragging, setIsDragging] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
-  const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const colors = [
@@ -38,95 +30,50 @@ const PDFAnnotator = () => {
     '#FFA500', '#FF00FF', '#00FFFF'
   ];
 
-  // PDF 파일 로드
-  const loadPDF = useCallback(async (file: File) => {
-    setIsLoading(true);
-    console.log('PDF 로드 시작:', file.name);
+  // PDF 파일 업로드 - 빠른 iframe 방식
+  const handleFileUpload = (file: File) => {
+    if (file.type !== 'application/pdf') {
+      toast.error('PDF 파일만 업로드 가능합니다.');
+      return;
+    }
+
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+    }
     
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      console.log('파일 읽기 완료, 크기:', arrayBuffer.byteLength);
-      
-      // 가장 기본적인 방법으로 로드 시도
-      const loadingTask = pdfjsLib.getDocument({ 
-        data: arrayBuffer
-      });
-      
-      console.log('PDF 문서 로딩 작업 생성됨');
-      const pdf = await loadingTask.promise;
-      console.log('PDF 로드 성공, 페이지 수:', pdf.numPages);
-      
-      setPdfDocument(pdf);
-      setTotalPages(pdf.numPages);
-      setCurrentPage(1);
-      setPdfFile(file);
-      
-      toast.success(`PDF 로드 완료! 총 ${pdf.numPages}페이지`);
-    } catch (error) {
-      console.error('PDF 로드 실패:', error);
-      toast.error('PDF 파일을 로드할 수 없습니다.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    const url = URL.createObjectURL(file);
+    setPdfFile(file);
+    setPdfUrl(url);
+    toast.success('PDF 파일이 로드되었습니다! 🎉');
+  };
 
-  // PDF 페이지 렌더링
-  const renderPage = useCallback(async (pageNumber: number) => {
-    if (!pdfDocument || !pdfCanvasRef.current) return;
-
-    try {
-      const page = await pdfDocument.getPage(pageNumber);
-      const viewport = page.getViewport({ scale });
-      
-      const canvas = pdfCanvasRef.current;
-      const context = canvas.getContext('2d');
-      
-      if (!context) return;
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = viewport.width + 'px';
-      canvas.style.height = viewport.height + 'px';
-
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport,
-        canvas: canvas,
-      };
-
-      await page.render(renderContext).promise;
-      
-      // Fabric.js 캔버스 크기도 맞춤
-      if (fabricCanvas && annotationCanvasRef.current) {
-        annotationCanvasRef.current.width = viewport.width;
-        annotationCanvasRef.current.height = viewport.height;
-        annotationCanvasRef.current.style.width = viewport.width + 'px';
-        annotationCanvasRef.current.style.height = viewport.height + 'px';
-        
-        fabricCanvas.setDimensions({ 
-          width: viewport.width, 
-          height: viewport.height 
-        });
-        fabricCanvas.renderAll();
-      }
-    } catch (error) {
-      console.error('페이지 렌더링 실패:', error);
-      toast.error('페이지를 렌더링할 수 없습니다.');
-    }
-  }, [pdfDocument, scale, fabricCanvas]);
-
-  // 현재 페이지 변경시 렌더링
-  useEffect(() => {
-    if (pdfDocument) {
-      renderPage(currentPage);
-    }
-  }, [pdfDocument, currentPage, scale, renderPage]);
+  // Canvas 크기를 PDF container와 맞춤
+  const resizeCanvas = () => {
+    if (!containerRef.current || !canvasRef.current || !fabricCanvas) return;
+    
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    
+    // HTML Canvas 크기 설정
+    canvas.width = width;
+    canvas.height = height;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    
+    // Fabric Canvas 크기 설정
+    fabricCanvas.setDimensions({ width, height });
+    fabricCanvas.renderAll();
+  };
 
   // Fabric.js 캔버스 초기화
   useEffect(() => {
-    if (!annotationCanvasRef.current || !pdfDocument) return;
+    if (!canvasRef.current || !pdfUrl) return;
 
-    const canvas = new FabricCanvas(annotationCanvasRef.current, {
+    const canvas = new FabricCanvas(canvasRef.current, {
+      width: window.innerWidth - 320, // 사이드바 너비 제외
+      height: window.innerHeight,
       isDrawingMode: true,
       selection: false,
       backgroundColor: 'transparent'
@@ -142,16 +89,26 @@ const PDFAnnotator = () => {
     const canvasElement = canvas.getElement();
     canvasElement.style.touchAction = 'none';
 
+    // 그리기 완료 이벤트
     canvas.on('path:created', () => {
       toast.success('필기 완료!');
     });
 
     setFabricCanvas(canvas);
 
+    // 창 크기 변경 시 캔버스 크기 조정
+    const handleResize = () => {
+      setTimeout(resizeCanvas, 100);
+    };
+
+    window.addEventListener('resize', handleResize);
+    setTimeout(resizeCanvas, 1000);
+
     return () => {
       canvas.dispose();
+      window.removeEventListener('resize', handleResize);
     };
-  }, [pdfDocument]);
+  }, [pdfUrl]);
 
   // 브러시 설정 업데이트
   useEffect(() => {
@@ -182,14 +139,6 @@ const PDFAnnotator = () => {
     }
   }, [currentTool, brushSize, brushColor, fabricCanvas]);
 
-  const handleFileUpload = (file: File) => {
-    if (file.type !== 'application/pdf') {
-      toast.error('PDF 파일만 업로드 가능합니다.');
-      return;
-    }
-    loadPDF(file);
-  };
-
   const handleToolChange = (tool: 'pen' | 'highlighter' | 'eraser') => {
     setCurrentTool(tool);
     
@@ -200,26 +149,12 @@ const PDFAnnotator = () => {
     }
   };
 
-  const clearAnnotations = () => {
+  const clearCanvas = () => {
     if (fabricCanvas) {
       fabricCanvas.clear();
       fabricCanvas.renderAll();
       toast.success('필기가 지워졌습니다.');
     }
-  };
-
-  const goToPage = (pageNumber: number) => {
-    if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    }
-  };
-
-  const zoomIn = () => {
-    setScale(prev => Math.min(prev + 0.25, 3));
-  };
-
-  const zoomOut = () => {
-    setScale(prev => Math.max(prev - 0.25, 0.5));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -242,47 +177,24 @@ const PDFAnnotator = () => {
     }
   };
 
+  // URL 정리
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfUrl]);
+
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* 상단 툴바 */}
+      {/* 상단 헤더 */}
       <div className="border-b border-border p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">PDF 필기</h1>
-            {pdfDocument && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={currentPage <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm min-w-0">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => goToPage(currentPage + 1)}
-                  disabled={currentPage >= totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-          
-          {pdfDocument && (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={zoomOut}>
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-sm min-w-0">{Math.round(scale * 100)}%</span>
-              <Button variant="outline" size="sm" onClick={zoomIn}>
-                <ZoomIn className="h-4 w-4" />
-              </Button>
+          <h1 className="text-xl font-bold">PDF 필기 📝</h1>
+          {pdfFile && (
+            <div className="text-sm text-muted-foreground">
+              {pdfFile.name}
             </div>
           )}
         </div>
@@ -291,7 +203,7 @@ const PDFAnnotator = () => {
       {/* 메인 영역 */}
       <div className="flex-1 flex overflow-hidden">
         {/* 좌측 툴바 */}
-        {pdfDocument && (
+        {pdfUrl && (
           <div className="w-80 border-r border-border p-6 space-y-6 bg-background overflow-y-auto">
             <h2 className="text-xl font-bold">필기 도구</h2>
             
@@ -363,7 +275,7 @@ const PDFAnnotator = () => {
             {/* 전체 지우기 */}
             <Card className="p-4">
               <Button
-                onClick={clearAnnotations}
+                onClick={clearCanvas}
                 className="w-full"
                 variant="outline"
                 disabled={!fabricCanvas}
@@ -376,8 +288,8 @@ const PDFAnnotator = () => {
         )}
 
         {/* PDF 및 주석 영역 */}
-        <div className="flex-1 overflow-auto p-4 bg-gray-100">
-          {!pdfDocument ? (
+        <div className="flex-1 overflow-hidden">
+          {!pdfUrl ? (
             // PDF 업로드 대기 화면
             <div
               className={`h-full flex flex-col items-center justify-center border-2 border-dashed transition-colors ${
@@ -397,10 +309,9 @@ const PDFAnnotator = () => {
                   onClick={() => fileInputRef.current?.click()}
                   variant="outline"
                   size="lg"
-                  disabled={isLoading}
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  {isLoading ? '로딩 중...' : '파일 선택'}
+                  파일 선택
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -417,26 +328,34 @@ const PDFAnnotator = () => {
               </div>
             </div>
           ) : (
-            // PDF 및 주석 캔버스
-            <div className="flex justify-center">
-              <div className="relative inline-block shadow-lg">
-                {/* PDF 캔버스 (배경) */}
-                <canvas
-                  ref={pdfCanvasRef}
-                  className="block"
-                  style={{ maxWidth: '100%' }}
-                />
-                
-                {/* 주석 캔버스 (오버레이) */}
-                <canvas
-                  ref={annotationCanvasRef}
-                  className="absolute top-0 left-0"
-                  style={{
-                    cursor: currentTool === 'pen' ? 'crosshair' : 
-                             currentTool === 'highlighter' ? 'cell' : 'grab'
-                  }}
-                />
-              </div>
+            // PDF와 Canvas 영역
+            <div className="relative w-full h-full" ref={containerRef}>
+              {/* PDF iframe (배경) */}
+              <iframe
+                ref={iframeRef}
+                src={pdfUrl}
+                className="w-full h-full border-0"
+                title="PDF 뷰어"
+                style={{
+                  display: 'block',
+                  zIndex: 1,
+                  pointerEvents: 'none' // 항상 터치 차단하여 필기만 가능
+                }}
+              />
+
+              {/* Canvas 오버레이 (항상 표시) */}
+              <canvas
+                ref={canvasRef}
+                className="absolute top-0 left-0 w-full h-full"
+                style={{
+                  zIndex: 999,
+                  pointerEvents: 'auto',
+                  touchAction: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: currentTool === 'pen' ? 'crosshair' : 
+                           currentTool === 'highlighter' ? 'cell' : 'grab'
+                }}
+              />
             </div>
           )}
         </div>
