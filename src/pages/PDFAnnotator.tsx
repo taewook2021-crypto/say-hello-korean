@@ -10,9 +10,27 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// react-pdf 워커 설정 - CDN 사용
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
-console.log('react-pdf 워커 설정 완료');
+// react-pdf 워커 설정 - 더미 워커로 우회
+const dummyWorkerCode = `
+  self.onmessage = function(e) {
+    console.log('Dummy worker received:', e.data);
+    self.postMessage({
+      messageId: e.data.messageId,
+      result: null,
+      error: null
+    });
+  };
+`;
+
+try {
+  const dummyWorkerBlob = new Blob([dummyWorkerCode], { type: 'application/javascript' });
+  const dummyWorkerUrl = URL.createObjectURL(dummyWorkerBlob);
+  pdfjs.GlobalWorkerOptions.workerSrc = dummyWorkerUrl;
+  console.log('react-pdf 더미 워커 설정 완료');
+} catch (error) {
+  console.warn('react-pdf 워커 설정 실패:', error);
+  pdfjs.GlobalWorkerOptions.workerSrc = '';
+}
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -42,7 +60,8 @@ const PDFAnnotator = () => {
 
   // PDF 파일 로드 성공 시 호출
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    console.log('PDF 로드 성공! 총 페이지:', numPages);
+    console.log('=== PDF 로드 성공! ===');
+    console.log('총 페이지:', numPages);
     setTotalPages(numPages);
     setCurrentPage(1);
     setIsLoading(false);
@@ -51,9 +70,26 @@ const PDFAnnotator = () => {
 
   // PDF 로드 오류 시 호출
   const onDocumentLoadError = (error: Error) => {
-    console.error('PDF 로드 실패:', error);
+    console.error('=== PDF 로드 실패 ===');
+    console.error('에러 타입:', error.constructor.name);
+    console.error('에러 메시지:', error.message);
+    console.error('전체 에러:', error);
+    
     setIsLoading(false);
-    toast.error('PDF 파일을 로드할 수 없습니다. 다른 파일을 시도해보세요.');
+    
+    // 구체적인 에러 메시지 제공
+    let userMessage = 'PDF 파일을 로드할 수 없습니다.';
+    if (error.message.includes('Invalid PDF')) {
+      userMessage = '유효하지 않은 PDF 파일입니다.';
+    } else if (error.message.includes('network')) {
+      userMessage = '네트워크 오류가 발생했습니다.';
+    } else if (error.message.includes('worker')) {
+      userMessage = 'PDF 처리 엔진 오류가 발생했습니다.';
+    } else if (error.message.includes('fetch')) {
+      userMessage = '파일을 가져올 수 없습니다.';
+    }
+    
+    toast.error(`${userMessage} (${error.message})`);
     setPdfFile(null);
   };
 
@@ -76,10 +112,18 @@ const PDFAnnotator = () => {
 
 
   const handleFileUpload = (file: File) => {
+    console.log('=== 파일 업로드 시작 ===');
+    console.log('파일명:', file.name);
+    console.log('파일 크기:', file.size, 'bytes');
+    console.log('파일 타입:', file.type);
+    
     if (file.type !== 'application/pdf') {
+      console.error('잘못된 파일 타입:', file.type);
       toast.error('PDF 파일만 업로드 가능합니다.');
       return;
     }
+    
+    console.log('PDF 파일 설정 중...');
     setPdfFile(file);
     setIsLoading(true);
   };
@@ -320,13 +364,25 @@ const PDFAnnotator = () => {
                   file={pdfFile}
                   onLoadSuccess={onDocumentLoadSuccess}
                   onLoadError={onDocumentLoadError}
+                  onLoadStart={() => console.log('PDF 로딩 시작...')}
+                  onLoadProgress={({ loaded, total }) => {
+                    console.log('로딩 진행률:', loaded, '/', total);
+                    if (total) {
+                      const pct = Math.round((loaded / total) * 100);
+                      toast.dismiss('pdf-progress');
+                      toast.loading(`PDF 로딩 중… ${pct}%`, { id: 'pdf-progress' });
+                    }
+                  }}
                   loading={<div className="p-8 text-center">PDF 로딩 중...</div>}
+                  error={<div className="p-8 text-center text-red-500">PDF 로드 실패</div>}
                 >
                   <Page 
                     pageNumber={currentPage}
                     scale={scale}
                     onLoadSuccess={onPageLoadSuccess}
+                    onLoadStart={() => console.log(`페이지 ${currentPage} 로딩 시작...`)}
                     loading={<div className="p-8 text-center">페이지 로딩 중...</div>}
+                    error={<div className="p-8 text-center text-red-500">페이지 로드 실패</div>}
                   />
                 </Document>
                 
