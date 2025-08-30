@@ -44,12 +44,14 @@ const PDFAnnotator = () => {
     console.log('PDF 로드 성공! 총 페이지:', numPages);
     setTotalPages(numPages);
     setCurrentPage(1);
+    setIsLoading(false);
     toast.success(`PDF 로드 완료! 총 ${numPages}페이지 🎉`);
   };
 
   // PDF 로드 오류 시 호출
   const onDocumentLoadError = (error: Error) => {
     console.error('PDF 로드 실패:', error);
+    setIsLoading(false);
     toast.error('PDF 파일을 로드할 수 없습니다. 다른 파일을 시도해보세요.');
     setPdfFile(null);
   };
@@ -58,20 +60,29 @@ const PDFAnnotator = () => {
   const onPageLoadSuccess = (page: any) => {
     console.log(`페이지 ${currentPage} 렌더링 완료`);
     
-    // Fabric.js 캔버스 크기 맞춤
-    if (fabricCanvas && annotationCanvasRef.current) {
-      const { width, height } = page;
-      annotationCanvasRef.current.width = width * scale;
-      annotationCanvasRef.current.height = height * scale;
-      annotationCanvasRef.current.style.width = width * scale + 'px';
-      annotationCanvasRef.current.style.height = height * scale + 'px';
-      
-      fabricCanvas.setDimensions({ 
-        width: width * scale, 
-        height: height * scale 
-      });
-      fabricCanvas.renderAll();
-    }
+    // Fabric.js 캔버스 크기 맞춤 (안전하게)
+    setTimeout(() => {
+      if (fabricCanvas && annotationCanvasRef.current && page) {
+        try {
+          const { width, height } = page;
+          const scaledWidth = width * scale;
+          const scaledHeight = height * scale;
+          
+          annotationCanvasRef.current.width = scaledWidth;
+          annotationCanvasRef.current.height = scaledHeight;
+          annotationCanvasRef.current.style.width = scaledWidth + 'px';
+          annotationCanvasRef.current.style.height = scaledHeight + 'px';
+          
+          fabricCanvas.setDimensions({ 
+            width: scaledWidth, 
+            height: scaledHeight 
+          });
+          fabricCanvas.renderAll();
+        } catch (error) {
+          console.warn('캔버스 크기 조정 중 오류:', error);
+        }
+      }
+    }, 100); // 약간의 지연으로 안전하게 처리
   };
 
   // Fabric.js 캔버스 초기화
@@ -79,7 +90,18 @@ const PDFAnnotator = () => {
     if (!annotationCanvasRef.current || !pdfFile) return;
 
     console.log('Fabric 캔버스 초기화');
-    const canvas = new FabricCanvas(annotationCanvasRef.current, {
+    const canvasElement = annotationCanvasRef.current;
+    
+    // 기존 캔버스가 있다면 안전하게 제거
+    if (fabricCanvas) {
+      try {
+        fabricCanvas.dispose();
+      } catch (error) {
+        console.warn('기존 캔버스 제거 중 오류:', error);
+      }
+    }
+
+    const canvas = new FabricCanvas(canvasElement, {
       isDrawingMode: true,
       selection: false,
       backgroundColor: 'transparent'
@@ -92,7 +114,6 @@ const PDFAnnotator = () => {
     canvas.freeDrawingBrush = brush;
 
     // 터치 이벤트 설정
-    const canvasElement = canvas.getElement();
     canvasElement.style.touchAction = 'none';
 
     canvas.on('path:created', () => {
@@ -103,9 +124,16 @@ const PDFAnnotator = () => {
     setFabricCanvas(canvas);
 
     return () => {
-      canvas.dispose();
+      try {
+        // 안전한 cleanup
+        if (canvas && canvasElement.parentNode) {
+          canvas.dispose();
+        }
+      } catch (error) {
+        console.warn('캔버스 cleanup 중 오류:', error);
+      }
     };
-  }, [pdfFile]);
+  }, [pdfFile]); // brushSize, brushColor 제거하여 무한 재생성 방지
 
   // 브러시 설정 업데이트
   useEffect(() => {
@@ -162,9 +190,13 @@ const PDFAnnotator = () => {
 
   const clearAnnotations = () => {
     if (fabricCanvas) {
-      fabricCanvas.clear();
-      fabricCanvas.renderAll();
-      toast.success('필기가 지워졌습니다.');
+      try {
+        fabricCanvas.clear();
+        fabricCanvas.renderAll();
+        toast.success('필기가 지워졌습니다.');
+      } catch (error) {
+        console.warn('필기 지우기 중 오류:', error);
+      }
     }
   };
 
