@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { useSubscription } from "@/hooks/useSubscription";
+
 import { supabase } from "@/integrations/supabase/client";
 
 interface OCRCameraProps {
@@ -21,7 +21,7 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
-  const { isPremiumUser } = useSubscription();
+  const isPremiumUser = false; // 인증 기능 제거됨
 
   const takePicture = async () => {
     try {
