@@ -7,15 +7,21 @@ import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// PDF.js 워커 완전 비활성화 - 인라인 더미 워커 사용
-const dummyWorker = `
-  self.onmessage = function(e) {
-    self.postMessage({ messageId: e.data.messageId, result: null });
-  };
-`;
-const workerBlob = new Blob([dummyWorker], { type: 'application/javascript' });
-pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob);
-console.log('PDF.js 더미 워커 설정 완료');
+// PDF.js 워커 완전 비활성화 - 다양한 방법 시도
+try {
+  // 방법 1: 워커 자체를 null로 설정
+  pdfjsLib.GlobalWorkerOptions.workerSrc = null as any;
+} catch (e) {
+  try {
+    // 방법 2: 빈 문자열로 설정
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  } catch (e2) {
+    // 방법 3: false로 설정
+    pdfjsLib.GlobalWorkerOptions.workerSrc = false as any;
+  }
+}
+
+console.log('PDF.js 워커 비활성화 시도 완료');
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -83,11 +89,8 @@ const PDFAnnotator = () => {
         
         loadingTask = pdfjsLib.getDocument({
           url: blobUrl,
-          verbosity: 1, // 더 자세한 로그
-          // 워커 관련 설정 강제 비활성화
-          useWorkerFetch: false,
-          isEvalSupported: false,
-        });
+          verbosity: 1,
+        } as any);
         console.log('Blob URL로 로딩 작업 생성 성공');
         
       } catch (blobError) {
@@ -101,10 +104,7 @@ const PDFAnnotator = () => {
         loadingTask = pdfjsLib.getDocument({
           data: arrayBuffer,
           verbosity: 1,
-          // 워커 관련 설정 강제 비활성화
-          useWorkerFetch: false,
-          isEvalSupported: false,
-        });
+        } as any);
         console.log('ArrayBuffer로 로딩 작업 생성 성공');
       }
       
