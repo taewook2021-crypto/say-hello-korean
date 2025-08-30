@@ -6,17 +6,12 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
 import * as pdfjsLib from 'pdfjs-dist';
+// @ts-ignore
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url';
 
-// PDF.js 워커 설정 - 여러 방법 시도
-try {
-  // 방법 1: 로컬 워커 사용
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-  console.log('PDF.js 워커 설정 완료: 로컬 파일 사용');
-} catch (error) {
-  console.warn('PDF.js 워커 설정 실패, 대안 사용:', error);
-  // 방법 2: 워커 비활성화
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-}
+// PDF.js 워커 설정 - URL 로더로 제대로 붙이기
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+console.log('PDF.js worker attached:', pdfWorkerUrl);
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -35,6 +30,8 @@ const PDFAnnotator = () => {
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', 
@@ -52,25 +49,24 @@ const PDFAnnotator = () => {
     console.log('PDF 로드 시작:', file.name);
     
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      console.log('파일 읽기 완료, 크기:', arrayBuffer.byteLength);
+      // Blob URL로 즉시 로드 시작 (초기 대기시간 감소)
+      const blobUrl = URL.createObjectURL(file);
+      const loadingTask = pdfjsLib.getDocument({
+        url: blobUrl,
+        // 성능 최적화 옵션들
+        cMapUrl: 'https://unpkg.com/pdfjs-dist/cmaps/',
+        cMapPacked: true,
+        enableXfa: false,
+        useSystemFonts: true,
+        verbosity: 0,
+      });
       
-      // 여러 방법으로 PDF 로드 시도
-      let loadingTask;
-      try {
-        // 먼저 기본 설정으로 시도
-        loadingTask = pdfjsLib.getDocument({ 
-          data: arrayBuffer,
-          verbosity: 0
-        });
-      } catch (error) {
-        console.log('기본 설정 실패, 대안 설정 시도:', error);
-        // 기본 설정으로 다시 시도
-        loadingTask = pdfjsLib.getDocument({ 
-          data: arrayBuffer,
-          verbosity: 0
-        });
-      }
+      // 진행률 표시
+      loadingTask.onProgress = (p: { loaded: number; total?: number }) => {
+        const pct = p.total ? Math.round((p.loaded / p.total) * 100) : Math.min(99, Math.round(p.loaded / 1000000));
+        toast.dismiss('pdf-progress');
+        toast.loading(`PDF 로딩 중… ${pct}%`, { id: 'pdf-progress' });
+      };
       
       console.log('PDF 문서 로딩 작업 생성됨');
       const pdf = await loadingTask.promise;
@@ -81,9 +77,13 @@ const PDFAnnotator = () => {
       setCurrentPage(1);
       setPdfFile(file);
       
+      // Blob URL 정리
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      toast.dismiss('pdf-progress');
       toast.success(`PDF 로드 완료! 총 ${pdf.numPages}페이지 🎉`);
     } catch (error) {
       console.error('PDF 로드 실패:', error);
+      toast.dismiss('pdf-progress');
       toast.error('PDF 파일을 로드할 수 없습니다. 다른 파일을 시도해보세요.');
     } finally {
       setIsLoading(false);
@@ -96,6 +96,14 @@ const PDFAnnotator = () => {
 
     try {
       console.log(`페이지 ${pageNumber} 렌더링 시작`);
+      
+      // 이전 렌더/RAF 취소
+      if (renderTaskRef.current) {
+        try { renderTaskRef.current.cancel(); } catch {}
+        renderTaskRef.current = null;
+      }
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
       const page = await pdfDocument.getPage(pageNumber);
       const viewport = page.getViewport({ scale });
       
@@ -109,13 +117,15 @@ const PDFAnnotator = () => {
       canvas.style.width = viewport.width + 'px';
       canvas.style.height = viewport.height + 'px';
 
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport,
-        canvas: canvas,
+      const render = () => {
+        const renderContext = { canvasContext: context, viewport, canvas };
+        const task = page.render(renderContext);
+        renderTaskRef.current = task;
+        task.promise.finally(() => { renderTaskRef.current = null; });
       };
-
-      await page.render(renderContext).promise;
+      
+      // 리플로우 직후 프레임에 렌더 → 끊김 감소
+      rafRef.current = requestAnimationFrame(render);
       console.log(`페이지 ${pageNumber} 렌더링 완료`);
       
       // Fabric.js 캔버스 크기도 맞춤
@@ -184,10 +194,14 @@ const PDFAnnotator = () => {
     const brush = fabricCanvas.freeDrawingBrush;
     if (brush) {
       const finalWidth = currentTool === 'highlighter' ? brushSize[0] * 2 : brushSize[0];
-      const finalColor = currentTool === 'highlighter' ? brushColor + '80' : brushColor;
+      const finalColor = brushColor;
       
       brush.width = finalWidth;
       brush.color = finalColor;
+      
+      // 하이라이터 모드: multiply 블렌딩으로 자연스러운 겹침
+      // @ts-ignore fabric 타입엔 없지만 런타임 반영됨
+      fabricCanvas.contextTop.globalCompositeOperation = currentTool === 'highlighter' ? 'multiply' : 'source-over';
     }
 
     fabricCanvas.isDrawingMode = currentTool !== 'eraser';
@@ -241,12 +255,10 @@ const PDFAnnotator = () => {
 
   const zoomIn = () => {
     setScale(prev => Math.min(prev + 0.25, 3));
-    toast.success(`확대: ${Math.round((scale + 0.25) * 100)}%`);
   };
 
   const zoomOut = () => {
     setScale(prev => Math.max(prev - 0.25, 0.5));
-    toast.success(`축소: ${Math.round((scale - 0.25) * 100)}%`);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
