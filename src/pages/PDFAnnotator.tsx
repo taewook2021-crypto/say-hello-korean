@@ -44,42 +44,131 @@ const PDFAnnotator = () => {
   // PDF 파일 로드
   const loadPDF = useCallback(async (file: File) => {
     setIsLoading(true);
-    console.log('PDF 로드 시작:', file.name);
+    console.log('=== PDF 로드 시작 ===');
+    console.log('파일명:', file.name);
+    console.log('파일 크기:', file.size, 'bytes');
+    console.log('파일 타입:', file.type);
+    console.log('파일 마지막 수정:', new Date(file.lastModified));
     
     try {
-      // Blob URL로 즉시 로드 시작 (초기 대기시간 감소)
-      const blobUrl = URL.createObjectURL(file);
-      const loadingTask = pdfjsLib.getDocument({
-        url: blobUrl,
-        verbosity: 0,
-      });
+      // 1. 브라우저 지원 확인
+      console.log('브라우저 정보:');
+      console.log('- User Agent:', navigator.userAgent);
+      console.log('- PDF.js 버전:', pdfjsLib.version);
+      console.log('- 워커 설정:', pdfjsLib.GlobalWorkerOptions.workerSrc);
       
-      // 진행률 표시
-      loadingTask.onProgress = (p: { loaded: number; total?: number }) => {
-        const pct = p.total ? Math.round((p.loaded / p.total) * 100) : Math.min(99, Math.round(p.loaded / 1000000));
+      // 2. 파일 유효성 검사
+      if (file.size === 0) {
+        throw new Error('파일이 비어있습니다');
+      }
+      if (file.size > 100 * 1024 * 1024) { // 100MB 제한
+        throw new Error('파일이 너무 큽니다 (100MB 제한)');
+      }
+      
+      // 3. 파일 읽기 방법 시도
+      console.log('=== 파일 읽기 시도 ===');
+      let loadingTask;
+      
+      try {
+        // 방법 1: Blob URL 사용
+        console.log('방법 1: Blob URL 시도');
+        const blobUrl = URL.createObjectURL(file);
+        console.log('Blob URL 생성:', blobUrl);
+        
+        loadingTask = pdfjsLib.getDocument({
+          url: blobUrl,
+          verbosity: 1, // 더 자세한 로그
+        });
+        console.log('Blob URL로 로딩 작업 생성 성공');
+        
+      } catch (blobError) {
+        console.error('Blob URL 방법 실패:', blobError);
+        
+        // 방법 2: ArrayBuffer 사용
+        console.log('방법 2: ArrayBuffer 시도');
+        const arrayBuffer = await file.arrayBuffer();
+        console.log('ArrayBuffer 생성 완료, 크기:', arrayBuffer.byteLength);
+        
+        loadingTask = pdfjsLib.getDocument({
+          data: arrayBuffer,
+          verbosity: 1,
+        });
+        console.log('ArrayBuffer로 로딩 작업 생성 성공');
+      }
+      
+      // 4. 로딩 진행률 모니터링
+      loadingTask.onProgress = (progress: { loaded: number; total?: number }) => {
+        console.log('로딩 진행률:', {
+          loaded: progress.loaded,
+          total: progress.total,
+          percentage: progress.total ? Math.round((progress.loaded / progress.total) * 100) : '알 수 없음'
+        });
+        
+        const pct = progress.total ? Math.round((progress.loaded / progress.total) * 100) : Math.min(99, Math.round(progress.loaded / 1000000));
         toast.dismiss('pdf-progress');
         toast.loading(`PDF 로딩 중… ${pct}%`, { id: 'pdf-progress' });
       };
       
-      console.log('PDF 문서 로딩 작업 생성됨');
+      console.log('=== PDF 문서 로딩 시작 ===');
       const pdf = await loadingTask.promise;
-      console.log('PDF 로드 성공! 페이지 수:', pdf.numPages);
+      console.log('=== PDF 로드 성공! ===');
+      console.log('페이지 수:', pdf.numPages);
+      console.log('PDF 정보:', {
+        numPages: pdf.numPages,
+        fingerprints: pdf.fingerprints,
+        documentInfo: pdf.documentInfo,
+      });
+      
+      // 5. 첫 페이지 테스트 로드
+      try {
+        console.log('첫 페이지 테스트 로드 시도...');
+        const firstPage = await pdf.getPage(1);
+        const viewport = firstPage.getViewport({ scale: 1.0 });
+        console.log('첫 페이지 정보:', {
+          width: viewport.width,
+          height: viewport.height,
+          rotation: viewport.rotation,
+        });
+      } catch (pageError) {
+        console.error('첫 페이지 로드 실패:', pageError);
+        throw new Error(`첫 페이지 로드 실패: ${pageError.message}`);
+      }
       
       setPdfDocument(pdf);
       setTotalPages(pdf.numPages);
       setCurrentPage(1);
       setPdfFile(file);
       
-      // Blob URL 정리
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
       toast.dismiss('pdf-progress');
       toast.success(`PDF 로드 완료! 총 ${pdf.numPages}페이지 🎉`);
+      
     } catch (error) {
-      console.error('PDF 로드 실패:', error);
+      console.error('=== PDF 로드 실패 ===');
+      console.error('에러 타입:', error.constructor.name);
+      console.error('에러 메시지:', error.message);
+      console.error('전체 에러:', error);
+      
+      if (error.stack) {
+        console.error('스택 트레이스:', error.stack);
+      }
+      
+      // 구체적인 에러 메시지 제공
+      let userMessage = 'PDF 파일을 로드할 수 없습니다.';
+      if (error.message.includes('Invalid PDF')) {
+        userMessage = '유효하지 않은 PDF 파일입니다.';
+      } else if (error.message.includes('network')) {
+        userMessage = '네트워크 오류가 발생했습니다.';
+      } else if (error.message.includes('worker')) {
+        userMessage = 'PDF 처리 엔진 오류가 발생했습니다.';
+      } else if (error.message.includes('fetch')) {
+        userMessage = '파일을 가져올 수 없습니다.';
+      }
+      
       toast.dismiss('pdf-progress');
-      toast.error('PDF 파일을 로드할 수 없습니다. 다른 파일을 시도해보세요.');
+      toast.error(`${userMessage} (${error.message})`);
     } finally {
       setIsLoading(false);
+      console.log('=== PDF 로드 과정 완료 ===');
     }
   }, []);
 
