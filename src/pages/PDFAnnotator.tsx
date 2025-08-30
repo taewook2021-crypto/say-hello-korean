@@ -7,8 +7,13 @@ import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush, Path } from 'fabric';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// PDF.js worker 설정
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// PDF.js worker 설정 - Vite 환경에서 안전하게 작동하도록 수정
+if (typeof window !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.js',
+    import.meta.url
+  ).toString();
+}
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
