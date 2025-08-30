@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
+import AnnotationCanvas, { AnnotationCanvasRef } from '@/components/AnnotationCanvas';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -18,16 +19,16 @@ const PDFAnnotator = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.5);
-  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [currentTool, setCurrentTool] = useState<'pen' | 'highlighter' | 'eraser'>('pen');
   const [brushSize, setBrushSize] = useState([5]);
   const [brushColor, setBrushColor] = useState('#000000');
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [pdfDimensions, setPdfDimensions] = useState({ width: 0, height: 0 });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const annotationCanvasRef = useRef<AnnotationCanvasRef>(null);
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', 
@@ -60,114 +61,19 @@ const PDFAnnotator = () => {
   const onPageLoadSuccess = (page: any) => {
     console.log(`페이지 ${currentPage} 렌더링 완료`);
     
-    // Fabric.js 캔버스 크기 맞춤 (안전하게)
-    setTimeout(() => {
-      if (fabricCanvas && annotationCanvasRef.current && page) {
-        try {
-          const { width, height } = page;
-          const scaledWidth = width * scale;
-          const scaledHeight = height * scale;
-          
-          annotationCanvasRef.current.width = scaledWidth;
-          annotationCanvasRef.current.height = scaledHeight;
-          annotationCanvasRef.current.style.width = scaledWidth + 'px';
-          annotationCanvasRef.current.style.height = scaledHeight + 'px';
-          
-          fabricCanvas.setDimensions({ 
-            width: scaledWidth, 
-            height: scaledHeight 
-          });
-          fabricCanvas.renderAll();
-        } catch (error) {
-          console.warn('캔버스 크기 조정 중 오류:', error);
-        }
-      }
-    }, 100); // 약간의 지연으로 안전하게 처리
+    // PDF 크기 저장
+    if (page) {
+      const { width, height } = page;
+      const scaledWidth = width * scale;
+      const scaledHeight = height * scale;
+      
+      setPdfDimensions({ 
+        width: scaledWidth, 
+        height: scaledHeight 
+      });
+    }
   };
 
-  // Fabric.js 캔버스 초기화
-  useEffect(() => {
-    if (!annotationCanvasRef.current || !pdfFile) return;
-
-    console.log('Fabric 캔버스 초기화');
-    const canvasElement = annotationCanvasRef.current;
-    
-    // 기존 캔버스가 있다면 안전하게 제거
-    if (fabricCanvas) {
-      try {
-        fabricCanvas.dispose();
-      } catch (error) {
-        console.warn('기존 캔버스 제거 중 오류:', error);
-      }
-    }
-
-    const canvas = new FabricCanvas(canvasElement, {
-      isDrawingMode: true,
-      selection: false,
-      backgroundColor: 'transparent'
-    });
-
-    // 브러시 설정
-    const brush = new PencilBrush(canvas);
-    brush.width = brushSize[0];
-    brush.color = brushColor;
-    canvas.freeDrawingBrush = brush;
-
-    // 터치 이벤트 설정
-    canvasElement.style.touchAction = 'none';
-
-    canvas.on('path:created', () => {
-      console.log('필기 완료');
-      toast.success('필기 완료!');
-    });
-
-    setFabricCanvas(canvas);
-
-    return () => {
-      try {
-        // 안전한 cleanup
-        if (canvas && canvasElement.parentNode) {
-          canvas.dispose();
-        }
-      } catch (error) {
-        console.warn('캔버스 cleanup 중 오류:', error);
-      }
-    };
-  }, [pdfFile]); // brushSize, brushColor 제거하여 무한 재생성 방지
-
-  // 브러시 설정 업데이트
-  useEffect(() => {
-    if (!fabricCanvas) return;
-
-    const brush = fabricCanvas.freeDrawingBrush;
-    if (brush) {
-      const finalWidth = currentTool === 'highlighter' ? brushSize[0] * 2 : brushSize[0];
-      const finalColor = brushColor;
-      
-      brush.width = finalWidth;
-      brush.color = finalColor;
-      
-      // 하이라이터 모드: multiply 블렌딩으로 자연스러운 겹침
-      // @ts-ignore fabric 타입엔 없지만 런타임 반영됨
-      fabricCanvas.contextTop.globalCompositeOperation = currentTool === 'highlighter' ? 'multiply' : 'source-over';
-    }
-
-    fabricCanvas.isDrawingMode = currentTool !== 'eraser';
-
-    // 지우개 모드
-    if (currentTool === 'eraser') {
-      fabricCanvas.off('mouse:down');
-      fabricCanvas.on('mouse:down', (e) => {
-        if (e.target) {
-          fabricCanvas.remove(e.target);
-          fabricCanvas.renderAll();
-          console.log('객체 삭제됨');
-        }
-      });
-    } else {
-      fabricCanvas.off('mouse:down');
-    }
-  }, [currentTool, brushSize, brushColor, fabricCanvas]);
 
   const handleFileUpload = (file: File) => {
     if (file.type !== 'application/pdf') {
@@ -189,14 +95,9 @@ const PDFAnnotator = () => {
   };
 
   const clearAnnotations = () => {
-    if (fabricCanvas) {
-      try {
-        fabricCanvas.clear();
-        fabricCanvas.renderAll();
-        toast.success('필기가 지워졌습니다.');
-      } catch (error) {
-        console.warn('필기 지우기 중 오류:', error);
-      }
+    if (annotationCanvasRef.current) {
+      annotationCanvasRef.current.clear();
+      toast.success('필기가 지워졌습니다.');
     }
   };
 
@@ -356,12 +257,12 @@ const PDFAnnotator = () => {
 
             {/* 전체 지우기 */}
             <Card className="p-4">
-              <Button
-                onClick={clearAnnotations}
-                className="w-full"
-                variant="outline"
-                disabled={!fabricCanvas}
-              >
+                <Button
+                  onClick={clearAnnotations}
+                  className="w-full"
+                  variant="outline"
+                  disabled={!pdfFile}
+                >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 필기 지우기
               </Button>
@@ -430,14 +331,20 @@ const PDFAnnotator = () => {
                 </Document>
                 
                 {/* 주석 캔버스 (오버레이) */}
-                <canvas
-                  ref={annotationCanvasRef}
-                  className="absolute top-0 left-0"
-                  style={{
-                    cursor: currentTool === 'pen' ? 'crosshair' : 
-                             currentTool === 'highlighter' ? 'cell' : 'grab'
-                  }}
-                />
+                {pdfDimensions.width > 0 && pdfDimensions.height > 0 && (
+                  <AnnotationCanvas
+                    ref={annotationCanvasRef}
+                    width={pdfDimensions.width}
+                    height={pdfDimensions.height}
+                    currentTool={currentTool}
+                    brushSize={brushSize[0]}
+                    brushColor={brushColor}
+                    onPathCreated={() => {
+                      console.log('필기 완료');
+                      toast.success('필기 완료!');
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}
