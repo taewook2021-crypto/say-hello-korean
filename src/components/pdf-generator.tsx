@@ -4,13 +4,10 @@ import html2pdf from 'html2pdf.js';
 interface WrongNote {
   id: string;
   question: string;
-  wrong_answer: string | null;
-  correct_answer: string;
-  explanation: string | null;
-  subject_name: string;
-  book_name: string;
-  chapter_name: string;
-  is_resolved: boolean;
+  wrongAnswer: string;
+  correctAnswer: string;
+  createdAt: Date;
+  isResolved: boolean;
 }
 
 const generateExcelPDF = async (notes: WrongNote[], subject: string, book: string, chapter: string, options: any) => {
@@ -162,7 +159,7 @@ const generateExcelPDF = async (notes: WrongNote[], subject: string, book: strin
       
       // Answer 텍스트를 가이드 라인에 맞춰 배치
       ctx.textBaseline = 'bottom'; // 텍스트가 라인 위에 앉도록
-      const wrappedAnswer = wrapText(ctx, note.correct_answer, answerMaxWidth);
+      const wrappedAnswer = wrapText(ctx, note.correctAnswer, answerMaxWidth);
       
       wrappedAnswer.forEach((line, lineIndex) => {
         const guideLineY = rowY + (rowHeight * 0.1) + (lineSpacing * (lineIndex + 1));
@@ -360,13 +357,13 @@ const generateMinimalAROPDF = async (notes: WrongNote[], subject: string, book: 
           
           <div class="question-content">${note.question || ''}</div>
           
-          ${options.includeWrongAnswers && note.wrong_answer ? `
-            <div class="wrong-answer">내 답변: ${note.wrong_answer}</div>
+          ${options.includeWrongAnswers && note.wrongAnswer ? `
+            <div class="wrong-answer">내 답변: ${note.wrongAnswer}</div>
           ` : ''}
           
           <div class="answer-box">
             <div class="answer-label">정답:</div>
-            <div class="answer-content">${note.correct_answer || ''}</div>
+            <div class="answer-content">${note.correctAnswer || ''}</div>
           </div>
         </div>
       `).join('')}
@@ -477,8 +474,8 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
     });
     
     // 오답 처리 (옵션에 따라)
-    if (options.includeWrongAnswers && note.wrong_answer) {
-      const wrongText = `<X> ${note.wrong_answer}`;
+    if (options.includeWrongAnswers) {
+      const wrongText = `<X> ${note.wrongAnswer}`;
       const wrongLines = splitTextToMultipleLines(wrongText, maxTextWidth, fontSize, tempCtx);
       wrongLines.forEach(line => {
         groupLines.push({
@@ -489,7 +486,7 @@ export const generatePDF = async (notes: WrongNote[], subject: string, book: str
     }
     
     // 정답 처리
-    const correctText = `<정답> ${note.correct_answer}`;
+    const correctText = `<정답> ${note.correctAnswer}`;
     const correctLines = splitTextToMultipleLines(correctText, maxTextWidth, fontSize, tempCtx);
     correctLines.forEach(line => {
       groupLines.push({

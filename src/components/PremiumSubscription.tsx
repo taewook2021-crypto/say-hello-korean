@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Crown, Check, Zap, Eye, Calendar } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
-import { useAuth } from "@/hooks/useAuthMock";
+import { useAuth } from "@/hooks/useAuth";
 
 export function PremiumSubscription() {
   const { user } = useAuth();

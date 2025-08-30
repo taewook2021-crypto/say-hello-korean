@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
+  // Allows to automatically instanciate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -42,45 +42,6 @@ export type Database = {
             referencedColumns: ["name"]
           },
         ]
-      }
-      cards: {
-        Row: {
-          back: string
-          created_at: string
-          ease_factor: number
-          front: string
-          id: string
-          interval_days: number
-          next_review_date: string
-          qa_id: string
-          reviewed_count: number
-          updated_at: string
-        }
-        Insert: {
-          back: string
-          created_at?: string
-          ease_factor?: number
-          front: string
-          id?: string
-          interval_days?: number
-          next_review_date?: string
-          qa_id: string
-          reviewed_count?: number
-          updated_at?: string
-        }
-        Update: {
-          back?: string
-          created_at?: string
-          ease_factor?: number
-          front?: string
-          id?: string
-          interval_days?: number
-          next_review_date?: string
-          qa_id?: string
-          reviewed_count?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       chapters: {
         Row: {
@@ -128,100 +89,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "subjects"
             referencedColumns: ["name"]
-          },
-        ]
-      }
-      conversations: {
-        Row: {
-          content: string
-          created_at: string | null
-          id: string
-          node_id: string | null
-          title: string
-        }
-        Insert: {
-          content: string
-          created_at?: string | null
-          id?: string
-          node_id?: string | null
-          title: string
-        }
-        Update: {
-          content?: string
-          created_at?: string | null
-          id?: string
-          node_id?: string | null
-          title?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversations_node_id_fkey"
-            columns: ["node_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      items: {
-        Row: {
-          created_at: string
-          description: string | null
-          file_url: string | null
-          id: string
-          is_deleted: boolean
-          item_type: string
-          link_url: string | null
-          name: string | null
-          parent_id: string | null
-          project_id: string
-          raw_content: string | null
-          source_type: string | null
-          title: string | null
-          updated_at: string
-          version: number
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          file_url?: string | null
-          id?: string
-          is_deleted?: boolean
-          item_type: string
-          link_url?: string | null
-          name?: string | null
-          parent_id?: string | null
-          project_id: string
-          raw_content?: string | null
-          source_type?: string | null
-          title?: string | null
-          updated_at?: string
-          version?: number
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          file_url?: string | null
-          id?: string
-          is_deleted?: boolean
-          item_type?: string
-          link_url?: string | null
-          name?: string | null
-          parent_id?: string | null
-          project_id?: string
-          raw_content?: string | null
-          source_type?: string | null
-          title?: string | null
-          updated_at?: string
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "items_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -304,71 +171,6 @@ export type Database = {
             columns: ["wrong_note_id"]
             isOneToOne: false
             referencedRelation: "wrong_notes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      nodes: {
-        Row: {
-          archive_count: number | null
-          color: string | null
-          cover_image: string | null
-          created_at: string
-          deadline: string | null
-          description: string | null
-          display_order: number
-          id: string
-          is_active: boolean
-          is_completed: boolean | null
-          milestone_achieved: boolean | null
-          name: string
-          parent_id: string | null
-          project_status: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          archive_count?: number | null
-          color?: string | null
-          cover_image?: string | null
-          created_at?: string
-          deadline?: string | null
-          description?: string | null
-          display_order?: number
-          id?: string
-          is_active?: boolean
-          is_completed?: boolean | null
-          milestone_achieved?: boolean | null
-          name: string
-          parent_id?: string | null
-          project_status?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          archive_count?: number | null
-          color?: string | null
-          cover_image?: string | null
-          created_at?: string
-          deadline?: string | null
-          description?: string | null
-          display_order?: number
-          id?: string
-          is_active?: boolean
-          is_completed?: boolean | null
-          milestone_achieved?: boolean | null
-          name?: string
-          parent_id?: string | null
-          project_status?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "nodes_parent_id_fkey"
-            columns: ["parent_id"]
-            isOneToOne: false
-            referencedRelation: "nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -539,45 +341,6 @@ export type Database = {
           subscription_tier?: string | null
           updated_at?: string
           user_id?: string | null
-        }
-        Relationships: []
-      }
-      todos: {
-        Row: {
-          archive_name: string | null
-          created_at: string
-          description: string | null
-          due_date: string
-          id: string
-          is_completed: boolean
-          is_review_task: boolean
-          title: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          archive_name?: string | null
-          created_at?: string
-          description?: string | null
-          due_date: string
-          id?: string
-          is_completed?: boolean
-          is_review_task?: boolean
-          title: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          archive_name?: string | null
-          created_at?: string
-          description?: string | null
-          due_date?: string
-          id?: string
-          is_completed?: boolean
-          is_review_task?: boolean
-          title?: string
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }

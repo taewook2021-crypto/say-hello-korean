@@ -23,7 +23,6 @@ interface WrongNote {
 
 interface QuizProps {
   notes: WrongNote[];
-  aiCards?: any[]; // 임시로 any 사용 (추후 확장 가능)
   onComplete: () => void;
 }
 
@@ -36,7 +35,7 @@ interface QuizQuestion {
   originalNote: WrongNote;
 }
 
-export function Quiz({ notes, aiCards = [], onComplete }: QuizProps) {
+export function Quiz({ notes, onComplete }: QuizProps) {
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");

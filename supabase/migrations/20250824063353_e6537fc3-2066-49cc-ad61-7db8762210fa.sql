@@ -1,1 +1,0 @@
-DELETE FROM wrong_notes;

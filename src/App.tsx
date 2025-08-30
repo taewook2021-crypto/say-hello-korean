@@ -4,15 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { EnvironmentChecker } from "@/components/EnvironmentChecker";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import Home from "./pages/Home";
-import OverallCalendar from "./pages/OverallCalendar";
+import Landing from "./pages/Landing";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
+import Home from "./pages/Home";
+import Auth from "./pages/Auth";
 import Account from "./pages/Account";
+import PDFAnnotator from "./pages/PDFAnnotator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,33 +28,19 @@ const App = () => (
         <div className="min-h-screen">
           <Toaster />
           <Sonner />
-          <div className="container mx-auto px-4 py-2">
-            <EnvironmentChecker />
-          </div>
           <BrowserRouter>
-            <SidebarProvider>
-              <div className="min-h-screen flex w-full">
-                <AppSidebar />
-                <main className="flex-1">
-                  <header className="h-12 flex items-center border-b px-4">
-                    <SidebarTrigger />
-                    <h1 className="text-xl font-bold text-primary ml-4">ARO</h1>
-                  </header>
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/home" element={<Home />} />
-                    <Route path="/calendar" element={<OverallCalendar />} />
-                    <Route path="/account" element={<Account />} />
-                    <Route path="/subject/:subjectName" element={<Subject />} />
-                    <Route path="/book/:subjectName/:bookName" element={<Book />} />
-                    <Route path="/notes" element={<Notes />} />
-                    <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
-                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-              </div>
-            </SidebarProvider>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/account" element={<Account />} />
+              <Route path="/pdf-annotator" element={<PDFAnnotator />} />
+              <Route path="/subject/:subjectName" element={<Subject />} />
+              <Route path="/book/:subjectName/:bookName" element={<Book />} />
+              <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </BrowserRouter>
         </div>
       </TooltipProvider>

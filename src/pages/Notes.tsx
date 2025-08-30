@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { downloadPDF, printPDF } from "@/components/pdf-generator";
 import { PdfTemplateSelector, PdfTemplate } from "@/components/PdfTemplateSelector";
 import { useToast } from "@/hooks/use-toast";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { FlashCard } from "@/components/study/FlashCard";
 import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
@@ -33,56 +33,12 @@ interface WrongNote {
   isResolved: boolean;
 }
 
-// Study 컴포넌트들이 기대하는 WrongNote 형식
-interface StudyWrongNote {
-  id: string;
-  question: string;
-  wrong_answer: string | null;
-  correct_answer: string;
-  explanation: string | null;
-  subject_name: string;
-  book_name: string;
-  chapter_name: string;
-  is_resolved: boolean;
-}
-
-// Notes.tsx 형식을 Study 컴포넌트 형식으로 변환
-const convertToStudyFormat = (notes: WrongNote[], subject: string, book: string, chapter: string): StudyWrongNote[] => {
-  return notes.map(note => ({
-    id: note.id,
-    question: note.question,
-    wrong_answer: note.wrongAnswer || null,
-    correct_answer: note.correctAnswer,
-    explanation: null,
-    subject_name: subject,
-    book_name: book,
-    chapter_name: chapter,
-    is_resolved: note.isResolved
-  }));
-};
-
-// PDF 컴포넌트가 기대하는 WrongNote 형식으로 변환
-const convertToPDFFormat = (notes: WrongNote[]): any[] => {
-  return notes.map(note => ({
-    id: note.id,
-    question: note.question,
-    wrong_answer: note.wrongAnswer || null,
-    correct_answer: note.correctAnswer,
-    explanation: null,
-    subject_name: '',
-    book_name: '',
-    chapter_name: '',
-    is_resolved: note.isResolved
-  }));
-};
-
 const Index = () => {
   const { subjectName, bookName, chapterName } = useParams<{
     subjectName: string;
     bookName: string;
     chapterName: string;
   }>();
-  const [searchParams] = useSearchParams();
   const [notes, setNotes] = useState<WrongNote[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
@@ -102,10 +58,6 @@ const Index = () => {
   const subject = decodeURIComponent(subjectName || '');
   const book = decodeURIComponent(bookName || '');
   const chapter = decodeURIComponent(chapterName || '');
-  
-  // URL 파라미터에서 archive와 study 모드 확인
-  const archiveName = searchParams.get('archive');
-  const isStudyMode = searchParams.get('study') === 'true';
 
   const [newNote, setNewNote] = useState({
     question: "",
@@ -117,18 +69,8 @@ const Index = () => {
   useEffect(() => {
     if (subject && book && chapter) {
       loadNotes();
-    } else if (archiveName) {
-      // archive 파라미터가 있으면 해당 아카이브의 노트들을 로드
-      loadArchiveNotes(archiveName);
     }
-  }, [subject, book, chapter, archiveName]);
-
-  // study 모드인 경우 자동으로 학습 모드 선택 모달 표시
-  useEffect(() => {
-    if (isStudyMode) {
-      setShowStudyModal(true);
-    }
-  }, [isStudyMode]);
+  }, [subject, book, chapter]);
 
   const loadNotes = async () => {
     try {
@@ -155,80 +97,6 @@ const Index = () => {
       toast({
         title: "오류",
         description: "오답노트를 불러오는데 실패했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadArchiveNotes = async (archiveName: string) => {
-    console.log('Loading archive notes for:', archiveName);
-    try {
-      // 먼저 모든 데이터를 가져와서 확인
-      const { data: allData, error: allError } = await (supabase as any)
-        .from('wrong_notes')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      console.log('All wrong notes in database:', allData?.length || 0);
-      if (allData?.length > 0) {
-        console.log('Sample data:', allData.slice(0, 3));
-      }
-
-      // 아카이브 이름으로 여러 방식으로 검색
-      const searchQueries = [
-        // 정확한 이름 검색
-        (supabase as any)
-          .from('wrong_notes')
-          .select('*')
-          .or(`subject_name.ilike.%${archiveName}%,book_name.ilike.%${archiveName}%,chapter_name.ilike.%${archiveName}%`),
-        
-        // 아카이브 이름을 공백으로 분리해서 검색
-        ...archiveName.split(' ').map(keyword => 
-          (supabase as any)
-            .from('wrong_notes')
-            .select('*')
-            .or(`subject_name.ilike.%${keyword}%,book_name.ilike.%${keyword}%,chapter_name.ilike.%${keyword}%`)
-        )
-      ];
-
-      let combinedData: any[] = [];
-      
-      for (const query of searchQueries) {
-        const { data, error } = await query.order('created_at', { ascending: false });
-        if (!error && data) {
-          combinedData = [...combinedData, ...data];
-        }
-      }
-
-      // 중복 제거
-      const uniqueData = combinedData.reduce((acc, current) => {
-        const exists = acc.find((item: any) => item.id === current.id);
-        if (!exists) {
-          acc.push(current);
-        }
-        return acc;
-      }, []);
-
-      console.log('Archive search results for', archiveName, ':', uniqueData.length);
-      console.log('Found notes:', uniqueData);
-      
-      const mappedNotes = uniqueData.map((note: any) => ({
-        id: note.id,
-        question: note.question,
-        wrongAnswer: note.wrong_answer || '',
-        correctAnswer: note.correct_answer,
-        createdAt: new Date(note.created_at),
-        isResolved: note.is_resolved
-      }));
-      
-      setNotes(mappedNotes);
-    } catch (error) {
-      console.error('Error loading archive notes:', error);
-      toast({
-        title: "오류",
-        description: "아카이브 오답노트를 불러오는데 실패했습니다.",
         variant: "destructive",
       });
     } finally {
@@ -473,7 +341,7 @@ const Index = () => {
     };
     
     console.log('Executing download with template:', templateId);
-    const success = await downloadPDF(convertToPDFFormat(filteredNotes), subject, book, chapter, options);
+    const success = await downloadPDF(filteredNotes, subject, book, chapter, options);
     if (success) {
       toast({
         title: "성공",
@@ -523,7 +391,7 @@ const Index = () => {
       paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
     };
 
-    const success = await downloadPDF(convertToPDFFormat(filteredNotes), subject, book, chapter, extendedOptions);
+    const success = await downloadPDF(filteredNotes, subject, book, chapter, extendedOptions);
     if (success) {
       toast({
         title: "성공",
@@ -563,7 +431,7 @@ const Index = () => {
       return;
     }
 
-    const success = await printPDF(convertToPDFFormat(filteredNotes), subject, book, chapter, {
+    const success = await printPDF(filteredNotes, subject, book, chapter, {
       ...options,
       paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
     });
@@ -1014,7 +882,17 @@ const Index = () => {
                   </div>
 
                   {selectedStudyMode === 'flashcard' && (() => {
-                    const mappedNotes = convertToStudyFormat(notes, subject || '', book || '', chapter || '');
+                    const mappedNotes = notes.map(n => ({
+                      id: n.id,
+                      question: n.question,
+                      wrong_answer: n.wrongAnswer,
+                      correct_answer: n.correctAnswer,
+                      explanation: null,
+                      subject_name: subject || '',
+                      book_name: book || '',
+                      chapter_name: chapter || '',
+                      is_resolved: n.isResolved
+                    }));
                     
                     console.log('Total notes for FlashCard:', mappedNotes.length);
                     console.log('Notes data:', mappedNotes);
@@ -1048,7 +926,17 @@ const Index = () => {
 
                   {selectedStudyMode === 'multiple-choice' && (
                     <Quiz 
-                      notes={convertToStudyFormat(notes, subject || '', book || '', chapter || '')} 
+                      notes={notes.map(n => ({
+                        id: n.id,
+                        question: n.question,
+                        wrong_answer: n.wrongAnswer,
+                        correct_answer: n.correctAnswer,
+                        explanation: null,
+                        subject_name: subject || '',
+                        book_name: book || '',
+                        chapter_name: chapter || '',
+                        is_resolved: n.isResolved
+                      }))} 
                       onComplete={() => {
                         setShowStudyModal(false);
                         setSelectedStudyMode(null);
@@ -1063,7 +951,17 @@ const Index = () => {
 
                   {selectedStudyMode === 'subjective' && (
                     <SubjectiveQuiz 
-                      notes={convertToStudyFormat(notes, subject || '', book || '', chapter || '')} 
+                      notes={notes.map(n => ({
+                        id: n.id,
+                        question: n.question,
+                        wrong_answer: n.wrongAnswer,
+                        correct_answer: n.correctAnswer,
+                        explanation: null,
+                        subject_name: subject || '',
+                        book_name: book || '',
+                        chapter_name: chapter || '',
+                        is_resolved: n.isResolved
+                      }))} 
                       onComplete={() => {
                         setShowStudyModal(false);
                         setSelectedStudyMode(null);
