@@ -5,27 +5,16 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush } from 'fabric';
-import * as pdfjsLib from 'pdfjs-dist';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
-// PDF.js 워커 완전 비활성화 - 다양한 방법 시도
-try {
-  // 방법 1: 워커 자체를 null로 설정
-  pdfjsLib.GlobalWorkerOptions.workerSrc = null as any;
-} catch (e) {
-  try {
-    // 방법 2: 빈 문자열로 설정
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-  } catch (e2) {
-    // 방법 3: false로 설정
-    pdfjsLib.GlobalWorkerOptions.workerSrc = false as any;
-  }
-}
-
-console.log('PDF.js 워커 비활성화 시도 완료');
+// react-pdf 워커 설정 - CDN 사용
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+console.log('react-pdf 워커 설정 완료');
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfDocument, setPdfDocument] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.5);
@@ -37,11 +26,8 @@ const PDFAnnotator = () => {
   const [isLoading, setIsLoading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const renderTaskRef = useRef<pdfjsLib.RenderTask | null>(null);
-  const rafRef = useRef<number | null>(null);
 
   const colors = [
     '#000000', '#FF0000', '#00FF00', '#0000FF', 
@@ -53,204 +39,44 @@ const PDFAnnotator = () => {
     '#FFA500', '#FF00FF', '#00FFFF'
   ];
 
-  // PDF 파일 로드
-  const loadPDF = useCallback(async (file: File) => {
-    setIsLoading(true);
-    console.log('=== PDF 로드 시작 ===');
-    console.log('파일명:', file.name);
-    console.log('파일 크기:', file.size, 'bytes');
-    console.log('파일 타입:', file.type);
-    console.log('파일 마지막 수정:', new Date(file.lastModified));
+  // PDF 파일 로드 성공 시 호출
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    console.log('PDF 로드 성공! 총 페이지:', numPages);
+    setTotalPages(numPages);
+    setCurrentPage(1);
+    toast.success(`PDF 로드 완료! 총 ${numPages}페이지 🎉`);
+  };
+
+  // PDF 로드 오류 시 호출
+  const onDocumentLoadError = (error: Error) => {
+    console.error('PDF 로드 실패:', error);
+    toast.error('PDF 파일을 로드할 수 없습니다. 다른 파일을 시도해보세요.');
+    setPdfFile(null);
+  };
+
+  // 페이지 렌더링 성공 시 호출
+  const onPageLoadSuccess = (page: any) => {
+    console.log(`페이지 ${currentPage} 렌더링 완료`);
     
-    try {
-      // 1. 브라우저 지원 확인
-      console.log('브라우저 정보:');
-      console.log('- User Agent:', navigator.userAgent);
-      console.log('- PDF.js 버전:', pdfjsLib.version);
-      console.log('- 워커 설정:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+    // Fabric.js 캔버스 크기 맞춤
+    if (fabricCanvas && annotationCanvasRef.current) {
+      const { width, height } = page;
+      annotationCanvasRef.current.width = width * scale;
+      annotationCanvasRef.current.height = height * scale;
+      annotationCanvasRef.current.style.width = width * scale + 'px';
+      annotationCanvasRef.current.style.height = height * scale + 'px';
       
-      // 2. 파일 유효성 검사
-      if (file.size === 0) {
-        throw new Error('파일이 비어있습니다');
-      }
-      if (file.size > 100 * 1024 * 1024) { // 100MB 제한
-        throw new Error('파일이 너무 큽니다 (100MB 제한)');
-      }
-      
-      // 3. 파일 읽기 방법 시도
-      console.log('=== 파일 읽기 시도 ===');
-      let loadingTask;
-      
-      try {
-        // 방법 1: Blob URL 사용
-        console.log('방법 1: Blob URL 시도');
-        const blobUrl = URL.createObjectURL(file);
-        console.log('Blob URL 생성:', blobUrl);
-        
-        loadingTask = pdfjsLib.getDocument({
-          url: blobUrl,
-          verbosity: 1,
-        } as any);
-        console.log('Blob URL로 로딩 작업 생성 성공');
-        
-      } catch (blobError) {
-        console.error('Blob URL 방법 실패:', blobError);
-        
-        // 방법 2: ArrayBuffer 사용
-        console.log('방법 2: ArrayBuffer 시도');
-        const arrayBuffer = await file.arrayBuffer();
-        console.log('ArrayBuffer 생성 완료, 크기:', arrayBuffer.byteLength);
-        
-        loadingTask = pdfjsLib.getDocument({
-          data: arrayBuffer,
-          verbosity: 1,
-        } as any);
-        console.log('ArrayBuffer로 로딩 작업 생성 성공');
-      }
-      
-      // 4. 로딩 진행률 모니터링
-      loadingTask.onProgress = (progress: { loaded: number; total?: number }) => {
-        console.log('로딩 진행률:', {
-          loaded: progress.loaded,
-          total: progress.total,
-          percentage: progress.total ? Math.round((progress.loaded / progress.total) * 100) : '알 수 없음'
-        });
-        
-        const pct = progress.total ? Math.round((progress.loaded / progress.total) * 100) : Math.min(99, Math.round(progress.loaded / 1000000));
-        toast.dismiss('pdf-progress');
-        toast.loading(`PDF 로딩 중… ${pct}%`, { id: 'pdf-progress' });
-      };
-      
-      console.log('=== PDF 문서 로딩 시작 ===');
-      const pdf = await loadingTask.promise;
-      console.log('=== PDF 로드 성공! ===');
-      console.log('페이지 수:', pdf.numPages);
-      console.log('PDF 정보:', {
-        numPages: pdf.numPages,
-        fingerprints: pdf.fingerprints,
-        documentInfo: pdf.documentInfo,
+      fabricCanvas.setDimensions({ 
+        width: width * scale, 
+        height: height * scale 
       });
-      
-      // 5. 첫 페이지 테스트 로드
-      try {
-        console.log('첫 페이지 테스트 로드 시도...');
-        const firstPage = await pdf.getPage(1);
-        const viewport = firstPage.getViewport({ scale: 1.0 });
-        console.log('첫 페이지 정보:', {
-          width: viewport.width,
-          height: viewport.height,
-          rotation: viewport.rotation,
-        });
-      } catch (pageError) {
-        console.error('첫 페이지 로드 실패:', pageError);
-        throw new Error(`첫 페이지 로드 실패: ${pageError.message}`);
-      }
-      
-      setPdfDocument(pdf);
-      setTotalPages(pdf.numPages);
-      setCurrentPage(1);
-      setPdfFile(file);
-      
-      toast.dismiss('pdf-progress');
-      toast.success(`PDF 로드 완료! 총 ${pdf.numPages}페이지 🎉`);
-      
-    } catch (error) {
-      console.error('=== PDF 로드 실패 ===');
-      console.error('에러 타입:', error.constructor.name);
-      console.error('에러 메시지:', error.message);
-      console.error('전체 에러:', error);
-      
-      if (error.stack) {
-        console.error('스택 트레이스:', error.stack);
-      }
-      
-      // 구체적인 에러 메시지 제공
-      let userMessage = 'PDF 파일을 로드할 수 없습니다.';
-      if (error.message.includes('Invalid PDF')) {
-        userMessage = '유효하지 않은 PDF 파일입니다.';
-      } else if (error.message.includes('network')) {
-        userMessage = '네트워크 오류가 발생했습니다.';
-      } else if (error.message.includes('worker')) {
-        userMessage = 'PDF 처리 엔진 오류가 발생했습니다.';
-      } else if (error.message.includes('fetch')) {
-        userMessage = '파일을 가져올 수 없습니다.';
-      }
-      
-      toast.dismiss('pdf-progress');
-      toast.error(`${userMessage} (${error.message})`);
-    } finally {
-      setIsLoading(false);
-      console.log('=== PDF 로드 과정 완료 ===');
+      fabricCanvas.renderAll();
     }
-  }, []);
-
-  // PDF 페이지 렌더링
-  const renderPage = useCallback(async (pageNumber: number) => {
-    if (!pdfDocument || !pdfCanvasRef.current) return;
-
-    try {
-      console.log(`페이지 ${pageNumber} 렌더링 시작`);
-      
-      // 이전 렌더/RAF 취소
-      if (renderTaskRef.current) {
-        try { renderTaskRef.current.cancel(); } catch {}
-        renderTaskRef.current = null;
-      }
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
-      const page = await pdfDocument.getPage(pageNumber);
-      const viewport = page.getViewport({ scale });
-      
-      const canvas = pdfCanvasRef.current;
-      const context = canvas.getContext('2d');
-      
-      if (!context) return;
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      canvas.style.width = viewport.width + 'px';
-      canvas.style.height = viewport.height + 'px';
-
-      const render = () => {
-        const renderContext = { canvasContext: context, viewport, canvas };
-        const task = page.render(renderContext);
-        renderTaskRef.current = task;
-        task.promise.finally(() => { renderTaskRef.current = null; });
-      };
-      
-      // 리플로우 직후 프레임에 렌더 → 끊김 감소
-      rafRef.current = requestAnimationFrame(render);
-      console.log(`페이지 ${pageNumber} 렌더링 완료`);
-      
-      // Fabric.js 캔버스 크기도 맞춤
-      if (fabricCanvas && annotationCanvasRef.current) {
-        annotationCanvasRef.current.width = viewport.width;
-        annotationCanvasRef.current.height = viewport.height;
-        annotationCanvasRef.current.style.width = viewport.width + 'px';
-        annotationCanvasRef.current.style.height = viewport.height + 'px';
-        
-        fabricCanvas.setDimensions({ 
-          width: viewport.width, 
-          height: viewport.height 
-        });
-        fabricCanvas.renderAll();
-      }
-    } catch (error) {
-      console.error('페이지 렌더링 실패:', error);
-      toast.error('페이지를 렌더링할 수 없습니다.');
-    }
-  }, [pdfDocument, scale, fabricCanvas]);
-
-  // 현재 페이지 변경시 렌더링
-  useEffect(() => {
-    if (pdfDocument) {
-      renderPage(currentPage);
-    }
-  }, [pdfDocument, currentPage, scale, renderPage]);
+  };
 
   // Fabric.js 캔버스 초기화
   useEffect(() => {
-    if (!annotationCanvasRef.current || !pdfDocument) return;
+    if (!annotationCanvasRef.current || !pdfFile) return;
 
     console.log('Fabric 캔버스 초기화');
     const canvas = new FabricCanvas(annotationCanvasRef.current, {
@@ -279,7 +105,7 @@ const PDFAnnotator = () => {
     return () => {
       canvas.dispose();
     };
-  }, [pdfDocument]);
+  }, [pdfFile]);
 
   // 브러시 설정 업데이트
   useEffect(() => {
@@ -320,7 +146,8 @@ const PDFAnnotator = () => {
       toast.error('PDF 파일만 업로드 가능합니다.');
       return;
     }
-    loadPDF(file);
+    setPdfFile(file);
+    setIsLoading(true);
   };
 
   const handleToolChange = (tool: 'pen' | 'highlighter' | 'eraser') => {
@@ -379,19 +206,19 @@ const PDFAnnotator = () => {
     <div className="flex flex-col h-screen bg-background">
       {/* 상단 툴바 */}
       <div className="border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">PDF 필기 📝</h1>
-            {pdfDocument && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => goToPage(currentPage - 1)}
-                  disabled={currentPage <= 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-bold">PDF 필기 📝</h1>
+              {pdfFile && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
                 <span className="text-sm min-w-0 px-2 py-1 bg-muted rounded">
                   {currentPage} / {totalPages}
                 </span>
@@ -406,8 +233,8 @@ const PDFAnnotator = () => {
               </div>
             )}
           </div>
-          
-          {pdfDocument && (
+            
+            {pdfFile && (
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={zoomOut}>
                 <ZoomOut className="h-4 w-4" />
@@ -426,7 +253,7 @@ const PDFAnnotator = () => {
       {/* 메인 영역 */}
       <div className="flex-1 flex overflow-hidden">
         {/* 좌측 툴바 */}
-        {pdfDocument && (
+        {pdfFile && (
           <div className="w-80 border-r border-border p-6 space-y-6 bg-background overflow-y-auto">
             <h2 className="text-xl font-bold">필기 도구</h2>
             
@@ -512,7 +339,7 @@ const PDFAnnotator = () => {
 
         {/* PDF 및 주석 영역 */}
         <div className="flex-1 overflow-auto p-4 bg-gray-100">
-          {!pdfDocument ? (
+          {!pdfFile ? (
             // PDF 업로드 대기 화면
             <div
               className={`h-full flex flex-col items-center justify-center border-2 border-dashed transition-colors ${
@@ -555,12 +382,20 @@ const PDFAnnotator = () => {
             // PDF 및 주석 캔버스
             <div className="flex justify-center">
               <div className="relative inline-block shadow-lg bg-white">
-                {/* PDF 캔버스 (배경) */}
-                <canvas
-                  ref={pdfCanvasRef}
-                  className="block border border-gray-300"
-                  style={{ maxWidth: '100%' }}
-                />
+                {/* react-pdf 컴포넌트 */}
+                <Document 
+                  file={pdfFile}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  onLoadError={onDocumentLoadError}
+                  loading={<div className="p-8 text-center">PDF 로딩 중...</div>}
+                >
+                  <Page 
+                    pageNumber={currentPage}
+                    scale={scale}
+                    onLoadSuccess={onPageLoadSuccess}
+                    loading={<div className="p-8 text-center">페이지 로딩 중...</div>}
+                  />
+                </Document>
                 
                 {/* 주석 캔버스 (오버레이) */}
                 <canvas
