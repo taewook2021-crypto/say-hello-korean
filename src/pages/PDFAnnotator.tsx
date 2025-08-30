@@ -7,13 +7,8 @@ import { toast } from "sonner";
 import { Canvas as FabricCanvas, PencilBrush, Path } from 'fabric';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// PDF.js worker 설정 - Vite 환경에서 안전하게 작동하도록 수정
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.js',
-    import.meta.url
-  ).toString();
-}
+// PDF.js 간단 설정 - 워커 문제 해결을 위해 빈 워커 사용
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'data:application/javascript;base64,';
 
 const PDFAnnotator = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -46,9 +41,20 @@ const PDFAnnotator = () => {
   // PDF 파일 로드
   const loadPDF = useCallback(async (file: File) => {
     setIsLoading(true);
+    console.log('PDF 로드 시작:', file.name);
+    
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      console.log('파일 읽기 완료, 크기:', arrayBuffer.byteLength);
+      
+      // 가장 기본적인 방법으로 로드 시도
+      const loadingTask = pdfjsLib.getDocument({ 
+        data: arrayBuffer
+      });
+      
+      console.log('PDF 문서 로딩 작업 생성됨');
+      const pdf = await loadingTask.promise;
+      console.log('PDF 로드 성공, 페이지 수:', pdf.numPages);
       
       setPdfDocument(pdf);
       setTotalPages(pdf.numPages);
