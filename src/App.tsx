@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
@@ -22,21 +24,33 @@ const App = () => (
       disableTransitionOnChange
     >
       <TooltipProvider>
-        <div className="min-h-screen">
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/pdf-annotator" element={<PDFAnnotator />} />
-              <Route path="/subject/:subjectName" element={<Subject />} />
-              <Route path="/book/:subjectName/:bookName" element={<Book />} />
-              <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </div>
+        <SidebarProvider>
+          <div className="min-h-screen flex w-full">
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              {/* Header with Sidebar Trigger */}
+              <header className="fixed top-0 left-0 right-0 h-12 flex items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
+                <SidebarTrigger className="ml-4" />
+                <div className="ml-4 font-semibold text-foreground">학습 도우미</div>
+              </header>
+
+              <AppSidebar />
+
+              <main className="flex-1 pt-12">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/pdf-annotator" element={<PDFAnnotator />} />
+                  <Route path="/subject/:subjectName" element={<Subject />} />
+                  <Route path="/book/:subjectName/:bookName" element={<Book />} />
+                  <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+            </BrowserRouter>
+          </div>
+        </SidebarProvider>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
