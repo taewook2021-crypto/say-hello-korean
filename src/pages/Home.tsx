@@ -4,7 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Calendar, Search, ChevronRight } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { supabase } from "@/integrations/supabase/client";
@@ -140,6 +142,38 @@ const Home = () => {
     }
   }
 
+  const deleteSubject = async (subjectName: string) => {
+    try {
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('name', subjectName);
+
+      if (error) throw error;
+
+      setSubjects(subjects.filter(s => s !== subjectName));
+      setShowDeleteConfirmDialog(false);
+      
+      toast({
+        title: "과목 삭제됨",
+        description: `${subjectName} 과목이 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting subject:', error);
+      toast({
+        title: "오류",
+        description: "과목 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteDialog = (type: 'subject', name: string) => {
+    setDeleteTargetType(type);
+    setDeleteTargetName(name);
+    setShowDeleteConfirmDialog(true);
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-8">
       {/* Hero Section */}
@@ -229,14 +263,30 @@ const Home = () => {
                     </p>
                   </div>
                   
-                  <Link 
-                    to={`/subject/${encodeURIComponent(subject)}`}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Button variant="ghost" size="sm">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openDeleteDialog('subject', subject)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          삭제
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    
+                    <Link 
+                      to={`/subject/${encodeURIComponent(subject)}`}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Button variant="ghost" size="sm">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
 
                 {/* Expanded Books */}
@@ -312,6 +362,31 @@ const Home = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteTargetName}</strong> {deleteTargetType === 'subject' ? '과목' : '책'}을 삭제하면 관련된 모든 데이터가 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deleteTargetType === 'subject') {
+                  deleteSubject(deleteTargetName);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

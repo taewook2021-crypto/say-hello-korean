@@ -3,7 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, FileText, Calendar } from "lucide-react";
+import { ArrowLeft, BookOpen, FileText, Calendar, MoreVertical, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,6 +21,8 @@ const WrongNoteSubject = () => {
   const { subjectName } = useParams<{ subjectName: string }>();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteChapter, setDeleteChapter] = useState<Chapter | null>(null);
   const { toast } = useToast();
   
   const subject = decodeURIComponent(subjectName || '');
@@ -89,6 +93,39 @@ const WrongNoteSubject = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const deleteChapterNotes = async (chapter: Chapter) => {
+    try {
+      const { error } = await supabase
+        .from('wrong_notes')
+        .delete()
+        .eq('subject_name', subject)
+        .eq('book_name', chapter.book_name)
+        .eq('chapter_name', chapter.name);
+
+      if (error) throw error;
+
+      setChapters(chapters.filter(ch => !(ch.name === chapter.name && ch.book_name === chapter.book_name)));
+      setShowDeleteDialog(false);
+      
+      toast({
+        title: "단원 삭제됨",
+        description: `${chapter.name} 단원의 모든 오답노트가 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting chapter notes:', error);
+      toast({
+        title: "오류",
+        description: "단원 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteDialog = (chapter: Chapter) => {
+    setDeleteChapter(chapter);
+    setShowDeleteDialog(true);
   };
 
   const formatLastActivity = (date: Date | null) => {
@@ -170,55 +207,93 @@ const WrongNoteSubject = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {chapters.map((chapter, index) => (
-            <Link
-              key={`${chapter.book_name}-${chapter.name}`}
-              to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(chapter.book_name)}/${encodeURIComponent(chapter.name)}`}
-            >
-              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg line-clamp-2">{chapter.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" />
-                        {chapter.book_name}
-                      </p>
+            <div key={`${chapter.book_name}-${chapter.name}`} className="relative group">
+              <Link
+                to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(chapter.book_name)}/${encodeURIComponent(chapter.name)}`}
+              >
+                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg line-clamp-2">{chapter.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" />
+                          {chapter.book_name}
+                        </p>
+                      </div>
+                      {chapter.unresolvedCount > 0 && (
+                        <Badge variant="destructive" className="ml-2">
+                          {chapter.unresolvedCount}
+                        </Badge>
+                      )}
                     </div>
-                    {chapter.unresolvedCount > 0 && (
-                      <Badge variant="destructive" className="ml-2">
-                        {chapter.unresolvedCount}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">총 문제</span>
-                      <span className="font-medium">{chapter.noteCount}개</span>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">총 문제</span>
+                        <span className="font-medium">{chapter.noteCount}개</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">미해결</span>
+                        <span className={`font-medium ${chapter.unresolvedCount > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          {chapter.unresolvedCount}개
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          최근 활동
+                        </span>
+                        <span className="font-medium">
+                          {formatLastActivity(chapter.lastActivity)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">미해결</span>
-                      <span className={`font-medium ${chapter.unresolvedCount > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                        {chapter.unresolvedCount}개
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        최근 활동
-                      </span>
-                      <span className="font-medium">
-                        {formatLastActivity(chapter.lastActivity)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  </CardContent>
+                </Card>
+              </Link>
+              
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openDeleteDialog(chapter)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      단원 삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteChapter?.name}</strong> 단원의 모든 오답노트({deleteChapter?.noteCount}개)가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteChapter && deleteChapterNotes(deleteChapter)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

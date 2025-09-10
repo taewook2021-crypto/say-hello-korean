@@ -3,7 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, BookOpen, Plus } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, MoreVertical, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +17,8 @@ const Subject = () => {
   const [newBookName, setNewBookName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteBookName, setDeleteBookName] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,6 +94,38 @@ const Subject = () => {
     }
   };
 
+  const deleteBook = async (bookName: string) => {
+    try {
+      const { error } = await supabase
+        .from('books')
+        .delete()
+        .eq('name', bookName)
+        .eq('subject_name', decodeURIComponent(subjectName || ''));
+
+      if (error) throw error;
+
+      setBooks(books.filter(book => book !== bookName));
+      setShowDeleteDialog(false);
+      
+      toast({
+        title: "책 삭제됨",
+        description: `${bookName}이(가) 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting book:', error);
+      toast({
+        title: "오류",
+        description: "책 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteDialog = (bookName: string) => {
+    setDeleteBookName(bookName);
+    setShowDeleteDialog(true);
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="flex justify-between items-center mb-6">
@@ -150,14 +186,32 @@ const Subject = () => {
           ))
         ) : (
           books.map((book, index) => (
-            <Link key={index} to={`/subject/${subjectName}/book/${encodeURIComponent(book)}`}>
-              <Card className="p-4 text-center cursor-pointer hover:bg-accent">
-                <CardContent className="p-0">
-                  <BookOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <p className="text-sm font-medium">{book}</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <div key={index} className="relative group">
+              <Link to={`/subject/${subjectName}/book/${encodeURIComponent(book)}`}>
+                <Card className="p-4 text-center cursor-pointer hover:bg-accent">
+                  <CardContent className="p-0">
+                    <BookOpen className="h-12 w-12 text-primary mx-auto mb-2" />
+                    <p className="text-sm font-medium">{book}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+              
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openDeleteDialog(book)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           ))
         )}
       </div>
@@ -169,6 +223,27 @@ const Subject = () => {
           <p>+ 버튼을 눌러 교재를 추가해보세요.</p>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{deleteBookName}</strong> 책을 삭제하면 관련된 모든 데이터가 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteBook(deleteBookName)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
