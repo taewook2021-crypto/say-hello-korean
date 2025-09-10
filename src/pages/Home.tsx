@@ -9,76 +9,24 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useData } from "@/contexts/DataContext";
 
 
 const Home = () => {
   const navigate = useNavigate();
-  const [subjects, setSubjects] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
   const [newSubject, setNewSubject] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
-  const [subjectBooks, setSubjectBooks] = useState<{[key: string]: string[]}>({});
   const [booksLoading, setBooksLoading] = useState<{[key: string]: boolean}>({});
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
-  const [bookMajorChapters, setBookMajorChapters] = useState<{[key: string]: any[]}>({});
-  const [majorChaptersLoading, setMajorChaptersLoading] = useState<{[key: string]: boolean}>({});
-  const [expandedMajorChapter, setExpandedMajorChapter] = useState<string | null>(null);
-  const [majorChapterSubChapters, setMajorChapterSubChapters] = useState<{[key: string]: string[]}>({});
-  const [subChaptersLoading, setSubChaptersLoading] = useState<{[key: string]: boolean}>({});
-  
-  // 다이얼로그 상태
-  const [showAddBookDialog, setShowAddBookDialog] = useState(false);
-  const [newBook, setNewBook] = useState("");
-  const [selectedSubjectForBook, setSelectedSubjectForBook] = useState("");
-  const [showAddMajorChapterDialog, setShowAddMajorChapterDialog] = useState(false);
-  const [newMajorChapter, setNewMajorChapter] = useState("");
-  const [selectedBookForMajorChapter, setSelectedBookForMajorChapter] = useState("");
-  const [selectedSubjectForMajorChapter, setSelectedSubjectForMajorChapter] = useState("");
-  const [showAddSubChapterDialog, setShowAddSubChapterDialog] = useState(false);
-  const [newSubChapter, setNewSubChapter] = useState("");
-  const [selectedMajorChapterForSubChapter, setSelectedMajorChapterForSubChapter] = useState("");
-  const [showAddChapterTypeDialog, setShowAddChapterTypeDialog] = useState(false);
-  const [selectedSubjectForChapterType, setSelectedSubjectForChapterType] = useState("");
-  const [selectedBookForChapterType, setSelectedBookForChapterType] = useState("");
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-  const [deleteTargetType, setDeleteTargetType] = useState<'subject' | 'book' | 'major' | 'sub'>('major');
+  const [deleteTargetType, setDeleteTargetType] = useState<'subject' | 'book'>('subject');
   const [deleteTargetId, setDeleteTargetId] = useState("");
   const [deleteTargetName, setDeleteTargetName] = useState("");
   
-  // 편집 다이얼로그 상태
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editTargetType, setEditTargetType] = useState<'subject' | 'book' | 'major' | 'sub'>('subject');
-  const [editTargetId, setEditTargetId] = useState("");
-  const [editTargetName, setEditTargetName] = useState("");
-  const [newEditName, setNewEditName] = useState("");
-  
   const { toast } = useToast();
-  const isPremiumUser = false; // 인증 기능 제거됨
-
-  useEffect(() => {
-    loadSubjects();
-  }, []);
-
-  const loadSubjects = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('subjects')
-        .select('name')
-        .order('name');
-      
-      if (error) throw error;
-      
-      setSubjects(data?.map((subject: any) => subject.name) || []);
-    } catch (error) {
-      console.error('Error loading subjects:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { subjects, subjectBooks, loading, refreshBooksForSubject, addSubject, deleteSubject, deleteBook } = useData();
 
   const loadBooksForSubject = async (subjectName: string) => {
     if (subjectBooks[subjectName]) return;
@@ -86,18 +34,7 @@ const Home = () => {
     setBooksLoading(prev => ({ ...prev, [subjectName]: true }));
     
     try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('name')
-        .eq('subject_name', subjectName)
-        .order('name');
-      
-      if (error) throw error;
-      
-      setSubjectBooks(prev => ({
-        ...prev,
-        [subjectName]: data?.map((book: any) => book.name) || []
-      }));
+      await refreshBooksForSubject(subjectName);
     } catch (error) {
       console.error('Error loading books:', error);
     } finally {
@@ -114,93 +51,33 @@ const Home = () => {
     }
   }
 
-  async function addSubject() {
+  async function handleAddSubject() {
     if (!newSubject.trim()) return;
 
     try {
-      const { error } = await supabase
-        .from('subjects')
-        .insert({ name: newSubject.trim() });
-
-      if (error) throw error;
-
-      setSubjects([...subjects, newSubject.trim()]);
+      await addSubject(newSubject.trim());
       setNewSubject("");
       setShowAddDialog(false);
-      
-      toast({
-        title: "과목 추가됨",
-        description: `${newSubject} 과목이 추가되었습니다.`,
-      });
     } catch (error) {
-      console.error('Error adding subject:', error);
-      toast({
-        title: "오류",
-        description: "과목 추가에 실패했습니다.",
-        variant: "destructive",
-      });
+      // Error already handled in context
     }
   }
 
-  const deleteSubject = async (subjectName: string) => {
+  const handleDeleteSubject = async (subjectName: string) => {
     try {
-      const { error } = await supabase
-        .from('subjects')
-        .delete()
-        .eq('name', subjectName);
-
-      if (error) throw error;
-
-      setSubjects(subjects.filter(s => s !== subjectName));
-      // Also remove from local state
-      setSubjectBooks(prev => {
-        const newState = { ...prev };
-        delete newState[subjectName];
-        return newState;
-      });
+      await deleteSubject(subjectName);
       setShowDeleteConfirmDialog(false);
-      
-      toast({
-        title: "과목 삭제됨",
-        description: `${subjectName} 과목이 삭제되었습니다.`,
-      });
     } catch (error) {
-      console.error('Error deleting subject:', error);
-      toast({
-        title: "오류",
-        description: "과목 삭제에 실패했습니다.",
-        variant: "destructive",
-      });
+      // Error already handled in context
     }
   };
 
-  const deleteBook = async (subjectName: string, bookName: string) => {
+  const handleDeleteBook = async (subjectName: string, bookName: string) => {
     try {
-      const { error } = await supabase
-        .from('books')
-        .delete()
-        .eq('name', bookName)
-        .eq('subject_name', subjectName);
-
-      if (error) throw error;
-
-      setSubjectBooks(prev => ({
-        ...prev,
-        [subjectName]: prev[subjectName]?.filter(book => book !== bookName) || []
-      }));
+      await deleteBook(subjectName, bookName);
       setShowDeleteConfirmDialog(false);
-      
-      toast({
-        title: "책 삭제됨",
-        description: `${bookName}이(가) 삭제되었습니다.`,
-      });
     } catch (error) {
-      console.error('Error deleting book:', error);
-      toast({
-        title: "오류",
-        description: "책 삭제에 실패했습니다.",
-        variant: "destructive",
-      });
+      // Error already handled in context
     }
   };
 
@@ -381,7 +258,7 @@ const Home = () => {
                 <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-2">아직 과목이 없어요</h3>
                 <p className="text-muted-foreground mb-4">첫 번째 과목을 추가해서 학습을 시작해보세요!</p>
-                <Button onClick={() => setShowAddDialog(true)}>
+                  <Button onClick={() => setShowAddDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   과목 추가하기
                 </Button>
@@ -402,13 +279,13 @@ const Home = () => {
               placeholder="과목명을 입력하세요"
               value={newSubject}
               onChange={(e) => setNewSubject(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addSubject()}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddSubject()}
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                 취소
               </Button>
-              <Button onClick={addSubject} disabled={!newSubject.trim()}>
+              <Button onClick={handleAddSubject} disabled={!newSubject.trim()}>
                 추가
               </Button>
             </div>
@@ -430,9 +307,9 @@ const Home = () => {
             <AlertDialogAction 
               onClick={() => {
                 if (deleteTargetType === 'subject') {
-                  deleteSubject(deleteTargetName);
+                  handleDeleteSubject(deleteTargetName);
                 } else if (deleteTargetType === 'book') {
-                  deleteBook(deleteTargetId, deleteTargetName);
+                  handleDeleteBook(deleteTargetId, deleteTargetName);
                 }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

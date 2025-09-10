@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import { Home, BookOpen, FileText, Search, Settings, Plus, FolderOpen, FileImage } from "lucide-react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-
+import { BookOpen, Home, NotebookPen, ChevronRight, FileText, FolderOpen } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -12,60 +10,37 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-
-interface Subject {
-  name: string;
-  books: string[];
-}
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useData } from "@/contexts/DataContext";
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const navigate = useNavigate();
   const currentPath = location.pathname;
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
+  
+  const { subjects, subjectBooks, loading, refreshBooksForSubject } = useData();
 
-  useEffect(() => {
-    loadSubjects();
-  }, []);
-
-  const loadSubjects = async () => {
-    try {
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from('subjects')
-        .select('name')
-        .order('name');
-      
-      if (subjectsError) throw subjectsError;
-
-      const subjectsWithBooks = await Promise.all(
-        (subjectsData || []).map(async (subject) => {
-          const { data: booksData, error: booksError } = await supabase
-            .from('books')
-            .select('name')
-            .eq('subject_name', subject.name)
-            .order('name');
-          
-          if (booksError) {
-            console.error('Error loading books for subject:', subject.name, booksError);
-            return { name: subject.name, books: [] };
-          }
-          
-          return {
-            name: subject.name,
-            books: booksData?.map((book: any) => book.name) || []
-          };
-        })
-      );
-      
-      setSubjects(subjectsWithBooks);
-    } catch (error) {
-      console.error('Error loading subjects:', error);
+  const toggleSubject = async (subject: string) => {
+    const newExpanded = new Set(expandedSubjects);
+    
+    if (newExpanded.has(subject)) {
+      newExpanded.delete(subject);
+    } else {
+      newExpanded.add(subject);
+      // Load books for this subject if not already loaded
+      if (!subjectBooks[subject]) {
+        await refreshBooksForSubject(subject);
+      }
     }
+    
+    setExpandedSubjects(newExpanded);
   };
 
   const mainItems = [
@@ -96,10 +71,10 @@ export function AppSidebar() {
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
+                    <Link to={item.url} className={getNavCls({ isActive: isActive(item.url) })}>
                       <item.icon className="h-4 w-4 flex-shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -116,72 +91,66 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {subjects.map((subject) => (
-                  <SidebarMenuItem key={subject.name}>
-                    <SidebarMenuButton asChild>
-                      <NavLink 
-                        to={`/subject/${encodeURIComponent(subject.name)}`} 
-                        className={getNavCls}
-                      >
-                        <BookOpen className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{subject.name}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                    
-                    {/* PDF 목록과 오답노트 폴더 */}
-                    <div className="ml-6 mt-1 space-y-1">
-                      {/* PDF 목록 섹션 */}
-                      {subject.books.length > 0 && (
-                        <div className="space-y-1">
-                          <div className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1">
-                            <FileImage className="h-3 w-3" />
-                            PDF 목록
-                          </div>
-                          {subject.books.slice(0, 3).map((book) => (
-                            <SidebarMenuButton key={book} asChild>
-                              <NavLink
-                                to={`/book/${encodeURIComponent(subject.name)}/${encodeURIComponent(book)}`}
-                                className="text-xs text-muted-foreground hover:text-foreground pl-6 py-1 block truncate"
-                              >
-                                {book}
-                              </NavLink>
-                            </SidebarMenuButton>
-                          ))}
-                          {subject.books.length > 3 && (
-                            <div className="text-xs text-muted-foreground pl-6 py-1">
-                              +{subject.books.length - 3}개 더
-                            </div>
-                          )}
-                        </div>
-                      )}
+                  <SidebarMenuItem key={subject}>
+                    <Collapsible open={expandedSubjects.has(subject)} onOpenChange={() => toggleSubject(subject)}>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton>
+                          <BookOpen className="h-4 w-4 flex-shrink-0" />
+                          <span className="truncate">{subject}</span>
+                          <ChevronRight className={`h-4 w-4 ml-auto transition-transform ${expandedSubjects.has(subject) ? 'rotate-90' : ''}`} />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
                       
-                      {/* 오답노트 폴더 */}
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={`/wrong-notes/${encodeURIComponent(subject.name)}`}
-                          className="text-xs text-muted-foreground hover:text-foreground pl-3 py-1 flex items-center gap-1"
-                        >
-                          <FolderOpen className="h-3 w-3" />
-                          오답노트
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </div>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {/* PDF 목록 섹션 */}
+                          {subjectBooks[subject]?.length > 0 && (
+                            <>
+                              <SidebarMenuSubItem>
+                                <div className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  PDF 목록
+                                </div>
+                              </SidebarMenuSubItem>
+                              {subjectBooks[subject].slice(0, 3).map((book) => (
+                                <SidebarMenuSubItem key={book}>
+                                  <SidebarMenuSubButton asChild>
+                                    <Link
+                                      to={`/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`}
+                                      className="text-xs text-muted-foreground hover:text-foreground truncate"
+                                    >
+                                      {book}
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                              {subjectBooks[subject].length > 3 && (
+                                <SidebarMenuSubItem>
+                                  <div className="text-xs text-muted-foreground px-3 py-1">
+                                    +{subjectBooks[subject].length - 3}개 더
+                                  </div>
+                                </SidebarMenuSubItem>
+                              )}
+                            </>
+                          )}
+                          
+                          {/* 오답노트 폴더 */}
+                          <SidebarMenuSubItem>
+                            <SidebarMenuSubButton asChild>
+                              <Link
+                                to={`/subject/${encodeURIComponent(subject)}/wrong-notes`}
+                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                              >
+                                <FolderOpen className="h-3 w-3" />
+                                오답노트
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </Collapsible>
                   </SidebarMenuItem>
                 ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Quick Actions */}
-        {collapsed && (
-          <SidebarGroup className="mt-6">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => navigate('/')}>
-                    <Plus className="h-4 w-4" />
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

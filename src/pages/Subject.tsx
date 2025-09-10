@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useData } from "@/contexts/DataContext";
 
 const Subject = () => {
   const { subjectName } = useParams<{ subjectName: string }>();
@@ -20,6 +21,7 @@ const Subject = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteBookName, setDeleteBookName] = useState("");
   const { toast } = useToast();
+  const { addBook, deleteBook } = useData();
 
   useEffect(() => {
     if (subjectName) {
@@ -61,26 +63,10 @@ const Subject = () => {
     if (!newBookName.trim() || !subjectName) return;
     
     try {
-      console.log('Adding book:', newBookName.trim(), 'to subject:', decodeURIComponent(subjectName));
-      const { error } = await (supabase as any)
-        .from('books')
-        .insert({ 
-          name: newBookName.trim(),
-          subject_name: decodeURIComponent(subjectName)
-        });
-      
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-      
+      await addBook(decodeURIComponent(subjectName), newBookName.trim());
       setBooks([...books, newBookName.trim()]);
       setNewBookName("");
       setIsDialogOpen(false);
-      toast({
-        title: "성공",
-        description: "새 교재가 추가되었습니다.",
-      });
     } catch (error) {
       console.error('Error adding book:', error);
       // If database doesn't exist, still add locally
@@ -94,30 +80,13 @@ const Subject = () => {
     }
   };
 
-  const deleteBook = async (bookName: string) => {
+  const handleDeleteBook = async (bookName: string) => {
     try {
-      const { error } = await supabase
-        .from('books')
-        .delete()
-        .eq('name', bookName)
-        .eq('subject_name', decodeURIComponent(subjectName || ''));
-
-      if (error) throw error;
-
+      await deleteBook(decodeURIComponent(subjectName || ''), bookName);
       setBooks(books.filter(book => book !== bookName));
       setShowDeleteDialog(false);
-      
-      toast({
-        title: "책 삭제됨",
-        description: `${bookName}이(가) 삭제되었습니다.`,
-      });
     } catch (error) {
-      console.error('Error deleting book:', error);
-      toast({
-        title: "오류",
-        description: "책 삭제에 실패했습니다.",
-        variant: "destructive",
-      });
+      // Error already handled in context
     }
   };
 
@@ -236,7 +205,7 @@ const Subject = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => deleteBook(deleteBookName)}
+              onClick={() => handleDeleteBook(deleteBookName)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               삭제
