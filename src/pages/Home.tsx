@@ -152,6 +152,12 @@ const Home = () => {
       if (error) throw error;
 
       setSubjects(subjects.filter(s => s !== subjectName));
+      // Also remove from local state
+      setSubjectBooks(prev => {
+        const newState = { ...prev };
+        delete newState[subjectName];
+        return newState;
+      });
       setShowDeleteConfirmDialog(false);
       
       toast({
@@ -168,9 +174,40 @@ const Home = () => {
     }
   };
 
-  const openDeleteDialog = (type: 'subject', name: string) => {
+  const deleteBook = async (subjectName: string, bookName: string) => {
+    try {
+      const { error } = await supabase
+        .from('books')
+        .delete()
+        .eq('name', bookName)
+        .eq('subject_name', subjectName);
+
+      if (error) throw error;
+
+      setSubjectBooks(prev => ({
+        ...prev,
+        [subjectName]: prev[subjectName]?.filter(book => book !== bookName) || []
+      }));
+      setShowDeleteConfirmDialog(false);
+      
+      toast({
+        title: "책 삭제됨",
+        description: `${bookName}이(가) 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting book:', error);
+      toast({
+        title: "오류",
+        description: "책 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteDialog = (type: 'subject' | 'book', name: string, subjectName?: string) => {
     setDeleteTargetType(type);
     setDeleteTargetName(name);
+    setDeleteTargetId(subjectName || ''); // Store subject name for book deletion
     setShowDeleteConfirmDialog(true);
   };
 
@@ -301,15 +338,31 @@ const Home = () => {
                     ) : (
                       <>
                         {subjectBooks[subject]?.map((book) => (
-                          <Link
-                            key={book}
-                            to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
-                            className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book"
-                          >
+                          <div key={book} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
                             <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="text-sm text-foreground flex-1">{book}</span>
-                            <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover/book:opacity-100 transition-opacity" />
-                          </Link>
+                            <Link
+                              to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
+                              className="text-sm text-foreground flex-1 hover:underline"
+                            >
+                              {book}
+                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/book:opacity-100 transition-opacity">
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openDeleteDialog('book', book, subject)}>
+                                  <Trash2 className="h-3 w-3 mr-2" />
+                                  삭제
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <Link to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}>
+                              <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover/book:opacity-100 transition-opacity" />
+                            </Link>
+                          </div>
                         ))}
                         {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
                           <p className="text-sm text-muted-foreground italic p-3">
@@ -378,6 +431,8 @@ const Home = () => {
               onClick={() => {
                 if (deleteTargetType === 'subject') {
                   deleteSubject(deleteTargetName);
+                } else if (deleteTargetType === 'book') {
+                  deleteBook(deleteTargetId, deleteTargetName);
                 }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
