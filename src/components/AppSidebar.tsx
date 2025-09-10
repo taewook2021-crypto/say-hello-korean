@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Home, BookOpen, FileText, Search, Settings, Plus } from "lucide-react";
+import { Home, BookOpen, FileText, Search, Settings, Plus, FolderOpen, FileImage } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -126,26 +126,45 @@ export function AppSidebar() {
                         <span className="truncate">{subject.name}</span>
                       </NavLink>
                     </SidebarMenuButton>
-                    {/* Books under subject */}
-                    {subject.books.length > 0 && (
-                      <div className="ml-6 mt-1 space-y-1">
-                        {subject.books.slice(0, 3).map((book) => (
-                          <SidebarMenuButton key={book} asChild>
-                            <NavLink
-                              to={`/book/${encodeURIComponent(subject.name)}/${encodeURIComponent(book)}`}
-                              className="text-xs text-muted-foreground hover:text-foreground pl-3 py-1 block truncate"
-                            >
-                              {book}
-                            </NavLink>
-                          </SidebarMenuButton>
-                        ))}
-                        {subject.books.length > 3 && (
-                          <div className="text-xs text-muted-foreground pl-3 py-1">
-                            +{subject.books.length - 3}개 더
+                    
+                    {/* PDF 목록과 오답노트 폴더 */}
+                    <div className="ml-6 mt-1 space-y-1">
+                      {/* PDF 목록 섹션 */}
+                      {subject.books.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1">
+                            <FileImage className="h-3 w-3" />
+                            PDF 목록
                           </div>
-                        )}
-                      </div>
-                    )}
+                          {subject.books.slice(0, 3).map((book) => (
+                            <SidebarMenuButton key={book} asChild>
+                              <NavLink
+                                to={`/book/${encodeURIComponent(subject.name)}/${encodeURIComponent(book)}`}
+                                className="text-xs text-muted-foreground hover:text-foreground pl-6 py-1 block truncate"
+                              >
+                                {book}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          ))}
+                          {subject.books.length > 3 && (
+                            <div className="text-xs text-muted-foreground pl-6 py-1">
+                              +{subject.books.length - 3}개 더
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* 오답노트 폴더 */}
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={`/wrong-notes/${encodeURIComponent(subject.name)}`}
+                          className="text-xs text-muted-foreground hover:text-foreground pl-3 py-1 flex items-center gap-1"
+                        >
+                          <FolderOpen className="h-3 w-3" />
+                          오답노트
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </div>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

@@ -10,6 +10,7 @@ import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
 import Home from "./pages/Home";
+import WrongNoteSubject from "./pages/WrongNoteSubject";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
               <main className="flex-1 pt-12">
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/wrong-notes/:subjectName" element={<WrongNoteSubject />} />
                   <Route path="/subject/:subjectName" element={<Subject />} />
                   <Route path="/book/:subjectName/:bookName" element={<Book />} />
                   <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
