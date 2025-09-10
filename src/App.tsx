@@ -10,7 +10,6 @@ import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
 import Home from "./pages/Home";
-import PDFAnnotator from "./pages/PDFAnnotator";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,7 +39,6 @@ const App = () => (
               <main className="flex-1 pt-12">
                 <Routes>
                   <Route path="/" element={<Home />} />
-                  <Route path="/pdf-annotator" element={<PDFAnnotator />} />
                   <Route path="/subject/:subjectName" element={<Subject />} />
                   <Route path="/book/:subjectName/:bookName" element={<Book />} />
                   <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />

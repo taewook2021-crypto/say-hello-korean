@@ -9,10 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Download, Printer, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { downloadPDF, printPDF } from "@/components/pdf-generator";
-import { PdfTemplateSelector, PdfTemplate } from "@/components/PdfTemplateSelector";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
 import { FlashCard } from "@/components/study/FlashCard";
@@ -47,12 +45,6 @@ const Index = () => {
   const [showStudyModal, setShowStudyModal] = useState(false);
   const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
   const [showOCRModal, setShowOCRModal] = useState(false);
-  const [pdfOptions, setPdfOptions] = useState({
-    includeWrongAnswers: true,
-    unresolvedOnly: false
-  });
-  const [showPdfTemplateSelector, setShowPdfTemplateSelector] = useState(false);
-  const [selectedPdfTemplates, setSelectedPdfTemplates] = useState<{cover?: PdfTemplate, paper?: PdfTemplate}>({});
   const { toast } = useToast();
   
   const subject = decodeURIComponent(subjectName || '');
@@ -302,147 +294,6 @@ const Index = () => {
     }));
   };
 
-  const handleTemplateSelect = (coverTemplate: PdfTemplate, paperTemplate: PdfTemplate) => {
-    console.log('Template selected in Notes.tsx:', paperTemplate.id);
-    setSelectedPdfTemplates({ cover: coverTemplate, paper: paperTemplate });
-    setShowPdfTemplateSelector(false);
-    // 선택된 템플릿을 직접 사용하여 즉시 다운로드 실행
-    executeDownloadWithTemplate(paperTemplate.id);
-  };
-
-  const executeDownloadWithTemplate = async (templateId: string) => {
-    const filteredNotes = pdfOptions.unresolvedOnly 
-      ? notes.filter(note => !note.isResolved)
-      : notes;
-
-    if (filteredNotes.length === 0) {
-      toast({
-        title: "알림",
-        description: pdfOptions.unresolvedOnly 
-          ? "미해결 오답노트가 없습니다."
-          : "내보낼 오답노트가 없습니다.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!subject || !book || !chapter) {
-      toast({
-        title: "오류",
-        description: "과목, 교재, 단원 정보가 필요합니다.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const options = {
-      ...pdfOptions,
-      paperTemplate: templateId
-    };
-    
-    console.log('Executing download with template:', templateId);
-    const success = await downloadPDF(filteredNotes, subject, book, chapter, options);
-    if (success) {
-      toast({
-        title: "성공",
-        description: "PDF 파일이 다운로드되었습니다.",
-      });
-    } else {
-      toast({
-        title: "오류",
-        description: "PDF 생성에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDownloadPDF = async (options = pdfOptions) => {
-    // 항상 템플릿 선택기를 먼저 보여줌
-    setShowPdfTemplateSelector(true);
-  };
-
-  const proceedWithDownload = async (options = pdfOptions) => {
-    const filteredNotes = options.unresolvedOnly 
-      ? notes.filter(note => !note.isResolved)
-      : notes;
-
-    if (filteredNotes.length === 0) {
-      toast({
-        title: "알림",
-        description: options.unresolvedOnly 
-          ? "미해결 오답노트가 없습니다."
-          : "내보낼 오답노트가 없습니다.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!subject || !book || !chapter) {
-      toast({
-        title: "오류",
-        description: "과목, 교재, 단원 정보가 필요합니다.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const extendedOptions = {
-      ...options,
-      paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
-    };
-
-    const success = await downloadPDF(filteredNotes, subject, book, chapter, extendedOptions);
-    if (success) {
-      toast({
-        title: "성공",
-        description: "PDF 파일이 다운로드되었습니다.",
-      });
-    } else {
-      toast({
-        title: "오류",
-        description: "PDF 생성에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handlePrintPDF = async (options = pdfOptions) => {
-    const filteredNotes = options.unresolvedOnly 
-      ? notes.filter(note => !note.isResolved)
-      : notes;
-
-    if (filteredNotes.length === 0) {
-      toast({
-        title: "알림",
-        description: options.unresolvedOnly 
-          ? "미해결 오답노트가 없습니다."
-          : "인쇄할 오답노트가 없습니다.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!subject || !book || !chapter) {
-      toast({
-        title: "오류",
-        description: "과목, 교재, 단원 정보가 필요합니다.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const success = await printPDF(filteredNotes, subject, book, chapter, {
-      ...options,
-      paperTemplate: selectedPdfTemplates.paper?.id || 'lined-paper'
-    });
-    if (!success) {
-      toast({
-        title: "오류",
-        description: "PDF 인쇄에 실패했습니다.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const renderEditableField = (note: WrongNote, field: keyof WrongNote, label: string, isTextarea = false, showEditButton = true) => {
     const noteId = note.id;
@@ -617,68 +468,6 @@ const Index = () => {
               <Brain className="h-4 w-4" />
               복습하기
             </Button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button 
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  disabled={notes.length === 0}
-                >
-                  <Settings className="h-4 w-4" />
-                  PDF 옵션
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>PDF 생성 옵션</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="includeWrongAnswers"
-                      checked={pdfOptions.includeWrongAnswers}
-                      onCheckedChange={(checked) => 
-                        setPdfOptions(prev => ({ 
-                          ...prev, 
-                          includeWrongAnswers: checked as boolean 
-                        }))
-                      }
-                    />
-                    <Label htmlFor="includeWrongAnswers">내가 작성한 답 포함</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="unresolvedOnly"
-                      checked={pdfOptions.unresolvedOnly}
-                      onCheckedChange={(checked) => 
-                        setPdfOptions(prev => ({ 
-                          ...prev, 
-                          unresolvedOnly: checked as boolean 
-                        }))
-                      }
-                    />
-                    <Label htmlFor="unresolvedOnly">미해결 문제만 인쇄</Label>
-                  </div>
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button 
-                    onClick={() => handleDownloadPDF(pdfOptions)}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    PDF 다운로드
-                  </Button>
-                  <Button 
-                    onClick={() => handlePrintPDF(pdfOptions)}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Printer className="h-4 w-4" />
-                    인쇄하기
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
@@ -979,21 +768,6 @@ const Index = () => {
           </DialogContent>
         </Dialog>
 
-        {/* PDF 템플릿 선택기 모달 */}
-        <Dialog open={showPdfTemplateSelector} onOpenChange={setShowPdfTemplateSelector}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>PDF 템플릿 선택</DialogTitle>
-            </DialogHeader>
-            <div className="mt-6">
-              <PdfTemplateSelector
-                onSelect={handleTemplateSelect}
-                selectedCover={selectedPdfTemplates.cover}
-                selectedPaper={selectedPdfTemplates.paper}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* OCR 카메라 모달 */}
         <OCRCamera 

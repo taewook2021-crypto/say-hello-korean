@@ -70,7 +70,6 @@ export function AppSidebar() {
 
   const mainItems = [
     { title: "홈", url: "/", icon: Home },
-    { title: "PDF 필기", url: "/pdf-annotator", icon: FileText },
   ];
 
   const isActive = (path: string) => currentPath === path;
