@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +15,7 @@ interface PDFAttachmentModalProps {
 }
 
 export default function PDFAttachmentModal({ children }: PDFAttachmentModalProps) {
+  const navigate = useNavigate();
   const { subjects } = useData();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -74,6 +76,9 @@ export default function PDFAttachmentModal({ children }: PDFAttachmentModalProps
       // 입력 필드 리셋
       const fileInput = document.getElementById('pdf-file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
+
+      // PDF 뷰어 페이지로 이동하여 업로드된 파일 열기
+      navigate(`/pdf-annotator?file=${encodeURIComponent(filePath)}&subject=${encodeURIComponent(selectedSubject)}`);
 
     } catch (error) {
       console.error('PDF 업로드 에러:', error);

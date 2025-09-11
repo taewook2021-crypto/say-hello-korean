@@ -1,17 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, Download, Trash2, Edit3, Square, Circle } from 'lucide-react';
 import PDFViewer from '@/components/PDFViewer';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export default function PDFAnnotator() {
+  const [searchParams] = useSearchParams();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [numPages, setNumPages] = useState(0);
   const [isAnnotationMode, setIsAnnotationMode] = useState(true);
+  const [isLoadingStorageFile, setIsLoadingStorageFile] = useState(false);
+
+  // URL 파라미터에서 파일 경로 확인 및 자동 로드
+  useEffect(() => {
+    const filePath = searchParams.get('file');
+    const subject = searchParams.get('subject');
+    
+    if (filePath && subject) {
+      loadPDFFromStorage(filePath, subject);
+    }
+  }, [searchParams]);
+
+  // Storage에서 PDF 파일 로드
+  const loadPDFFromStorage = async (filePath: string, subject: string) => {
+    setIsLoadingStorageFile(true);
+    try {
+      // Storage에서 파일 다운로드
+      const { data, error } = await supabase.storage
+        .from('pdfs')
+        .download(filePath);
+
+      if (error) throw error;
+
+      // Blob을 File 객체로 변환
+      const file = new File([data], filePath.split('/').pop() || 'document.pdf', {
+        type: 'application/pdf'
+      });
+
+      setSelectedFile(file);
+      toast.success(`${subject} 과목의 PDF가 로드되었습니다.`);
+    } catch (error) {
+      console.error('PDF 로드 에러:', error);
+      toast.error('PDF 파일을 불러오는데 실패했습니다.');
+    } finally {
+      setIsLoadingStorageFile(false);
+    }
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -52,20 +92,28 @@ export default function PDFAnnotator() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileSelect}
-                  className="cursor-pointer"
-                />
-                {selectedFile && (
-                  <div className="mt-2 p-2 bg-green-50 rounded text-sm">
-                    <p className="font-medium text-green-800">{selectedFile.name}</p>
-                    <p className="text-green-600">
-                      {Math.round(selectedFile.size / 1024)}KB
-                      {numPages > 0 && ` • ${numPages}페이지`}
-                    </p>
+                {isLoadingStorageFile ? (
+                  <div className="p-4 bg-blue-50 rounded text-sm">
+                    <p className="text-blue-800">업로드된 PDF를 불러오는 중...</p>
                   </div>
+                ) : (
+                  <>
+                    <Input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileSelect}
+                      className="cursor-pointer"
+                    />
+                    {selectedFile && (
+                      <div className="mt-2 p-2 bg-green-50 rounded text-sm">
+                        <p className="font-medium text-green-800">{selectedFile.name}</p>
+                        <p className="text-green-600">
+                          {Math.round(selectedFile.size / 1024)}KB
+                          {numPages > 0 && ` • ${numPages}페이지`}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
