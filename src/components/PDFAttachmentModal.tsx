@@ -37,9 +37,12 @@ export default function PDFAttachmentModal({ children }: PDFAttachmentModalProps
     setIsUploading(true);
 
     try {
-      // 파일 경로 생성 (과목만 사용)
-      const fileName = `${Date.now()}_${selectedFile.name}`;
-      const filePath = `${selectedSubject}/${fileName}`;
+      // 파일 경로 생성 (URL-safe하게 변경)
+      const safeSubjectName = encodeURIComponent(selectedSubject).replace(/%/g, '_');
+      const safeFileName = encodeURIComponent(selectedFile.name).replace(/%/g, '_');
+      const timestamp = Date.now();
+      const fileName = `${timestamp}_${safeFileName}`;
+      const filePath = `${safeSubjectName}/${fileName}`;
 
       // Storage에 파일 업로드
       const { data: uploadData, error: uploadError } = await supabase.storage
