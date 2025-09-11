@@ -29,11 +29,18 @@ export default function PDFAnnotator() {
     const filePath = searchParams.get('file');
     const subject = searchParams.get('subject');
     
-    console.log('URL 파라미터 확인:', { filePath, subject });
+    console.log('=== URL 파라미터 확인 ===');
+    console.log('Raw filePath:', filePath);
+    console.log('Raw subject:', subject);
+    console.log('Decoded filePath:', filePath ? decodeURIComponent(filePath) : null);
+    console.log('Decoded subject:', subject ? decodeURIComponent(subject) : null);
     
     if (filePath && subject) {
       console.log('자동 PDF 로드 시작');
-      loadPDFFromStorage(filePath, subject);
+      const decodedFilePath = decodeURIComponent(filePath);
+      const decodedSubject = decodeURIComponent(subject);
+      console.log('디코딩된 파일 경로:', decodedFilePath);
+      loadPDFFromStorage(decodedFilePath, decodedSubject);
     } else {
       console.log('URL 파라미터 없음 - 수동 업로드 모드');
     }
