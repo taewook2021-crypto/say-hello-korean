@@ -56,6 +56,20 @@ export default function PDFAnnotator() {
     
     try {
       console.log('Storage에서 다운로드 시도...');
+      console.log('버킷: pdfs');
+      console.log('전체 파일 경로:', filePath);
+      
+      // 파일 경로 디버깅 - 실제 Storage에 있는 파일 목록 확인
+      console.log('=== Storage 파일 목록 확인 ===');
+      const { data: fileList, error: listError } = await supabase.storage
+        .from('pdfs')
+        .list(subject, { limit: 10 });
+      
+      if (listError) {
+        console.error('파일 목록 조회 에러:', listError);
+      } else {
+        console.log(`${subject} 폴더의 파일 목록:`, fileList);
+      }
       
       // Storage에서 파일 다운로드
       const { data, error } = await supabase.storage
@@ -63,7 +77,10 @@ export default function PDFAnnotator() {
         .download(filePath);
 
       if (error) {
-        console.error('Storage 다운로드 에러:', error);
+        console.error('=== Storage 다운로드 에러 상세 ===');
+        console.error('에러 전체:', error);
+        console.error('에러 메시지:', error.message);
+        console.error('시도한 파일 경로:', filePath);
         throw new Error(`Storage 에러: ${error.message}`);
       }
 
