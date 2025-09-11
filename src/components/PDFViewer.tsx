@@ -8,14 +8,15 @@ import BrowserPDFViewer from './BrowserPDFViewer';
 
 // PDF.js worker 설정 with fallback
 if (typeof window !== 'undefined') {
-  // 로컬 worker 파일 우선 사용
   try {
-    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-    console.log('PDF Worker 설정 완료: /pdf.worker.min.js');
+    // 더 안정적인 worker 설정
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+    console.log(`PDF Worker 설정 완료: unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`);
   } catch (error) {
-    console.warn('로컬 Worker 설정 실패, CDN 사용:', error);
-    // CDN fallback
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+    console.warn('Worker 설정 실패:', error);
+    // 로컬 파일로 fallback
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+    console.log('로컬 Worker로 fallback');
   }
 }
 
@@ -39,28 +40,36 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess, enableA
   const containerRef = useRef<HTMLDivElement>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+    console.log('PDF Document 로드 성공:', numPages, '페이지');
     setNumPages(numPages);
     setHasError(false);
     onLoadSuccess?.({ numPages });
     
     // PDF 로드 성공 시 필기 캔버스 초기화
     if (enableAnnotation) {
+      console.log('필기 캔버스 초기화 예약');
       setTimeout(initializeCanvas, 100);
     }
   }
 
   function onDocumentLoadError(error: Error) {
-    console.error('PDF 로딩 에러:', error);
+    console.error('=== PDF Document 로딩 에러 ===');
+    console.error('에러 상세:', error);
     console.error('파일 크기:', file?.size, 'bytes');
     console.error('파일 타입:', file?.type);
+    console.error('파일명:', file?.name);
+    
     setHasError(true);
     // react-pdf 실패 시 BrowserPDFViewer로 시도
+    console.log('BrowserPDFViewer로 fallback 시도');
     setUseReactPdf(false);
     setUseBrowserViewer(true);
   }
 
   function onDocumentLoadProgress({ loaded, total }: { loaded: number; total: number }) {
-    setLoadingProgress(Math.round((loaded / total) * 100));
+    const progress = Math.round((loaded / total) * 100);
+    console.log(`PDF 로딩 진행률: ${progress}% (${loaded}/${total} bytes)`);
+    setLoadingProgress(progress);
   }
 
   // 새 파일이 업로드될 때 에러 상태 리셋 및 뷰어 선택
