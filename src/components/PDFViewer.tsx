@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
+import * as fabric from 'fabric';
 import SimplePDFViewer from './SimplePDFViewer';
 import BrowserPDFViewer from './BrowserPDFViewer';
 
@@ -40,20 +41,29 @@ interface PDFViewerProps {
   zoom: number;
   rotation: number;
   onLoadSuccess?: (data: { numPages: number }) => void;
+  enableAnnotation?: boolean;
 }
 
-export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFViewerProps) {
+export default function PDFViewer({ file, zoom, rotation, onLoadSuccess, enableAnnotation = false }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [hasError, setHasError] = useState<boolean>(false);
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
   const [useBrowserViewer, setUseBrowserViewer] = useState<boolean>(false); // react-pdf를 먼저 사용
   const [useReactPdf, setUseReactPdf] = useState<boolean>(true); // react-pdf 우선 사용
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
     setHasError(false);
     onLoadSuccess?.({ numPages });
+    
+    // PDF 로드 성공 시 필기 캔버스 초기화
+    if (enableAnnotation) {
+      setTimeout(initializeCanvas, 100);
+    }
   }
 
   function onDocumentLoadError(error: Error) {
@@ -97,6 +107,73 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
     }
   }, [file]);
 
+  // 필기 캔버스 초기화
+  const initializeCanvas = () => {
+    if (!enableAnnotation || !canvasRef.current) return;
+
+    // 기존 캔버스가 있으면 제거
+    if (fabricCanvasRef.current) {
+      fabricCanvasRef.current.dispose();
+    }
+
+    // 새 Fabric 캔버스 생성
+    const canvas = new fabric.Canvas(canvasRef.current, {
+      width: 595,
+      height: 842,
+      isDrawingMode: true,
+    });
+
+    // 브러시 설정
+    canvas.freeDrawingBrush.width = 2;
+    canvas.freeDrawingBrush.color = '#ff0000';
+
+    fabricCanvasRef.current = canvas;
+
+    // 줌과 회전 적용
+    canvas.setZoom(zoom);
+    if (rotation !== 0) {
+      canvas.setViewportTransform([
+        Math.cos(rotation * Math.PI / 180),
+        Math.sin(rotation * Math.PI / 180),
+        -Math.sin(rotation * Math.PI / 180),
+        Math.cos(rotation * Math.PI / 180),
+        0,
+        0
+      ]);
+    }
+  };
+
+  // 줌이나 회전이 변경될 때 캔버스 업데이트
+  useEffect(() => {
+    if (fabricCanvasRef.current && enableAnnotation) {
+      const canvas = fabricCanvasRef.current;
+      canvas.setZoom(zoom);
+      
+      if (rotation !== 0) {
+        canvas.setViewportTransform([
+          Math.cos(rotation * Math.PI / 180),
+          Math.sin(rotation * Math.PI / 180),
+          -Math.sin(rotation * Math.PI / 180),
+          Math.cos(rotation * Math.PI / 180),
+          0,
+          0
+        ]);
+      } else {
+        canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+      }
+      canvas.renderAll();
+    }
+  }, [zoom, rotation, enableAnnotation]);
+
+  // 컴포넌트 언마운트 시 캔버스 정리
+  useEffect(() => {
+    return () => {
+      if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.dispose();
+      }
+    };
+  }, []);
+
   if (!file) {
     return (
       <div className="w-[595px] h-[842px] bg-white border flex items-center justify-center text-gray-500">
@@ -136,7 +213,8 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
 
   return (
     <div 
-      className="bg-white shadow-lg border"
+      ref={containerRef}
+      className="bg-white shadow-lg border relative"
       style={{
         transform: `scale(${zoom}) rotate(${rotation}deg)`,
         transformOrigin: 'center'
@@ -219,6 +297,18 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
             </div>
           }
         />
+        
+        {/* 필기 캔버스 레이어 */}
+        {enableAnnotation && (
+          <canvas
+            ref={canvasRef}
+            className="absolute top-0 left-0 pointer-events-auto z-10"
+            style={{
+              width: '595px',
+              height: '842px',
+            }}
+          />
+        )}
       </Document>
       
       {/* Page Navigation */}
