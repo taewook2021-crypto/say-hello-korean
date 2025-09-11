@@ -375,8 +375,8 @@ export type Database = {
       }
       pdf_attachments: {
         Row: {
-          book_name: string
-          chapter_name: string
+          book_name: string | null
+          chapter_name: string | null
           created_at: string
           file_name: string
           file_path: string
@@ -387,8 +387,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          book_name: string
-          chapter_name: string
+          book_name?: string | null
+          chapter_name?: string | null
           created_at?: string
           file_name: string
           file_path: string
@@ -399,8 +399,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          book_name?: string
-          chapter_name?: string
+          book_name?: string | null
+          chapter_name?: string | null
           created_at?: string
           file_name?: string
           file_path?: string
