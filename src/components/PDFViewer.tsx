@@ -2,37 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import * as fabric from 'fabric';
+import { Canvas as FabricCanvas } from 'fabric';
 import SimplePDFViewer from './SimplePDFViewer';
 import BrowserPDFViewer from './BrowserPDFViewer';
 
 // PDF.js worker 설정 with fallback
 if (typeof window !== 'undefined') {
-  // 여러 CDN으로 fallback 시도
-  const workerUrls = [
-    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`,
-    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`,
-    `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`,
-    // Legacy version for better compatibility
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-  ];
-  
-  let workerSet = false;
-  
-  // 첫 번째 성공하는 worker URL 사용
-  for (const url of workerUrls) {
-    try {
-      pdfjs.GlobalWorkerOptions.workerSrc = url;
-      workerSet = true;
-      console.log('PDF Worker 설정 완료:', url);
-      break;
-    } catch (error) {
-      console.warn('Worker URL 실패:', url, error);
-    }
-  }
-  
-  if (!workerSet) {
-    console.error('모든 PDF Worker URL 실패');
+  // 로컬 worker 파일 우선 사용
+  try {
+    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+    console.log('PDF Worker 설정 완료: /pdf.worker.min.js');
+  } catch (error) {
+    console.warn('로컬 Worker 설정 실패, CDN 사용:', error);
+    // CDN fallback
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
   }
 }
 
@@ -52,7 +35,7 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess, enableA
   const [useBrowserViewer, setUseBrowserViewer] = useState<boolean>(false); // react-pdf를 먼저 사용
   const [useReactPdf, setUseReactPdf] = useState<boolean>(true); // react-pdf 우선 사용
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fabricCanvasRef = useRef<fabric.Canvas | null>(null);
+  const fabricCanvasRef = useRef<FabricCanvas | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
@@ -117,15 +100,17 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess, enableA
     }
 
     // 새 Fabric 캔버스 생성
-    const canvas = new fabric.Canvas(canvasRef.current, {
+    const canvas = new FabricCanvas(canvasRef.current, {
       width: 595,
       height: 842,
       isDrawingMode: true,
     });
 
     // 브러시 설정
-    canvas.freeDrawingBrush.width = 2;
-    canvas.freeDrawingBrush.color = '#ff0000';
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.width = 2;
+      canvas.freeDrawingBrush.color = '#ff0000';
+    }
 
     fabricCanvasRef.current = canvas;
 

@@ -30,19 +30,28 @@ export default function PDFAnnotator() {
   // Storage에서 PDF 파일 로드
   const loadPDFFromStorage = async (filePath: string, subject: string) => {
     setIsLoadingStorageFile(true);
+    console.log('PDF 로드 시작:', filePath, subject);
+    
     try {
       // Storage에서 파일 다운로드
       const { data, error } = await supabase.storage
         .from('pdfs')
         .download(filePath);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Storage 다운로드 에러:', error);
+        throw error;
+      }
+
+      console.log('Storage에서 파일 다운로드 성공:', data);
 
       // Blob을 File 객체로 변환
-      const file = new File([data], filePath.split('/').pop() || 'document.pdf', {
+      const fileName = filePath.split('/').pop() || 'document.pdf';
+      const file = new File([data], fileName, {
         type: 'application/pdf'
       });
 
+      console.log('File 객체 생성:', file.name, file.size);
       setSelectedFile(file);
       toast.success(`${subject} 과목의 PDF가 로드되었습니다.`);
     } catch (error) {
@@ -223,13 +232,24 @@ export default function PDFAnnotator() {
             <Card className="h-full">
               <CardContent className="p-4">
                 <div className="flex justify-center items-center min-h-[600px] bg-gray-100 rounded-lg overflow-auto">
-                  <PDFViewer
-                    file={selectedFile}
-                    zoom={zoom}
-                    rotation={rotation}
-                    onLoadSuccess={(data) => setNumPages(data.numPages)}
-                    enableAnnotation={isAnnotationMode}
-                  />
+                  {selectedFile ? (
+                    <PDFViewer
+                      file={selectedFile}
+                      zoom={zoom}
+                      rotation={rotation}
+                      onLoadSuccess={(data) => setNumPages(data.numPages)}
+                      enableAnnotation={isAnnotationMode}
+                    />
+                  ) : isLoadingStorageFile ? (
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">PDF 파일을 불러오는 중...</p>
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      <p className="text-lg">PDF 파일을 업로드하거나 선택해주세요</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
