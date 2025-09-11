@@ -6,18 +6,11 @@ import { Canvas as FabricCanvas } from 'fabric';
 import SimplePDFViewer from './SimplePDFViewer';
 import BrowserPDFViewer from './BrowserPDFViewer';
 
-// PDF.js worker 설정 with fallback
+// PDF.js worker 설정 - 로컬 worker 우선 사용
 if (typeof window !== 'undefined') {
-  try {
-    // 더 안정적인 worker 설정
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
-    console.log(`PDF Worker 설정 완료: unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`);
-  } catch (error) {
-    console.warn('Worker 설정 실패:', error);
-    // 로컬 파일로 fallback
-    pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-    console.log('로컬 Worker로 fallback');
-  }
+  // Chrome 차단 문제 해결을 위해 로컬 worker 우선 사용
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+  console.log('PDF Worker 설정 완료: 로컬 worker 사용');
 }
 
 interface PDFViewerProps {
