@@ -47,7 +47,8 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [hasError, setHasError] = useState<boolean>(false);
   const [loadingProgress, setLoadingProgress] = useState<number>(0);
-  const [useBrowserViewer, setUseBrowserViewer] = useState<boolean>(true); // 기본적으로 브라우저 뷰어 사용
+  const [useBrowserViewer, setUseBrowserViewer] = useState<boolean>(false); // react-pdf를 먼저 사용
+  const [useReactPdf, setUseReactPdf] = useState<boolean>(true); // react-pdf 우선 사용
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -60,6 +61,9 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
     console.error('파일 크기:', file?.size, 'bytes');
     console.error('파일 타입:', file?.type);
     setHasError(true);
+    // react-pdf 실패 시 BrowserPDFViewer로 시도
+    setUseReactPdf(false);
+    setUseBrowserViewer(true);
   }
 
   function onDocumentLoadProgress({ loaded, total }: { loaded: number; total: number }) {
@@ -73,7 +77,8 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
       setPageNumber(1);
       setNumPages(0);
       setLoadingProgress(0);
-      setUseBrowserViewer(true); // 항상 브라우저 뷰어부터 시도
+      setUseReactPdf(true); // 항상 react-pdf부터 시도
+      setUseBrowserViewer(false);
       
       // 파일 크기 체크
       const fileSizeInMB = file.size / (1024 * 1024);
@@ -81,18 +86,14 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
       console.log(`  • 파일명: ${file.name}`);
       console.log(`  • 크기: ${fileSizeInMB.toFixed(2)}MB`);
       console.log(`  • 타입: ${file.type}`);
-      console.log(`  • 뷰어 전략: 3단계 fallback (BrowserPDFViewer → SimplePDFViewer → react-pdf)`);
+      console.log(`  • 뷰어 전략: 3단계 fallback (react-pdf → BrowserPDFViewer → SimplePDFViewer)`);
       
       if (fileSizeInMB > 200) {
-        // 200MB 초과 시 즉시 SimplePDFViewer 사용
-        console.warn(`[PDF Annotator] 매우 큰 PDF 파일 감지: ${fileSizeInMB.toFixed(2)}MB - SimplePDFViewer로 직접 처리`);
-        setUseBrowserViewer(false);
-        setHasError(true);
-      } else {
-        // 모든 파일에 대해 BrowserPDFViewer 우선 시도 (worker 문제 회피)
-        console.log(`[PDF Annotator] PDF 파일 (${fileSizeInMB.toFixed(2)}MB) - BrowserPDFViewer 우선 시도 (Worker 문제 회피)`);
-        setUseBrowserViewer(true);
+        // 200MB 초과 시에도 react-pdf부터 시도
+        console.warn(`[PDF Annotator] 매우 큰 PDF 파일 감지: ${fileSizeInMB.toFixed(2)}MB - react-pdf부터 시도`);
       }
+      
+      console.log(`[PDF Annotator] PDF 파일 (${fileSizeInMB.toFixed(2)}MB) - react-pdf 우선 시도`);
     }
   }, [file]);
 
@@ -108,15 +109,18 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
   }
 
 
-  // 브라우저 뷰어를 우선 사용
-  if (useBrowserViewer && !hasError) {
+  // react-pdf를 우선 사용
+  if (useReactPdf && !hasError) {
+    // react-pdf Document/Page 렌더링이 여기서 실행됨
+    console.log('[PDF Annotator] react-pdf로 표시 중 (1차 시도)');
+  } else if (useBrowserViewer && !useReactPdf) {
     return (
       <BrowserPDFViewer 
         file={file} 
         zoom={zoom} 
         rotation={rotation} 
         onError={() => {
-          console.log('[PDF Annotator] BrowserPDFViewer 실패 - SimplePDFViewer로 2차 시도');
+          console.log('[PDF Annotator] BrowserPDFViewer 실패 - SimplePDFViewer로 3차 시도');
           setUseBrowserViewer(false);
           setHasError(true);
         }}
@@ -124,9 +128,9 @@ export default function PDFViewer({ file, zoom, rotation, onLoadSuccess }: PDFVi
     );
   }
 
-  // 에러가 발생한 경우 SimplePDFViewer 사용
-  if (hasError) {
-    console.log('[PDF Annotator] SimplePDFViewer로 표시 중 (2차 fallback)');
+  // 모든 뷰어가 실패한 경우 SimplePDFViewer 사용
+  if (hasError && !useBrowserViewer) {
+    console.log('[PDF Annotator] SimplePDFViewer로 표시 중 (최종 fallback)');
     return <SimplePDFViewer file={file} zoom={zoom} rotation={rotation} />;
   }
 
