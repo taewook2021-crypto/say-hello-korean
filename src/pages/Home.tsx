@@ -6,13 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit } from "lucide-react";
+import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { useToast } from "@/hooks/use-toast";
+import PDFAttachmentModal from "@/components/PDFAttachmentModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useData } from "@/contexts/DataContext";
-
 
 const Home = () => {
   const navigate = useNavigate();
@@ -117,14 +117,15 @@ const Home = () => {
             <Plus className="h-4 w-4 mr-2" />
             새 과목 추가
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/pdf-annotator')}
-            className="h-12"
-          >
-            <BookOpen className="h-4 w-4 mr-2" />
-            PDF 필기
-          </Button>
+          <PDFAttachmentModal>
+            <Button 
+              variant="outline" 
+              className="h-12"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              PDF 첨부
+            </Button>
+          </PDFAttachmentModal>
         </div>
       </div>
 
