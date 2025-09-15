@@ -133,7 +133,6 @@ const Home = () => {
             <ThemeToggle />
           </div>
         </div>
-
       </div>
 
       {/* Search Results or Today's Reviews */}
@@ -153,34 +152,46 @@ const Home = () => {
             </div>
             
             {searchResults.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-4">
                 {searchResults.map((note) => (
-                  <div key={note.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
-                        {note.subject_name} • {note.book_name} • {note.chapter_name}
-                      </div>
-                      <h3 className="font-medium text-foreground line-clamp-2">
-                        {note.question}
-                      </h3>
-                      {note.explanation && (
-                        <p className="text-sm text-muted-foreground line-clamp-3">
-                          {note.explanation}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between pt-2">
+                  <div key={note.id} className="p-6 border rounded-lg hover:bg-muted/30 transition-colors">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          {note.subject_name} • {note.book_name} • {note.chapter_name}
+                        </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           note.is_resolved 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
+                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                         }`}>
-                          {note.is_resolved ? '해결됨' : '미해결'}
+                          {note.is_resolved ? "해결됨" : "미해결"}
                         </span>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="font-medium text-foreground text-sm mb-2">문제</h4>
+                          <p className="text-foreground leading-relaxed">{note.question}</p>
+                        </div>
+                        
+                        {note.explanation && (
+                          <div>
+                            <h4 className="font-medium text-foreground text-sm mb-2">해설</h4>
+                            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{note.explanation}</p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-3 border-t">
+                        <div className="text-xs text-muted-foreground">
+                          생성일: {new Date(note.created_at).toLocaleDateString("ko-KR")}
+                        </div>
                         <Link 
                           to={`/subject/${encodeURIComponent(note.subject_name)}/book/${encodeURIComponent(note.book_name)}`}
-                          className="text-xs text-primary hover:underline"
+                          className="text-sm text-primary hover:underline"
                         >
-                          상세 보기
+                          교재로 이동
                         </Link>
                       </div>
                     </div>
@@ -200,169 +211,171 @@ const Home = () => {
         )}
       </div>
 
-      {/* Subjects Section */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-semibold text-foreground">전체 과목</h2>
-            <Button 
-              onClick={() => setShowAddDialog(true)}
-              size="sm"
-              variant="outline"
-              className="h-8"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              새 과목
-            </Button>
+      {/* Subjects Section - Hide when search is active */}
+      {!isSearchActive && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-semibold text-foreground">전체 과목</h2>
+              <Button 
+                onClick={() => setShowAddDialog(true)}
+                size="sm"
+                variant="outline"
+                className="h-8"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                새 과목
+              </Button>
+            </div>
+            <span className="text-sm text-muted-foreground">{subjects.length}개</span>
           </div>
-          <span className="text-sm text-muted-foreground">{subjects.length}개</span>
-        </div>
-        
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="flex items-center gap-4 p-4 border rounded-lg animate-pulse">
-                <div className="w-8 h-8 bg-muted rounded"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-5 bg-muted rounded w-1/4"></div>
-                  <div className="h-4 bg-muted rounded w-1/2"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {subjects.map((subject) => (
-              <div key={subject} className="group">
-                <div className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleSubject(subject)}
-                    className="p-1 h-8 w-8"
-                  >
-                    <ChevronRight 
-                      className={`h-4 w-4 transition-transform ${
-                        expandedSubject === subject ? 'rotate-90' : ''
-                      }`} 
-                    />
-                  </Button>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground text-lg">{subject}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {subjectBooks[subject] ? `${subjectBooks[subject].length}개의 책` : '책을 추가해보세요'}
-                    </p>
+          
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-4 p-4 border rounded-lg animate-pulse">
+                  <div className="w-8 h-8 bg-muted rounded"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 bg-muted rounded w-1/4"></div>
+                    <div className="h-4 bg-muted rounded w-1/2"></div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openDeleteDialog('subject', subject)}>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          삭제
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    
-                    <Link 
-                      to={`/subject/${encodeURIComponent(subject)}`}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {subjects.map((subject) => (
+                <div key={subject} className="group">
+                  <div className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleSubject(subject)}
+                      className="p-1 h-8 w-8"
                     >
-                      <Button variant="ghost" size="sm">
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Expanded Books */}
-                {expandedSubject === subject && (
-                  <div className="ml-12 mt-2 space-y-1">
-                    {booksLoading[subject] ? (
-                      <div className="space-y-2">
-                        {Array.from({ length: 2 }).map((_, index) => (
-                          <div key={index} className="h-8 bg-muted rounded animate-pulse"></div>
-                        ))}
-                      </div>
-                    ) : (
-                      <>
-                        {subjectBooks[subject]?.map((book) => {
-                          const bookLink = `/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`;
-                          console.log('Book link generated:', bookLink, 'for subject:', subject, 'book:', book);
-                          return (
-                          <div key={book} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
-                            <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                            <Link
-                              to={bookLink}
-                              className="text-sm text-foreground flex-1 hover:underline"
-                            >
-                              {book}
-                            </Link>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/book:opacity-100 transition-opacity">
-                                  <MoreVertical className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openDeleteDialog('book', book, subject)}>
-                                  <Trash2 className="h-3 w-3 mr-2" />
-                                  삭제
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Link to={bookLink}>
-                              <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover/book:opacity-100 transition-opacity" />
-                            </Link>
-                          </div>
-                          );
-                        })}
-                        
-                        {/* Add Book Button */}
-                        <div className="p-3">
-                          <Button 
-                            onClick={() => openAddBookDialog(subject)}
-                            variant="outline"
-                            size="sm"
-                            className="w-full h-8 text-xs"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            책 추가
+                      <ChevronRight 
+                        className={`h-4 w-4 transition-transform ${
+                          expandedSubject === subject ? 'rotate-90' : ''
+                        }`} 
+                      />
+                    </Button>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground text-lg">{subject}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {subjectBooks[subject] ? `${subjectBooks[subject].length}개의 책` : '책을 추가해보세요'}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
                           </Button>
-                        </div>
-                        
-                        {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
-                          <p className="text-sm text-muted-foreground italic p-3">
-                            등록된 책이 없습니다
-                          </p>
-                        )}
-                      </>
-                    )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openDeleteDialog('subject', subject)}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            삭제
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <Link 
+                        to={`/subject/${encodeURIComponent(subject)}`}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Button variant="ghost" size="sm">
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
-            
-            {subjects.length === 0 && (
-              <div className="text-center py-12">
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">아직 과목이 없어요</h3>
-                <p className="text-muted-foreground mb-4">첫 번째 과목을 추가해서 학습을 시작해보세요!</p>
-                  <Button onClick={() => setShowAddDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  과목 추가하기
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+
+                  {/* Expanded Books */}
+                  {expandedSubject === subject && (
+                    <div className="ml-12 mt-2 space-y-1">
+                      {booksLoading[subject] ? (
+                        <div className="space-y-2">
+                          {Array.from({ length: 2 }).map((_, index) => (
+                            <div key={index} className="h-8 bg-muted rounded animate-pulse"></div>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          {subjectBooks[subject]?.map((book) => {
+                            const bookLink = `/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`;
+                            console.log('Book link generated:', bookLink, 'for subject:', subject, 'book:', book);
+                            return (
+                            <div key={book} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
+                              <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <Link
+                                to={bookLink}
+                                className="text-sm text-foreground flex-1 hover:underline"
+                              >
+                                {book}
+                              </Link>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/book:opacity-100 transition-opacity">
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => openDeleteDialog('book', book, subject)}>
+                                    <Trash2 className="h-3 w-3 mr-2" />
+                                    삭제
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              <Link to={bookLink}>
+                                <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover/book:opacity-100 transition-opacity" />
+                              </Link>
+                            </div>
+                            );
+                          })}
+                          
+                          {/* Add Book Button */}
+                          <div className="p-3">
+                            <Button 
+                              onClick={() => openAddBookDialog(subject)}
+                              variant="outline"
+                              size="sm"
+                              className="w-full h-8 text-xs"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              책 추가
+                            </Button>
+                          </div>
+                          
+                          {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
+                            <p className="text-sm text-muted-foreground italic p-3">
+                              등록된 책이 없습니다
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {subjects.length === 0 && (
+                <div className="text-center py-12">
+                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-2">아직 과목이 없어요</h3>
+                  <p className="text-muted-foreground mb-4">첫 번째 과목을 추가해서 학습을 시작해보세요!</p>
+                    <Button onClick={() => setShowAddDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    과목 추가하기
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Subject Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
