@@ -44,7 +44,46 @@ serve(async (req) => {
 - K-IFRS 제1001호 (재무제표 표시): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1001
 - K-IFRS 제1002호 (재고자산): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1002  
 - K-IFRS 제1007호 (현금흐름표): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1007
-→ 재무제표 표시, 재고자산, 현금흐름표 관련 질문 시 반드시 위 사이트를 우선 참고하여 답변한다.
+- K-IFRS 제1008호 (회계정책, 회계추정치 변경과 오류): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1008
+- K-IFRS 제1010호 (보고기간후사건): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1010
+- K-IFRS 제1012호 (법인세): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1012
+- K-IFRS 제1016호 (유형자산): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1016
+- K-IFRS 제1019호 (종업원급여): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1019
+- K-IFRS 제1020호 (정부보조금의 회계처리와 정부지원의 공시): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1020
+- K-IFRS 제1021호 (환율변동효과): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1021
+- K-IFRS 제1023호 (차입원가): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1023
+- K-IFRS 제1024호 (특수관계자 공시): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1024
+- K-IFRS 제1026호 (퇴직급여제도에 의한 회계처리와 보고): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1026
+- K-IFRS 제1027호 (별도재무제표): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1027
+- K-IFRS 제1028호 (관계기업과 공동기업에 대한 투자): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1028
+- K-IFRS 제1029호 (초인플레이션 경제에서의 재무보고): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1029
+- K-IFRS 제1032호 (금융상품: 표시): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1032
+- K-IFRS 제1033호 (주당이익): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1033
+- K-IFRS 제1034호 (중간재무보고): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1034
+- K-IFRS 제1036호 (자산손상): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1036
+- K-IFRS 제1037호 (충당부채, 우발부채 및 우발자산): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1037
+- K-IFRS 제1038호 (무형자산): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1038
+- K-IFRS 제1039호 (금융상품: 인식과 측정): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1039
+- K-IFRS 제1040호 (투자부동산): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1040
+- K-IFRS 제1041호 (농림어업): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1041
+- K-IFRS 제1101호 (한국채택국제회계기준의 최초채택): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1101
+- K-IFRS 제1102호 (주식기준보상): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1102
+- K-IFRS 제1103호 (사업결합): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1103
+- K-IFRS 제1104호 (보험계약): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1104
+- K-IFRS 제1105호 (매각예정비유동자산과 중단영업): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1105
+- K-IFRS 제1106호 (광물자원의 탐사와 평가): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1106
+- K-IFRS 제1107호 (금융상품: 공시): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1107
+- K-IFRS 제1108호 (영업부문): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1108
+- K-IFRS 제1109호 (금융상품): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1109
+- K-IFRS 제1110호 (연결재무제표): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1110
+- K-IFRS 제1111호 (공동약정): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1111
+- K-IFRS 제1112호 (타 기업에 대한 지분의 공시): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1112
+- K-IFRS 제1113호 (공정가치측정): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1113
+- K-IFRS 제1114호 (규제이연계정): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1114
+- K-IFRS 제1115호 (고객과의 계약에서 생기는 수익): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1115
+- K-IFRS 제1116호 (리스): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1116
+- K-IFRS 제1117호 (보험계약): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1117
+→ 각 기준서 관련 질문 시 반드시 해당 samili.com 사이트를 우선 참고하여 답변한다.
 
 ──────────────────────────────
 [2] 세법
