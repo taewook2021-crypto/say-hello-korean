@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useData } from "@/contexts/DataContext";
+import { useSearch } from "@/contexts/SearchContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -30,6 +32,7 @@ const Home = () => {
   
   const { toast } = useToast();
   const { subjects, subjectBooks, loading, refreshBooksForSubject, addSubject, deleteSubject, deleteBook, addBook } = useData();
+  const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
 
   const loadBooksForSubject = async (subjectName: string) => {
     if (subjectBooks[subjectName]) return;
@@ -133,9 +136,68 @@ const Home = () => {
 
       </div>
 
-      {/* Today's Reviews */}
+      {/* Search Results or Today's Reviews */}
       <div className="mb-12">
-        <TodayReviews />
+        {isSearchActive ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground">검색 결과</h2>
+                <p className="text-muted-foreground">
+                  "{searchQuery}" ({searchType === 'subject' ? '과목' : searchType === 'book' ? '교재' : '단원'}) 검색 결과 {searchResults.length}개
+                </p>
+              </div>
+              <Button variant="outline" onClick={clearSearch}>
+                검색 초기화
+              </Button>
+            </div>
+            
+            {searchResults.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {searchResults.map((note) => (
+                  <div key={note.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        {note.subject_name} • {note.book_name} • {note.chapter_name}
+                      </div>
+                      <h3 className="font-medium text-foreground line-clamp-2">
+                        {note.question}
+                      </h3>
+                      {note.explanation && (
+                        <p className="text-sm text-muted-foreground line-clamp-3">
+                          {note.explanation}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between pt-2">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          note.is_resolved 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        }`}>
+                          {note.is_resolved ? '해결됨' : '미해결'}
+                        </span>
+                        <Link 
+                          to={`/subject/${encodeURIComponent(note.subject_name)}/book/${encodeURIComponent(note.book_name)}`}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          상세 보기
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">검색 결과가 없습니다</h3>
+                <p className="text-muted-foreground">다른 검색어로 시도해보세요.</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <TodayReviews />
+        )}
       </div>
 
       {/* Subjects Section */}

@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useData } from "@/contexts/DataContext";
+import { SearchBar } from "@/components/SearchBar";
+import { useSearch } from "@/contexts/SearchContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -26,6 +29,7 @@ export function AppSidebar() {
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   
   const { subjects, subjectBooks, loading, refreshBooksForSubject } = useData();
+  const { setSearchState } = useSearch();
 
   const toggleSubject = async (subject: string) => {
     const newExpanded = new Set(expandedSubjects);
@@ -41,6 +45,53 @@ export function AppSidebar() {
     }
     
     setExpandedSubjects(newExpanded);
+  };
+
+  const handleSearch = async (query: string, type: 'subject' | 'book' | 'chapter') => {
+    try {
+      // Search for wrong notes based on the search type and query
+      let searchResults = [];
+      
+      if (type === 'subject') {
+        // Search by subject name
+        const { data, error } = await supabase
+          .from('wrong_notes')
+          .select('*')
+          .ilike('subject_name', `%${query}%`);
+        
+        if (error) throw error;
+        searchResults = data || [];
+      } else if (type === 'book') {
+        // Search by book name
+        const { data, error } = await supabase
+          .from('wrong_notes')
+          .select('*')
+          .ilike('book_name', `%${query}%`);
+        
+        if (error) throw error;
+        searchResults = data || [];
+      } else if (type === 'chapter') {
+        // Search by chapter name
+        const { data, error } = await supabase
+          .from('wrong_notes')
+          .select('*')
+          .ilike('chapter_name', `%${query}%`);
+        
+        if (error) throw error;
+        searchResults = data || [];
+      }
+
+      // Update search context
+      setSearchState({
+        isSearchActive: true,
+        searchQuery: query,
+        searchType: type,
+        searchResults,
+      });
+      
+    } catch (error) {
+      console.error('Search error:', error);
+    }
   };
 
   const mainItems = [
@@ -81,6 +132,18 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Search Section */}
+        {!collapsed && (
+          <SidebarGroup className="mt-6">
+            <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground mb-2">
+              검색
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SearchBar onSearch={handleSearch} />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Subjects */}
         {!collapsed && (
