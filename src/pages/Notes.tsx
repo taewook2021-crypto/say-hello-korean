@@ -18,7 +18,7 @@ import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
-
+import { TemplateDocumentGenerator } from "@/components/study/TemplateDocumentGenerator";
 import OCRCamera from "@/components/OCRCamera";
 import { useGPTChat } from "@/hooks/useGPTChat";
 
@@ -594,15 +594,23 @@ export default function Notes() {
         </div>
       </div>
 
-      {/* 학습 모드 선택 */}
-      <StudyModeSelector 
-        noteCount={notes.length}
-        onModeSelect={(mode) => {
-          if (mode === 'flashcard') handleStudyModeChange('flashcard');
-          else if (mode === 'multiple-choice') handleStudyModeChange('quiz');
-          else if (mode === 'subjective') handleStudyModeChange('subjective');
-        }}
-      />
+      {/* 학습 모드 선택 및 문서 생성 */}
+      <div className="flex gap-2 flex-wrap">
+        <StudyModeSelector 
+          noteCount={notes.length}
+          onModeSelect={(mode) => {
+            if (mode === 'flashcard') handleStudyModeChange('flashcard');
+            else if (mode === 'multiple-choice') handleStudyModeChange('quiz');
+            else if (mode === 'subjective') handleStudyModeChange('subjective');
+          }}
+        />
+        <TemplateDocumentGenerator 
+          notes={notes}
+          subject={decodedSubject}
+          book={decodedBook}
+          chapter={decodedChapter}
+        />
+      </div>
       {showAddForm && (
         <Card>
           <CardHeader>
