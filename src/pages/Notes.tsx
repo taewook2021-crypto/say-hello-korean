@@ -100,10 +100,19 @@ export default function Notes() {
   };
 
   const handleAddNote = async () => {
-    if (!newNote.question.trim() || !subject || !book || !chapter) {
+    if (!newNote.question.trim()) {
       toast({
         title: "필수 입력",
         description: "문제를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!decodedSubject || !decodedBook || !decodedChapter) {
+      toast({
+        title: "경로 오류",
+        description: "과목, 책, 챕터 정보가 올바르지 않습니다.",
         variant: "destructive",
       });
       return;
