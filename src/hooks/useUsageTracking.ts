@@ -58,11 +58,15 @@ export function useUsageTracking() {
 
         // 로그인 기능이 없으므로 로컬 스토리지에서 플랜 정보 읽기 (임시)
         const savedPlan = localStorage.getItem('currentPlan');
+        console.log('Saved plan from localStorage:', savedPlan);
+        
         if (savedPlan) {
           const dbTier = savedPlan === '무료' ? 'free' : 
                         savedPlan === '베이직' ? 'basic' : 'pro';
+          console.log('Converted tier:', dbTier);
           setCurrentTier(dbTier);
         } else {
+          console.log('No saved plan, using default: free');
           setCurrentTier('free'); // 기본값
         }
       } catch (error) {
@@ -146,8 +150,13 @@ export function useUsageTracking() {
 
   // Get allowed models for current tier
   const getAllowedModels = useCallback(() => {
+    console.log('Getting allowed models for tier:', currentTier);
+    console.log('Available subscription limits:', subscriptionLimits);
     const tierLimits = subscriptionLimits.find(l => l.tier_name === currentTier);
-    return tierLimits?.allowed_models || ['gpt-4o-mini'];
+    console.log('Found tier limits:', tierLimits);
+    const allowedModels = tierLimits?.allowed_models || ['gpt-4o-mini'];
+    console.log('Allowed models:', allowedModels);
+    return allowedModels;
   }, [subscriptionLimits, currentTier]);
 
   // Get usage percentage
