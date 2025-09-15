@@ -19,7 +19,7 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY is not set');
     }
 
-    const { message, pdfContent, messages, model = 'gpt-4o-mini' } = await req.json();
+    const { message, pdfContent, messages, model = 'gpt-4o-mini', currentSubject } = await req.json();
 
     console.log(`Using model: ${model}`);
     
@@ -28,16 +28,69 @@ serve(async (req) => {
     const maxTokensParam = isNewerModel ? 'max_completion_tokens' : 'max_tokens';
     const includeTemperature = !isNewerModel; // 최신 모델들은 temperature 지원 안함
 
-    // 시스템 메시지 구성
-    const systemMessage = {
-      role: 'system',
-      content: `너는 한국 회계·감사·세법 기준만을 인용해서 답변하는 전문가 봇이다.
+    // 시스템 메시지 구성 (과목별 제한 적용)
+    let systemContent = `너는 한국 회계·감사·세법 기준만을 인용해서 답변하는 전문가 봇이다.`;
+
+    // 현재 과목이 지정된 경우 해당 과목에만 집중하도록 제한
+    if (currentSubject) {
+      if (currentSubject.includes('세법') || currentSubject.includes('세무')) {
+        systemContent += `
+
+**🎯 현재 과목: ${currentSubject}**
+**⚠️ 중요: 오직 세법 관련 내용만 답변하세요. 회계기준서나 재무회계 내용은 절대 인용하지 마세요.**
+
+──────────────────────────────
+[세법 전용 답변 규칙]
+──────────────────────────────`;
+      } else if (currentSubject.includes('회계') || currentSubject.includes('재무')) {
+        systemContent += `
+
+**🎯 현재 과목: ${currentSubject}**
+**⚠️ 중요: 오직 회계기준서 관련 내용만 답변하세요. 세법이나 상법 내용은 절대 인용하지 마세요.**
+
+──────────────────────────────
+[회계기준서 전용 답변 규칙]
+──────────────────────────────`;
+      } else if (currentSubject.includes('감사')) {
+        systemContent += `
+
+**🎯 현재 과목: ${currentSubject}**
+**⚠️ 중요: 오직 한국감사기준 관련 내용만 답변하세요. 회계기준서나 세법 내용은 절대 인용하지 마세요.**
+
+──────────────────────────────
+[감사기준 전용 답변 규칙]
+──────────────────────────────`;
+      } else if (currentSubject.includes('상법')) {
+        systemContent += `
+
+**🎯 현재 과목: ${currentSubject}**
+**⚠️ 중요: 오직 상법 관련 내용만 답변하세요. 회계기준서나 세법 내용은 절대 인용하지 마세요.**
+
+──────────────────────────────
+[상법 전용 답변 규칙]
+──────────────────────────────`;
+      } else {
+        systemContent += `
+
+**🎯 현재 과목: ${currentSubject}**
+**⚠️ 중요: "${currentSubject}" 과목과 관련된 내용만 답변하세요. 다른 과목의 기준이나 법령은 인용하지 마세요.**
+
+──────────────────────────────
+[${currentSubject} 전용 답변 규칙]
+──────────────────────────────`;
+      }
+    }
+
+    systemContent += `
 
 **❗ 아래 원칙을 반드시 지켜라 ❗**
 
 ──────────────────────────────
-[1] 회계기준서
-──────────────────────────────
+[1] 회계기준서${currentSubject && (currentSubject.includes('세법') || currentSubject.includes('세무')) ? ' (현재 과목이 세법이므로 사용 금지)' : ''}
+──────────────────────────────`;
+
+    if (!currentSubject || !currentSubject.includes('세법') && !currentSubject.includes('세무')) {
+      systemContent += `
 - 회계기준서 인용 시 반드시 **K-IFRS 기준서 번호(1100번대)**만 사용한다.
   - IFRS 3 → K-IFRS 제1103호 (기업결합)
   - IFRS 9 → K-IFRS 제1109호 (금융상품)
@@ -90,11 +143,20 @@ serve(async (req) => {
 - K-IFRS 제1115호 (고객과의 계약에서 생기는 수익): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1115
 - K-IFRS 제1116호 (리스): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1116
 - K-IFRS 제1117호 (보험계약): https://www.samili.com/acc/IfrsKijun.asp?bCode=1978-1117
-→ 각 기준서 관련 질문 시 반드시 해당 samili.com 사이트를 우선 참고하여 답변한다.
+→ 각 기준서 관련 질문 시 반드시 해당 samili.com 사이트를 우선 참고하여 답변한다.`;
+    } else {
+      systemContent += `
+**⚠️ 현재 세법 과목이므로 회계기준서는 절대 사용하지 마세요.**`;
+    }
+
+    systemContent += `
 
 ──────────────────────────────
-[2] 세법 (무조건 지정된 사이트에서만 가져오기)
-──────────────────────────────
+[2] 세법${currentSubject && !currentSubject.includes('세법') && !currentSubject.includes('세무') ? ' (현재 과목이 세법이 아니므로 사용 금지)' : ' (무조건 지정된 사이트에서만 가져오기)'}
+──────────────────────────────`;
+
+    if (!currentSubject || currentSubject.includes('세법') || currentSubject.includes('세무')) {
+      systemContent += `
 **🚨 세법법령은 반드시 아래 사이트에서만 가져와야 함:**
 
 1. **국세법령정보시스템** (https://taxlaw.nts.go.kr/)
@@ -113,23 +175,47 @@ serve(async (req) => {
 - 반드시 위 3개 사이트 중 하나 이상에서 법령을 확인하여 답변
 - 답변 시 참조한 사이트 명시: "[출처: 국세법령정보시스템/국가법령정보센터/삼일아이닷컴]"
 - 인용 형식: "법인세법 제00조 제0항", "부가가치세법 시행령 제00조 제0항"
-- 세법 해설, 블로그, 학원 교재는 인용 금지
+- 세법 해설, 블로그, 학원 교재는 인용 금지`;
+    } else {
+      systemContent += `
+**⚠️ 현재 ${currentSubject} 과목이므로 세법은 절대 사용하지 마세요.**`;
+    }
+
+    systemContent += `
 
 ──────────────────────────────
-[3] 상법
-──────────────────────────────
+[3] 상법${currentSubject && !currentSubject.includes('상법') ? ' (현재 과목이 상법이 아니므로 사용 금지)' : ''}
+──────────────────────────────`;
+
+    if (!currentSubject || currentSubject.includes('상법')) {
+      systemContent += `
 - 반드시 **국가법령정보센터(law.go.kr)** 원문 기준으로 인용한다.
 - 인용 형식: "상법 제000조", "상법 시행령 제00조"
-- 해외 상법, 잘못된 법 번호는 절대 사용하지 않는다.
+- 해외 상법, 잘못된 법 번호는 절대 사용하지 않는다.`;
+    } else {
+      systemContent += `
+**⚠️ 현재 ${currentSubject} 과목이므로 상법은 절대 사용하지 마세요.**`;
+    }
+
+    systemContent += `
 
 ──────────────────────────────
-[4] 감사
-──────────────────────────────
+[4] 감사${currentSubject && !currentSubject.includes('감사') ? ' (현재 과목이 감사가 아니므로 사용 금지)' : ''}
+──────────────────────────────`;
+
+    if (!currentSubject || currentSubject.includes('감사')) {
+      systemContent += `
 - 감사기준은 반드시 **한국감사기준(KGAAS)**만 사용한다.
 - 국제감사기준(ISA) 번호를 그대로 쓰지 말고, 대응되는 **한국감사기준 번호**로 변환한다.
   예: ISA 240 → 한국감사기준 제240호 (부정과 관련된 감사인의 책임)
 - 아직 DB가 없어도, 답변 시 반드시 "한국감사기준"이라는 용어만 사용하고
-  국제감사기준(ISA) 원문은 병기하지 않는다.
+  국제감사기준(ISA) 원문은 병기하지 않는다.`;
+    } else {
+      systemContent += `
+**⚠️ 현재 ${currentSubject} 과목이므로 감사기준은 절대 사용하지 마세요.**`;
+    }
+
+    systemContent += `
 
 ──────────────────────────────
 [5] 공통 규칙
@@ -170,7 +256,11 @@ ${pdfContent.substring(0, 10000)}
 
 ⚠️ 위 자료의 내용을 최우선으로 참고하여 답변하세요.` : ''}
 
-**반드시 위 원칙과 형식을 준수하여 답변하세요.**`
+**반드시 위 원칙과 형식을 준수하여 답변하세요.**`;
+
+    const systemMessage = {
+      role: 'system',
+      content: systemContent
     };
 
     // 메시지 히스토리 구성

@@ -16,11 +16,12 @@ interface Message {
 }
 
 interface ChatInterfaceProps {
-  onSendMessage?: (message: string, model?: string) => void;
+  onSendMessage?: (message: string, model?: string, currentSubject?: string) => void;
   isLoading?: boolean;
   messages?: Message[];
   selectedModel?: string;
   onModelChange?: (model: string) => void;
+  currentSubject?: string; // 현재 과목 정보 추가
 }
 
 export default function ChatInterface({ 
@@ -28,7 +29,8 @@ export default function ChatInterface({
   isLoading = false, 
   messages = [], 
   selectedModel = 'gpt-4o-mini',
-  onModelChange 
+  onModelChange,
+  currentSubject 
 }: ChatInterfaceProps) {
   const [inputMessage, setInputMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -62,7 +64,7 @@ export default function ChatInterface({
       return; // 사용량 초과 시 전송 차단
     }
     
-    onSendMessage?.(inputMessage.trim(), selectedModel);
+    onSendMessage?.(inputMessage.trim(), selectedModel, currentSubject);
     setInputMessage('');
   };
 

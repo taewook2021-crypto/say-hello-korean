@@ -25,7 +25,7 @@ export function useGPTChat() {
     return newMessage;
   }, []);
 
-  const sendMessage = useCallback(async (userMessage: string, pdfContent?: string, modelName?: string) => {
+  const sendMessage = useCallback(async (userMessage: string, pdfContent?: string, modelName?: string, currentSubject?: string) => {
     if (!userMessage.trim()) return;
 
     const modelToUse = modelName || selectedModel;
@@ -42,6 +42,7 @@ export function useGPTChat() {
           pdfContent: pdfContent || '',
           messages: messages.slice(-10), // 최근 10개 메시지만 컨텍스트로 전송
           model: modelToUse,
+          currentSubject: currentSubject || '', // 현재 과목 정보 전달
         },
       });
 

@@ -66,9 +66,9 @@ export default function Notes() {
   const { messages, isLoading: chatLoading, sendMessage, selectedModel, setSelectedModel } = useGPTChat();
   const { updateUsage } = useUsageTracking();
 
-  const handleChatMessage = async (message: string, model?: string) => {
+  const handleChatMessage = async (message: string, model?: string, currentSubject?: string) => {
     try {
-      const result = await sendMessage(message, '', model);
+      const result = await sendMessage(message, '', model, currentSubject || decodedSubject);
       
       // 토큰 사용량 업데이트
       if (result?.usage) {
@@ -843,6 +843,7 @@ export default function Notes() {
           messages={messages}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
+          currentSubject={decodedSubject} // 현재 과목 정보 전달
         />
       </div>
     </div>
