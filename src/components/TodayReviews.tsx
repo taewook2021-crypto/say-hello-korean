@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, BookOpen, Target, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, BookOpen, Target, ArrowLeft, FileText, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { FlashCard } from "@/components/study/FlashCard";
 import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
+import { TemplateDocumentGenerator } from "@/components/study/TemplateDocumentGenerator";
+import { toast } from "sonner";
 
 interface ReviewItem {
   id: string;
@@ -37,6 +39,7 @@ interface WrongNote {
 export function TodayReviews() {
   const [todayReviews, setTodayReviews] = useState<ReviewItem[]>([]);
   const [upcomingReviews, setUpcomingReviews] = useState<ReviewItem[]>([]);
+  const [todayCreatedNotes, setTodayCreatedNotes] = useState<WrongNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [studyMode, setStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
   const [showStudyModeSelector, setShowStudyModeSelector] = useState(false);
@@ -52,6 +55,9 @@ export function TodayReviews() {
       const now = new Date();
       const today = new Date();
       today.setHours(23, 59, 59, 999); // 오늘 끝까지
+      
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0); // 오늘 시작
       
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -105,6 +111,16 @@ export function TodayReviews() {
 
       if (upcomingError) throw upcomingError;
 
+      // 오늘 생성된 오답노트들
+      const { data: todayNotesData, error: todayNotesError } = await supabase
+        .from('wrong_notes')
+        .select('*')
+        .gte('created_at', todayStart.toISOString())
+        .lte('created_at', today.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (todayNotesError) throw todayNotesError;
+
       const formatReviewData = (data: any[]): ReviewItem[] => {
         return data.map(item => ({
           id: item.id,
@@ -120,8 +136,22 @@ export function TodayReviews() {
         }));
       };
 
+      const formatWrongNoteData = (data: any[]): WrongNote[] => {
+        return data.map(item => ({
+          id: item.id,
+          question: item.question,
+          source_text: item.source_text,
+          explanation: item.explanation,
+          subject_name: item.subject_name,
+          book_name: item.book_name,
+          chapter_name: item.chapter_name,
+          is_resolved: item.is_resolved
+        }));
+      };
+
       setTodayReviews(formatReviewData(todayData || []));
       setUpcomingReviews(formatReviewData(upcomingData || []));
+      setTodayCreatedNotes(formatWrongNoteData(todayNotesData || []));
 
     } catch (error) {
       console.error('Error loading reviews:', error);
@@ -258,6 +288,59 @@ export function TodayReviews() {
 
   return (
     <div className="space-y-6">
+      {/* 오늘 생성한 문제들 */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-500" />
+              오늘 생성한 문제
+              <Badge variant="secondary">{todayCreatedNotes.length}</Badge>
+            </CardTitle>
+            {todayCreatedNotes.length > 0 && (
+              <TemplateDocumentGenerator 
+                notes={todayCreatedNotes.map(note => ({
+                  id: note.id,
+                  question: note.question,
+                  sourceText: note.source_text,
+                  explanation: note.explanation || '',
+                  createdAt: new Date(),
+                  isResolved: note.is_resolved
+                }))}
+                subject="오늘 생성"
+                book="전체"
+                chapter="문제"
+              />
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {todayCreatedNotes.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">
+              오늘 생성한 문제가 없습니다.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                오늘 {todayCreatedNotes.length}개의 새로운 문제를 생성했습니다.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {todayCreatedNotes.slice(0, 3).map((note, index) => (
+                  <Badge key={note.id} variant="outline" className="text-xs">
+                    {note.subject_name} - {note.book_name}
+                  </Badge>
+                ))}
+                {todayCreatedNotes.length > 3 && (
+                  <Badge variant="outline" className="text-xs">
+                    +{todayCreatedNotes.length - 3}개 더
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* 오늘 복습할 문제들 */}
       <Card>
         <CardHeader>
