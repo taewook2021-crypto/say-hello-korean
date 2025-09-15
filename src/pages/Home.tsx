@@ -18,6 +18,9 @@ const Home = () => {
   const navigate = useNavigate();
   const [newSubject, setNewSubject] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newBook, setNewBook] = useState("");
+  const [showAddBookDialog, setShowAddBookDialog] = useState(false);
+  const [selectedSubjectForBook, setSelectedSubjectForBook] = useState("");
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
   const [booksLoading, setBooksLoading] = useState<{[key: string]: boolean}>({});
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
@@ -26,7 +29,7 @@ const Home = () => {
   const [deleteTargetName, setDeleteTargetName] = useState("");
   
   const { toast } = useToast();
-  const { subjects, subjectBooks, loading, refreshBooksForSubject, addSubject, deleteSubject, deleteBook } = useData();
+  const { subjects, subjectBooks, loading, refreshBooksForSubject, addSubject, deleteSubject, deleteBook, addBook } = useData();
 
   const loadBooksForSubject = async (subjectName: string) => {
     if (subjectBooks[subjectName]) return;
@@ -61,6 +64,24 @@ const Home = () => {
     } catch (error) {
       // Error already handled in context
     }
+  }
+
+  async function handleAddBook() {
+    if (!newBook.trim() || !selectedSubjectForBook) return;
+
+    try {
+      await addBook(selectedSubjectForBook, newBook.trim());
+      setNewBook("");
+      setShowAddBookDialog(false);
+      setSelectedSubjectForBook("");
+    } catch (error) {
+      // Error already handled in context
+    }
+  }
+
+  const openAddBookDialog = (subjectName: string) => {
+    setSelectedSubjectForBook(subjectName);
+    setShowAddBookDialog(true);
   }
 
   const handleDeleteSubject = async (subjectName: string) => {
@@ -234,6 +255,20 @@ const Home = () => {
                             </Link>
                           </div>
                         ))}
+                        
+                        {/* Add Book Button */}
+                        <div className="p-3">
+                          <Button 
+                            onClick={() => openAddBookDialog(subject)}
+                            variant="outline"
+                            size="sm"
+                            className="w-full h-8 text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            책 추가
+                          </Button>
+                        </div>
+                        
                         {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
                           <p className="text-sm text-muted-foreground italic p-3">
                             등록된 책이 없습니다
@@ -279,6 +314,35 @@ const Home = () => {
                 취소
               </Button>
               <Button onClick={handleAddSubject} disabled={!newSubject.trim()}>
+                추가
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Book Dialog */}
+      <Dialog open={showAddBookDialog} onOpenChange={setShowAddBookDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>새 책 추가 - {selectedSubjectForBook}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="책 이름을 입력하세요"
+              value={newBook}
+              onChange={(e) => setNewBook(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddBook()}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => {
+                setShowAddBookDialog(false);
+                setNewBook("");
+                setSelectedSubjectForBook("");
+              }}>
+                취소
+              </Button>
+              <Button onClick={handleAddBook} disabled={!newBook.trim()}>
                 추가
               </Button>
             </div>
