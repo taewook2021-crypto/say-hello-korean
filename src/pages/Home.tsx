@@ -108,16 +108,6 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex gap-3 mb-8">
-          <Button 
-            onClick={() => setShowAddDialog(true)}
-            className="h-12"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            새 과목 추가
-          </Button>
-        </div>
       </div>
 
       {/* Today's Reviews */}
@@ -128,7 +118,18 @@ const Home = () => {
       {/* Subjects Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-foreground">전체 과목</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-semibold text-foreground">전체 과목</h2>
+            <Button 
+              onClick={() => setShowAddDialog(true)}
+              size="sm"
+              variant="outline"
+              className="h-8"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              새 과목
+            </Button>
+          </div>
           <span className="text-sm text-muted-foreground">{subjects.length}개</span>
         </div>
         
