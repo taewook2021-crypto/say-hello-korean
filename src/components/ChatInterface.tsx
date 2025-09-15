@@ -50,7 +50,7 @@ export default function ChatInterface({ onSendMessage, isLoading = false, messag
           <Bot className="h-5 w-5 text-blue-600" />
           AI 어시스턴트
         </CardTitle>
-        <p className="text-sm text-gray-600">PDF 내용에 대해 질문하세요</p>
+        <p className="text-sm text-gray-600">학습 내용에 대해 질문하세요</p>
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col p-4 gap-4">
@@ -60,7 +60,7 @@ export default function ChatInterface({ onSendMessage, isLoading = false, messag
             {messages.length === 0 ? (
               <div className="text-center text-gray-500 mt-8">
                 <Bot className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-sm">PDF가 로드되면 내용에 대해 질문할 수 있습니다.</p>
+                <p className="text-sm">학습 내용이 로드되면 질문할 수 있습니다.</p>
               </div>
             ) : (
               messages.map((message) => (
@@ -117,7 +117,7 @@ export default function ChatInterface({ onSendMessage, isLoading = false, messag
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="PDF에 대해 질문하세요..."
+            placeholder="학습 내용에 대해 질문하세요..."
             disabled={isLoading}
             className="flex-1"
           />

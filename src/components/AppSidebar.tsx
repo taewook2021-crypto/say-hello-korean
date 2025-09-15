@@ -103,13 +103,13 @@ export function AppSidebar() {
                       
                       <CollapsibleContent>
                         <SidebarMenuSub>
-                          {/* PDF 목록 섹션 */}
+                          {/* 교재 목록 섹션 */}
                           {subjectBooks[subject]?.length > 0 && (
                             <>
                               <SidebarMenuSubItem>
                                 <div className="text-xs text-muted-foreground px-3 py-1 flex items-center gap-1">
                                   <FileText className="h-3 w-3" />
-                                  PDF 목록
+                                  교재 목록
                                 </div>
                               </SidebarMenuSubItem>
                               {subjectBooks[subject].slice(0, 3).map((book) => (

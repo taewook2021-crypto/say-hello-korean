@@ -11,7 +11,7 @@ import Subject from "./pages/Subject";
 import Book from "./pages/Book";
 import Home from "./pages/Home";
 import WrongNoteSubject from "./pages/WrongNoteSubject";
-import PDFAnnotator from "./pages/PDFAnnotator";
+
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -40,7 +40,6 @@ const App = () => (
               <main className="flex-1 pt-12">
                 <Routes>
                   <Route path="/" element={<Index />} />
-                  <Route path="/pdf-annotator" element={<PDFAnnotator />} />
                   <Route path="/home" element={<Home />} />
                   <Route path="/subject/:subjectName" element={<Subject />} />
                   <Route path="/subject/:subjectName/wrong-notes" element={<WrongNoteSubject />} />

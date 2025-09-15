@@ -10,7 +10,7 @@ import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, E
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { useToast } from "@/hooks/use-toast";
-import PDFAttachmentModal from "@/components/PDFAttachmentModal";
+
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useData } from "@/contexts/DataContext";
 
@@ -117,15 +117,6 @@ const Home = () => {
             <Plus className="h-4 w-4 mr-2" />
             새 과목 추가
           </Button>
-          <PDFAttachmentModal>
-            <Button 
-              variant="outline" 
-              className="h-12"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              PDF 첨부
-            </Button>
-          </PDFAttachmentModal>
         </div>
       </div>
 
