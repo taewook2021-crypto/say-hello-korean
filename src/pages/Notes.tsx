@@ -27,8 +27,15 @@ interface WrongNote {
   id: string;
   question: string;
   sourceText: string;
+  explanation?: string;
   createdAt: Date;
   isResolved: boolean;
+}
+
+interface NewNote {
+  question: string;
+  sourceText: string;
+  explanation: string;
 }
 
 interface NewNote {
@@ -45,7 +52,8 @@ export default function Notes() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newNote, setNewNote] = useState<NewNote>({
     question: "",
-    sourceText: ""
+    sourceText: "",
+    explanation: ""
   });
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } }>({});
@@ -80,6 +88,7 @@ export default function Notes() {
         id: note.id,
         question: note.question,
         sourceText: note.source_text || '',
+        explanation: note.explanation || '',
         createdAt: new Date(note.created_at),
         isResolved: note.is_resolved
       })));
@@ -106,6 +115,7 @@ export default function Notes() {
         .insert({
           question: newNote.question,
           source_text: newNote.sourceText,
+          explanation: newNote.explanation || null,
           subject_name: subject,
           book_name: book,
           chapter_name: chapter,
@@ -143,7 +153,8 @@ export default function Notes() {
       setNotes([note, ...notes]);
       setNewNote({
         question: "",
-        sourceText: ""
+        sourceText: "",
+        explanation: ""
       });
       setShowAddForm(false);
 
@@ -310,7 +321,7 @@ export default function Notes() {
     if (!newNote.question.trim()) {
       toast({
         title: "문제를 입력해주세요",
-        description: "GPT 해설을 생성하려면 먼저 문제를 입력해야 합니다.",
+        description: "GPT 기능을 사용하려면 먼저 문제를 입력해야 합니다.",
         variant: "destructive",
       });
       return;
@@ -321,7 +332,16 @@ export default function Notes() {
       
       const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
         body: {
-          message: newNote.question,
+          message: `다음 문제에 대해 다음과 같은 형식으로 답변해줘:
+
+문제: ${newNote.question}
+
+답변 형식:
+1. **📋 관련 기준서/법령 원문**
+[관련 기준서, 법령, 규정의 원문을 정확히 인용해줘]
+
+2. **💡 해설 및 풀이**
+[위 기준서/법령을 바탕으로 한 상세한 해설과 풀이과정]`,
           pdfContent: '',
           messages: []
         },
@@ -333,13 +353,44 @@ export default function Notes() {
       }
 
       if (data?.response) {
+        const response = data.response;
+        
+        // 응답을 파싱해서 근거 원문과 해설을 분리
+        const lines = response.split('\n');
+        let sourceText = '';
+        let explanation = '';
+        let currentSection = '';
+        
+        for (const line of lines) {
+          if (line.includes('📋') || line.includes('관련 기준서') || line.includes('법령 원문')) {
+            currentSection = 'source';
+            continue;
+          } else if (line.includes('💡') || line.includes('해설') || line.includes('풀이')) {
+            currentSection = 'explanation';
+            continue;
+          }
+          
+          if (currentSection === 'source' && line.trim()) {
+            sourceText += line + '\n';
+          } else if (currentSection === 'explanation' && line.trim()) {
+            explanation += line + '\n';
+          }
+        }
+        
+        // 만약 분리가 안되면 전체를 해설에 넣기
+        if (!sourceText.trim() && !explanation.trim()) {
+          explanation = response;
+        }
+        
         setNewNote(prev => ({
           ...prev,
-          sourceText: data.response
+          sourceText: sourceText.trim() || prev.sourceText,
+          explanation: explanation.trim() || prev.explanation
         }));
+        
         toast({
-          title: "GPT 해설 생성 완료",
-          description: "AI가 생성한 해설이 추가되었습니다.",
+          title: "GPT 생성 완료",
+          description: "AI가 근거 원문과 해설을 생성했습니다.",
         });
       } else {
         throw new Error('응답을 받지 못했습니다.');
@@ -347,8 +398,8 @@ export default function Notes() {
     } catch (error) {
       console.error('GPT 생성 에러:', error);
       toast({
-        title: "GPT 해설 생성 실패",
-        description: "AI 해설 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        title: "GPT 생성 실패",
+        description: "AI 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
         variant: "destructive",
       });
     } finally {
@@ -409,7 +460,9 @@ export default function Notes() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <h4 className={`font-medium ${textColor} flex items-center gap-1`}>
-              {field === 'sourceText' ? <BookOpen className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+              {field === 'sourceText' ? <BookOpen className="h-4 w-4" /> : 
+               field === 'explanation' ? <Brain className="h-4 w-4" /> : 
+               <CheckCircle className="h-4 w-4" />}
               {label}
             </h4>
             <div className="flex gap-1">
@@ -443,7 +496,9 @@ export default function Notes() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h4 className={`font-medium ${textColor} flex items-center gap-1`}>
-            {field === 'sourceText' ? <BookOpen className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+            {field === 'sourceText' ? <BookOpen className="h-4 w-4" /> : 
+             field === 'explanation' ? <Brain className="h-4 w-4" /> : 
+             <CheckCircle className="h-4 w-4" />}
             {label}
           </h4>
           {showEditButton && (
@@ -571,22 +626,7 @@ export default function Notes() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="sourceText">근거 원문</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleGPTGeneration}
-                    disabled={gptLoading || !newNote.question.trim()}
-                  >
-                    {gptLoading ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4 mr-2" />
-                    )}
-                    GPT 해설
-                  </Button>
-                </div>
+                <Label htmlFor="sourceText">근거 원문</Label>
                 <Textarea
                   id="sourceText"
                   placeholder="관련 기준서/법령 원문을 입력하세요"
@@ -596,7 +636,31 @@ export default function Notes() {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="explanation">해설</Label>
+                <Textarea
+                  id="explanation"
+                  placeholder="해설을 입력하세요"
+                  value={newNote.explanation}
+                  onChange={(e) => setNewNote({...newNote, explanation: e.target.value})}
+                  rows={4}
+                />
+              </div>
+
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleGPTGeneration}
+                  disabled={gptLoading || !newNote.question.trim()}
+                  className="flex-shrink-0"
+                >
+                  {gptLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  GPT 이용하기
+                </Button>
                 <Button 
                   onClick={handleAddNote}
                   disabled={!newNote.question || !newNote.sourceText}
@@ -607,7 +671,7 @@ export default function Notes() {
                   variant="outline" 
                   onClick={() => {
                     setShowAddForm(false);
-                    setNewNote({ question: "", sourceText: "" });
+                    setNewNote({ question: "", sourceText: "", explanation: "" });
                   }}
                 >
                   취소
@@ -763,6 +827,7 @@ export default function Notes() {
                       <div className="space-y-4 border-t pt-4">
                         <div className="grid grid-cols-1 gap-4">                         
                           {renderAnswerField(note, 'sourceText', '근거 원문', 'bg-blue/10 border-blue/20', 'text-blue-600')}
+                          {note.explanation && renderAnswerField(note, 'explanation', '해설', 'bg-green/10 border-green/20', 'text-green-600')}
                         </div>
                       </div>
                     )}
