@@ -18,7 +18,7 @@ import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
-import { ReviewScheduler } from "@/components/study/ReviewScheduler";
+
 import OCRCamera from "@/components/OCRCamera";
 import { useGPTChat } from "@/hooks/useGPTChat";
 
@@ -848,8 +848,6 @@ export default function Notes() {
         )}
       </div>
 
-      {/* 복습 스케줄러 */}
-      <ReviewScheduler />
     </div>
   );
 }
