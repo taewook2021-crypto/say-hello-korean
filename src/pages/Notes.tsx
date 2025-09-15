@@ -332,7 +332,7 @@ export default function Notes() {
       
       const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
         body: {
-          message: `다음 문제에 대해 다음과 같은 형식으로 답변해줘:
+          message: `다음 문제에 대해 다음과 같은 형식으로 답변해줘. 암기법이나 기억법은 제외하고 답변해줘:
 
 문제: ${newNote.question}
 
@@ -341,7 +341,7 @@ export default function Notes() {
 [관련 기준서, 법령, 규정의 원문을 정확히 인용해줘]
 
 2. **💡 해설 및 풀이**
-[위 기준서/법령을 바탕으로 한 상세한 해설과 풀이과정]`,
+[위 기준서/법령을 바탕으로 한 상세한 해설과 풀이과정을 제공해줘. 암기법이나 기억법은 포함하지 말고 논리적 이해에 집중해줘]`,
           pdfContent: '',
           messages: []
         },
