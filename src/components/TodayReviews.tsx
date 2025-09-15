@@ -17,7 +17,7 @@ interface ReviewItem {
   review_count: number;
   interval_days: number;
   question: string;
-  correct_answer: string;
+  source_text: string;
   subject_name: string;
   book_name: string;
   chapter_name: string;
@@ -26,8 +26,7 @@ interface ReviewItem {
 interface WrongNote {
   id: string;
   question: string;
-  wrong_answer: string | null;
-  correct_answer: string;
+  source_text: string;
   explanation: string | null;
   subject_name: string;
   book_name: string;
@@ -71,7 +70,7 @@ export function TodayReviews() {
           interval_days,
           wrong_notes!inner (
             question,
-            correct_answer,
+            source_text,
             subject_name,
             book_name,
             chapter_name
@@ -93,7 +92,7 @@ export function TodayReviews() {
           interval_days,
           wrong_notes!inner (
             question,
-            correct_answer,
+            source_text,
             subject_name,
             book_name,
             chapter_name
@@ -114,7 +113,7 @@ export function TodayReviews() {
           review_count: item.review_count,
           interval_days: item.interval_days,
           question: item.wrong_notes.question,
-          correct_answer: item.wrong_notes.correct_answer,
+          source_text: item.wrong_notes.source_text,
           subject_name: item.wrong_notes.subject_name,
           book_name: item.wrong_notes.book_name,
           chapter_name: item.wrong_notes.chapter_name,

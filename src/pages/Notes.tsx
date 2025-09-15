@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2 } from "lucide-react";
@@ -26,45 +26,42 @@ import { useGPTChat } from "@/hooks/useGPTChat";
 interface WrongNote {
   id: string;
   question: string;
-  wrongAnswer: string;
-  correctAnswer: string;
+  sourceText: string;
   createdAt: Date;
   isResolved: boolean;
 }
 
-const Index = () => {
-  const { subjectName, bookName, chapterName } = useParams<{
-    subjectName: string;
-    bookName: string;
-    chapterName: string;
-  }>();
-  const [notes, setNotes] = useState<WrongNote[]>([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
-  const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } | null }>({});
-  const [loading, setLoading] = useState(true);
-  const [showStudyModal, setShowStudyModal] = useState(false);
-  const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
-  const [showOCRModal, setShowOCRModal] = useState(false);
-  const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
+interface NewNote {
+  question: string;
+  sourceText: string;
+}
+
+export default function Notes() {
+  const { subject, book, chapter } = useParams<{ subject: string; book: string; chapter: string }>();
   const { toast } = useToast();
-  const { sendMessage } = useGPTChat();
   
-  const subject = decodeURIComponent(subjectName || '');
-  const book = decodeURIComponent(bookName || '');
-  const chapter = decodeURIComponent(chapterName || '');
-
-  const [newNote, setNewNote] = useState({
+  const [notes, setNotes] = useState<WrongNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newNote, setNewNote] = useState<NewNote>({
     question: "",
-    wrongAnswer: "",
-    correctAnswer: ""
+    sourceText: ""
   });
+  const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
+  const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } }>({});
+  const [studyMode, setStudyMode] = useState<'list' | 'flashcard' | 'quiz' | 'subjective'>('list');
+  const [currentStudyNotes, setCurrentStudyNotes] = useState<any[]>([]);
+  const [showOCR, setShowOCR] = useState(false);
+  const [gptLoading, setGptLoading] = useState(false);
 
+  const decodedSubject = decodeURIComponent(subject || '');
+  const decodedBook = decodeURIComponent(book || '');
+  const decodedChapter = decodeURIComponent(chapter || '');
+
+  const { messages, isLoading: chatLoading, sendMessage } = useGPTChat();
 
   useEffect(() => {
-    if (subject && book && chapter) {
-      loadNotes();
-    }
+    loadNotes();
   }, [subject, book, chapter]);
 
   const loadNotes = async () => {
@@ -72,18 +69,17 @@ const Index = () => {
       const { data, error } = await (supabase as any)
         .from('wrong_notes')
         .select('*')
-        .eq('subject_name', subject)
-        .eq('book_name', book)
-        .eq('chapter_name', chapter)
+        .eq('subject_name', decodedSubject)
+        .eq('book_name', decodedBook)
+        .eq('chapter_name', decodedChapter)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       
       setNotes(data.map((note: any) => ({
         id: note.id,
         question: note.question,
-        wrongAnswer: note.wrong_answer || '',
-        correctAnswer: note.correct_answer,
+        sourceText: note.source_text || '',
         createdAt: new Date(note.created_at),
         isResolved: note.is_resolved
       })));
@@ -100,7 +96,7 @@ const Index = () => {
   };
 
   const handleAddNote = async () => {
-    if (!newNote.question || !newNote.correctAnswer || !subject || !book || !chapter) {
+    if (!newNote.question || !newNote.sourceText || !subject || !book || !chapter) {
       return;
     }
 
@@ -109,8 +105,7 @@ const Index = () => {
         .from('wrong_notes')
         .insert({
           question: newNote.question,
-          wrong_answer: newNote.wrongAnswer,
-          correct_answer: newNote.correctAnswer,
+          source_text: newNote.sourceText,
           subject_name: subject,
           book_name: book,
           chapter_name: chapter,
@@ -121,20 +116,15 @@ const Index = () => {
 
       if (error) throw error;
 
-      // 에빙하우스 망각곡선에 따른 첫 번째 복습 스케줄 생성 (20분 후)
-      const nextReviewDate = new Date();
-      nextReviewDate.setMinutes(nextReviewDate.getMinutes() + 20);
-
-      const { error: scheduleError } = await supabase
+      // 복습 스케줄 생성
+      const { error: scheduleError } = await (supabase as any)
         .from('review_schedule')
         .insert({
           wrong_note_id: data.id,
-          review_count: 0,
-          next_review_date: nextReviewDate.toISOString(),
+          next_review_date: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1일 후
           interval_days: 1,
-          ease_factor: 2.5,
-          is_completed: false,
-          user_id: null // RLS가 있어서 자동으로 설정됨
+          review_count: 0,
+          is_completed: false
         });
 
       if (scheduleError) {
@@ -145,8 +135,7 @@ const Index = () => {
       const note: WrongNote = {
         id: data.id,
         question: data.question,
-        wrongAnswer: data.wrong_answer || '',
-        correctAnswer: data.correct_answer,
+        sourceText: data.source_text || '',
         createdAt: new Date(data.created_at),
         isResolved: data.is_resolved
       };
@@ -154,69 +143,82 @@ const Index = () => {
       setNotes([note, ...notes]);
       setNewNote({
         question: "",
-        wrongAnswer: "",
-        correctAnswer: ""
+        sourceText: ""
       });
       setShowAddForm(false);
-      
+
       toast({
-        title: "오답노트 추가됨",
-        description: "내일부터 복습 알림이 시작됩니다. 🗓️",
+        title: "오답노트 추가 완료",
+        description: "새로운 오답노트가 추가되었습니다.",
       });
-      
     } catch (error) {
       console.error('Error adding note:', error);
       toast({
         title: "오류",
-        description: "오답노트 저장에 실패했습니다.",
+        description: "오답노트 추가에 실패했습니다.",
         variant: "destructive",
       });
     }
   };
 
-  const toggleResolved = async (id: string) => {
-    const note = notes.find(n => n.id === id);
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('wrong_notes')
+        .delete()
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      setNotes(notes.filter(note => note.id !== noteId));
+      
+      toast({
+        title: "오답노트 삭제 완료",
+        description: "오답노트가 삭제되었습니다.",
+      });
+    } catch (error) {
+      console.error('Error deleting note:', error);
+      toast({
+        title: "오류",
+        description: "오답노트 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResolveToggle = async (noteId: string) => {
+    const note = notes.find(n => n.id === noteId);
     if (!note) return;
 
     try {
       const { error } = await (supabase as any)
         .from('wrong_notes')
         .update({ is_resolved: !note.isResolved })
-        .eq('id', id);
+        .eq('id', noteId);
 
       if (error) throw error;
 
       setNotes(notes.map(note => 
-        note.id === id ? { ...note, isResolved: !note.isResolved } : note
+        note.id === noteId 
+          ? { ...note, isResolved: !note.isResolved }
+          : note
       ));
+
+      toast({
+        title: note.isResolved ? "해결됨 상태 해제" : "문제 해결 완료",
+        description: note.isResolved ? "다시 복습 대상이 되었습니다." : "해결된 문제로 표시되었습니다.",
+      });
     } catch (error) {
       console.error('Error updating note:', error);
       toast({
         title: "오류",
-        description: "상태 변경에 실패했습니다.",
+        description: "상태 업데이트에 실패했습니다.",
         variant: "destructive",
       });
     }
   };
 
-  const startEdit = (noteId: string, field: string, currentValue: string) => {
-    setEditingFields({
-      ...editingFields,
-      [noteId]: { field, value: currentValue }
-    });
-  };
-
-  const cancelEdit = (noteId: string) => {
-    setEditingFields({
-      ...editingFields,
-      [noteId]: null
-    });
-  };
-
-  const saveEdit = async (noteId: string) => {
-    const editData = editingFields[noteId];
-    if (!editData) return;
-
+  const handleEditField = async (noteId: string, editData: { field: string; value: string }) => {
     const note = notes.find(n => n.id === noteId);
     if (!note) return;
 
@@ -227,10 +229,8 @@ const Index = () => {
 
       if (editData.field === 'question') {
         updateData.question = editData.value;
-      } else if (editData.field === 'wrongAnswer') {
-        updateData.wrong_answer = editData.value;
-      } else if (editData.field === 'correctAnswer') {
-        updateData.correct_answer = editData.value;
+      } else if (editData.field === 'sourceText') {
+        updateData.source_text = editData.value;
       }
 
       const { error } = await (supabase as any)
@@ -249,208 +249,191 @@ const Index = () => {
           : note
       ));
 
-      setEditingFields({
-        ...editingFields,
-        [noteId]: null
+      setEditingFields(prev => {
+        const newState = { ...prev };
+        delete newState[noteId];
+        return newState;
       });
 
       toast({
-        title: "성공",
+        title: "수정 완료",
         description: "오답노트가 수정되었습니다.",
       });
     } catch (error) {
       console.error('Error updating note:', error);
       toast({
         title: "오류",
-        description: "오답노트 수정에 실패했습니다.",
+        description: "수정에 실패했습니다.",
         variant: "destructive",
       });
     }
   };
 
-  const updateEditValue = (noteId: string, value: string) => {
-    const editData = editingFields[noteId];
-    if (!editData) return;
+  const startEdit = (noteId: string, field: string, value: string) => {
+    setEditingFields(prev => ({
+      ...prev,
+      [noteId]: { field, value }
+    }));
+  };
 
-    setEditingFields({
-      ...editingFields,
-      [noteId]: { ...editData, value }
+  const cancelEdit = (noteId: string) => {
+    setEditingFields(prev => {
+      const newState = { ...prev };
+      delete newState[noteId];
+      return newState;
     });
   };
 
-  const handleOCRTextExtracted = (text: string) => {
+  const saveEdit = (noteId: string) => {
+    const editData = editingFields[noteId];
+    if (editData) {
+      handleEditField(noteId, editData);
+    }
+  };
+
+  const updateEditValue = (noteId: string, value: string) => {
+    setEditingFields(prev => ({
+      ...prev,
+      [noteId]: { ...prev[noteId], value }
+    }));
+  };
+
+  const handleOCRResult = (text: string) => {
     setNewNote(prev => ({
       ...prev,
-      question: prev.question ? prev.question + ' ' + text : text
+      question: prev.question + text
     }));
-    setShowAddForm(true);
-    toast({
-      title: "텍스트 추출 완료",
-      description: "문제란에 텍스트가 추가되었습니다.",
-    });
+    setShowOCR(false);
   };
 
-  const generateAnswerWithGPT = async () => {
+  const handleGPTGeneration = async () => {
     if (!newNote.question.trim()) {
       toast({
-        title: "문제를 먼저 입력해주세요",
-        description: "GPT가 해설할 문제를 입력해주세요.",
+        title: "문제를 입력해주세요",
+        description: "GPT 해설을 생성하려면 먼저 문제를 입력해야 합니다.",
         variant: "destructive",
       });
       return;
     }
 
-    setIsGeneratingAnswer(true);
     try {
+      setGptLoading(true);
+      
       const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
         body: {
-          message: `다음 문제의 정답과 자세한 해설을 제공해주세요. 정답은 간단하게, 해설은 왜 그 답이 정답인지 단계별로 설명해주세요.\n\n문제: ${newNote.question}`,
+          message: newNote.question,
           pdfContent: '',
-          messages: [],
+          messages: []
         },
       });
 
       if (error) {
+        console.error('GPT API 에러:', error);
         throw error;
       }
 
       if (data?.response) {
         setNewNote(prev => ({
           ...prev,
-          correctAnswer: data.response
+          sourceText: data.response
         }));
         toast({
           title: "GPT 해설 생성 완료",
-          description: "정답란에 GPT가 생성한 답안이 추가되었습니다.",
+          description: "AI가 생성한 해설이 추가되었습니다.",
         });
+      } else {
+        throw new Error('응답을 받지 못했습니다.');
       }
     } catch (error) {
-      console.error('GPT 답안 생성 에러:', error);
+      console.error('GPT 생성 에러:', error);
       toast({
-        title: "GPT 답안 생성 실패",
-        description: "답안 생성 중 오류가 발생했습니다. 다시 시도해주세요.",
+        title: "GPT 해설 생성 실패",
+        description: "AI 해설 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
         variant: "destructive",
       });
     } finally {
-      setIsGeneratingAnswer(false);
+      setGptLoading(false);
     }
   };
 
-  const toggleShowAnswer = (id: string) => {
+  const toggleAnswerVisibility = (noteId: string) => {
     setShowAnswers(prev => ({
       ...prev,
-      [id]: !prev[id]
+      [noteId]: !prev[noteId]
     }));
   };
 
-
-  const renderEditableField = (note: WrongNote, field: keyof WrongNote, label: string, isTextarea = false, showEditButton = true) => {
-    const noteId = note.id;
-    const editData = editingFields[noteId];
-    const isEditing = editData?.field === field;
-    const value = note[field] as string;
-
-    if (isEditing) {
-      return (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium">{label}</h4>
-            <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => saveEdit(noteId)}
-                className="h-8 w-8 p-0"
-              >
-                <Save className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => cancelEdit(noteId)}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          {isTextarea ? (
-            <Textarea
-              value={editData.value}
-              onChange={(e) => updateEditValue(noteId, e.target.value)}
-              className="min-h-[100px]"
-              autoFocus
-            />
-          ) : (
-            <Input
-              value={editData.value}
-              onChange={(e) => updateEditValue(noteId, e.target.value)}
-              autoFocus
-            />
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium">{label}</h4>
-          {showEditButton && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => startEdit(noteId, field, value)}
-              className="h-8 w-8 p-0"
-            >
-              <Edit2 className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        <div className={`bg-muted p-4 rounded-lg border ${showEditButton ? 'cursor-pointer' : ''}`} onClick={showEditButton ? () => startEdit(noteId, field, value) : undefined}>
-          <p className="text-base leading-relaxed">{value || "클릭하여 입력"}</p>
-        </div>
-      </div>
-    );
+  const getResolvedCount = () => {
+    return notes.filter(note => note.isResolved).length;
   };
 
-  const renderAnswerField = (note: WrongNote, field: keyof WrongNote, label: string, bgColor: string, textColor: string, showEditButton = true) => {
-    const noteId = note.id;
-    const editData = editingFields[noteId];
-    const isEditing = editData?.field === field;
-    const value = note[field] as string;
+  const getTotalCount = () => {
+    return notes.length;
+  };
 
+  const getProgressPercentage = () => {
+    if (getTotalCount() === 0) return 0;
+    return Math.round((getResolvedCount() / getTotalCount()) * 100);
+  };
+
+  const handleStudyModeChange = (mode: 'list' | 'flashcard' | 'quiz' | 'subjective') => {
+    setStudyMode(mode);
+    
+    if (mode !== 'list') {
+      // Convert WrongNote to study format
+      const studyNotes = notes.map(note => ({
+        id: note.id,
+        question: note.question,
+        source_text: note.sourceText,
+        explanation: null,
+        subject_name: decodedSubject,
+        book_name: decodedBook,
+        chapter_name: decodedChapter,
+        is_resolved: note.isResolved
+      }));
+      setCurrentStudyNotes(studyNotes);
+    }
+  };
+
+  const handleStudyComplete = () => {
+    setStudyMode('list');
+    loadNotes(); // 학습 완료 후 데이터 새로고침
+  };
+
+  const renderAnswerField = (note: WrongNote, field: keyof WrongNote, label: string, bgColor: string, textColor: string, showEditButton: boolean = true) => {
+    const value = note[field] as string;
+    const isEditing = editingFields[note.id]?.field === field;
+    
     if (isEditing) {
       return (
         <div>
           <div className="flex items-center justify-between mb-2">
             <h4 className={`font-medium ${textColor} flex items-center gap-1`}>
-              {field === 'wrongAnswer' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+              {field === 'sourceText' ? <BookOpen className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
               {label}
             </h4>
             <div className="flex gap-1">
               <Button
                 size="sm"
-                variant="ghost"
-                onClick={() => saveEdit(noteId)}
-                className="h-6 w-6 p-0"
+                variant="outline"
+                onClick={() => saveEdit(note.id)}
               >
                 <Save className="h-3 w-3" />
               </Button>
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => cancelEdit(noteId)}
-                className="h-6 w-6 p-0"
+                onClick={() => cancelEdit(note.id)}
               >
                 <X className="h-3 w-3" />
               </Button>
             </div>
           </div>
-          <Input
-            value={editData.value}
-            onChange={(e) => updateEditValue(noteId, e.target.value)}
-            autoFocus
+          <Textarea
+            value={editingFields[note.id]?.value || ''}
+            onChange={(e) => updateEditValue(note.id, e.target.value)}
+            className="text-sm"
+            rows={3}
           />
         </div>
       );
@@ -460,23 +443,22 @@ const Index = () => {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h4 className={`font-medium ${textColor} flex items-center gap-1`}>
-            {field === 'wrongAnswer' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+            {field === 'sourceText' ? <BookOpen className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
             {label}
           </h4>
           {showEditButton && (
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => startEdit(noteId, field, value)}
-              className="h-6 w-6 p-0"
+              onClick={() => startEdit(note.id, field, value)}
             >
               <Edit2 className="h-3 w-3" />
             </Button>
           )}
         </div>
         <div 
-          className={`text-sm ${bgColor} p-3 rounded-lg border ${showEditButton ? 'cursor-pointer' : ''} ${field === 'correctAnswer' ? 'font-medium' : ''}`}
-          onClick={showEditButton ? () => startEdit(noteId, field, value) : undefined}
+          className={`text-sm ${bgColor} p-3 rounded-lg border ${showEditButton ? 'cursor-pointer' : ''} ${field === 'sourceText' ? 'font-medium' : ''}`}
+          onClick={showEditButton ? () => startEdit(note.id, field, value) : undefined}
         >
           {value || "클릭하여 입력"}
         </div>
@@ -484,77 +466,107 @@ const Index = () => {
     );
   };
 
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
+
+  if (studyMode === 'flashcard') {
+    return (
+      <div className="container mx-auto p-6">
+        <FlashCard 
+          notes={currentStudyNotes}
+          onComplete={handleStudyComplete}
+        />
+      </div>
+    );
+  }
+
+  if (studyMode === 'quiz') {
+    return (
+      <div className="container mx-auto p-6">
+        <Quiz 
+          notes={currentStudyNotes}
+          onComplete={handleStudyComplete}
+        />
+      </div>
+    );
+  }
+
+  if (studyMode === 'subjective') {
+    return (
+      <div className="container mx-auto p-6">
+        <SubjectiveQuiz 
+          notes={currentStudyNotes}
+          onComplete={handleStudyComplete}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                뒤로가기
-              </Button>
-            </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-8 w-8 text-primary" />
-                <h1 className="text-3xl font-bold">오답노트</h1>
-              </div>
-              {subject && book && chapter && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {subject} {' > '} {book} {' > '} {chapter}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setShowStudyModal(true)}
-              disabled={notes.length === 0}
-              className="flex items-center gap-2"
-            >
-              <Brain className="h-4 w-4" />
-              복습하기
+    <div className="container mx-auto p-6 space-y-6">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link to={`/subject/${encodeURIComponent(decodedSubject)}/book/${encodeURIComponent(decodedBook)}`}>
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              돌아가기
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  className="flex items-center gap-2"
-                  disabled={!subject || !book || !chapter}
-                >
-                  <Plus className="h-4 w-4" />
-                  문제 추가
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setShowAddForm(!showAddForm)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  직접 입력
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowOCRModal(true)}>
-                  <Camera className="mr-2 h-4 w-4" />
-                  OCR 촬영
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold">{decodedChapter} 오답노트</h1>
+            <p className="text-muted-foreground">{decodedSubject} &gt; {decodedBook}</p>
           </div>
         </div>
+        
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">
+            총 {getTotalCount()}개
+          </Badge>
+          <Badge variant="outline">
+            해결됨 {getResolvedCount()}개 ({getProgressPercentage()}%)
+          </Badge>
+        </div>
+      </div>
 
-        {/* Add New Note Form */}
-        {showAddForm && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>새로운 오답 추가</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-
+      {/* 학습 모드 선택 */}
+      <div className="space-y-4">
+        <Button onClick={() => handleStudyModeChange('flashcard')} className="mr-2">
+          플래시카드 학습
+        </Button>
+        <Button onClick={() => handleStudyModeChange('quiz')} className="mr-2">
+          객관식 퀴즈
+        </Button>
+        <Button onClick={() => handleStudyModeChange('subjective')}>
+          주관식 퀴즈
+        </Button>
+      </div>
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              새 오답노트 추가
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="question">문제</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="question">문제</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowOCR(true)}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    OCR
+                  </Button>
+                </div>
                 <Textarea
                   id="question"
-                  placeholder="틀린 문제를 적어주세요"
+                  placeholder="문제를 입력하세요"
                   value={newNote.question}
                   onChange={(e) => setNewNote({...newNote, question: e.target.value})}
                   rows={3}
@@ -562,288 +574,216 @@ const Index = () => {
               </div>
 
               <div>
-                <Label htmlFor="wrongAnswer">내가 적은 답</Label>
-                <Input
-                  id="wrongAnswer"
-                  placeholder="틀린 답안"
-                  value={newNote.wrongAnswer}
-                  onChange={(e) => setNewNote({...newNote, wrongAnswer: e.target.value})}
-                />
-              </div>
-
-              <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="correctAnswer">정답</Label>
+                  <Label htmlFor="sourceText">근거 원문</Label>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={generateAnswerWithGPT}
-                    disabled={isGeneratingAnswer || !newNote.question.trim()}
-                    className="flex items-center gap-2"
+                    onClick={handleGPTGeneration}
+                    disabled={gptLoading || !newNote.question.trim()}
                   >
-                    {isGeneratingAnswer ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                    {gptLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <Sparkles className="h-4 w-4" />
+                      <Sparkles className="h-4 w-4 mr-2" />
                     )}
-                    {isGeneratingAnswer ? "생성 중..." : "GPT 해설"}
+                    GPT 해설
                   </Button>
                 </div>
                 <Textarea
-                  id="correctAnswer"
-                  placeholder="올바른 답안과 해설"
-                  value={newNote.correctAnswer}
-                  onChange={(e) => setNewNote({...newNote, correctAnswer: e.target.value})}
+                  id="sourceText"
+                  placeholder="관련 기준서/법령 원문을 입력하세요"
+                  value={newNote.sourceText}
+                  onChange={(e) => setNewNote({...newNote, sourceText: e.target.value})}
                   rows={4}
                 />
               </div>
 
               <div className="flex gap-2">
-                <Button onClick={handleAddNote}>저장</Button>
-                <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                <Button 
+                  onClick={handleAddNote}
+                  disabled={!newNote.question || !newNote.sourceText}
+                >
+                  추가하기
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewNote({ question: "", sourceText: "" });
+                  }}
+                >
                   취소
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Notes List */}
-        <div className="space-y-4">
-          {loading ? (
-            Array.from({ length: 3 }).map((_, index) => (
-              <Card key={index} className="animate-pulse">
-                <CardHeader>
-                  <div className="h-4 bg-muted rounded w-1/4" />
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="h-4 bg-muted rounded" />
-                    <div className="h-4 bg-muted rounded w-3/4" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          ) : notes.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">
-                  {subject && book && chapter ? "아직 오답노트가 없습니다" : "단원을 선택해주세요"}
-                </h3>
-                <p className="text-muted-foreground">
-                  {subject && book && chapter ? "첫 번째 문제를 추가해보세요!" : "과목 → 교재 → 단원을 선택한 후 오답노트를 작성할 수 있습니다."}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            notes.map((note) => (
-              <Card key={note.id} className={note.isResolved ? "border-primary/50 bg-primary/5" : ""}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {note.createdAt.toLocaleDateString('ko-KR')}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleResolved(note.id)}
-                      className="flex items-center gap-1"
-                    >
-                       {note.isResolved ? (
-                         <>
-                           <CheckCircle className="h-4 w-4 text-primary" />
-                           해결완료
-                         </>
-                       ) : (
-                         <>
-                           <XCircle className="h-4 w-4 text-destructive" />
-                           미해결
-                         </>
-                       )}
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {renderEditableField(note, 'question', '문제', true, showAnswers[note.id])}
+      {/* OCR 모달 */}
+      {showOCR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-background p-6 rounded-lg max-w-md w-full m-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">텍스트 인식</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowOCR(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              <p>OCR 기능을 사용하여 텍스트를 인식하세요.</p>
+              <Button onClick={() => setShowOCR(false)} className="mt-4">닫기</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-                  <div className="flex justify-center">
-                    <Button
-                      onClick={() => toggleShowAnswer(note.id)}
-                      variant={showAnswers[note.id] ? "secondary" : "default"}
-                      className="flex items-center gap-2"
-                    >
-                      {showAnswers[note.id] ? (
-                        <>
-                          <EyeOff className="h-4 w-4" />
-                          답안 숨기기
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="h-4 w-4" />
-                          답안 보기
-                        </>
-                      )}
-                    </Button>
-                  </div>
+      {/* 학습 모드 선택 */}
+      <StudyModeSelector 
+        onModeChange={handleStudyModeChange}
+        noteCount={notes.length}
+      />
 
-                  {showAnswers[note.id] && (
-                    <div className="space-y-4 border-t pt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         {(note.wrongAnswer || editingFields[note.id]?.field === 'wrongAnswer') && (
-                           renderAnswerField(note, 'wrongAnswer', '내가 적은 답', 'bg-destructive/10 border-destructive/20', 'text-destructive')
-                         )}
-                         
-                         {renderAnswerField(note, 'correctAnswer', '정답', 'bg-primary/10 border-primary/20', 'text-primary')}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          )}
+      {/* 오답노트 목록 */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">오답노트 목록</h2>
+          <Button onClick={() => setShowAddForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            새 오답노트 추가
+          </Button>
         </div>
 
-        {/* 복습 모달 */}
-        <Dialog open={showStudyModal} onOpenChange={(open) => {
-          setShowStudyModal(open);
-          if (!open) setSelectedStudyMode(null);
-        }}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5" />
-                {selectedStudyMode ? '복습하기' : '복습 모드 선택'}
-                <Badge variant="outline">{notes.length}개 문제</Badge>
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="mt-6">
-              {!selectedStudyMode ? (
-                <StudyModeSelector 
-                  noteCount={notes.length}
-                  onModeSelect={(mode) => setSelectedStudyMode(mode)}
-                />
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setSelectedStudyMode(null)}
-                    >
-                      ← 모드 선택으로 돌아가기
-                    </Button>
-                  </div>
-
-                  {selectedStudyMode === 'flashcard' && (() => {
-                    const mappedNotes = notes.map(n => ({
-                      id: n.id,
-                      question: n.question,
-                      wrong_answer: n.wrongAnswer,
-                      correct_answer: n.correctAnswer,
-                      explanation: null,
-                      subject_name: subject || '',
-                      book_name: book || '',
-                      chapter_name: chapter || '',
-                      is_resolved: n.isResolved
-                    }));
-                    
-                    console.log('Total notes for FlashCard:', mappedNotes.length);
-                    console.log('Notes data:', mappedNotes);
-                    
-                    if (mappedNotes.length === 0) {
-                      return (
-                        <div className="text-center py-8">
-                          <p className="text-muted-foreground">복습할 문제가 없습니다.</p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            먼저 오답노트를 추가해주세요.
-                          </p>
+        {notes.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">아직 오답노트가 없습니다</h3>
+              <p className="text-muted-foreground text-center mb-4">
+                첫 번째 오답노트를 추가해보세요.
+              </p>
+              <Button onClick={() => setShowAddForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                오답노트 추가하기
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {notes.map((note) => (
+              <Card key={note.id} className={note.isResolved ? "opacity-60" : ""}>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant={note.isResolved ? "secondary" : "default"}>
+                            {note.isResolved ? "해결됨" : "미해결"}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {note.createdAt.toLocaleDateString()}
+                          </span>
                         </div>
-                      );
-                    }
+                        
+                        {editingFields[note.id]?.field === 'question' ? (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-medium">문제</h3>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => saveEdit(note.id)}
+                                >
+                                  <Save className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => cancelEdit(note.id)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <Textarea
+                              value={editingFields[note.id]?.value || ''}
+                              onChange={(e) => updateEditValue(note.id, e.target.value)}
+                              className="text-base"
+                              rows={3}
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="font-medium">문제</h3>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEdit(note.id, 'question', note.question)}
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <p 
+                              className="text-base cursor-pointer p-2 rounded border hover:bg-muted/50"
+                              onClick={() => startEdit(note.id, 'question', note.question)}
+                            >
+                              {note.question}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleAnswerVisibility(note.id)}
+                        >
+                          {showAnswers[note.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleResolveToggle(note.id)}>
+                              {note.isResolved ? <XCircle className="h-4 w-4 mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                              {note.isResolved ? "미해결로 표시" : "해결됨으로 표시"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteNote(note.id)}
+                              className="text-destructive"
+                            >
+                              삭제
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
 
-                    return (
-                      <FlashCard 
-                        notes={mappedNotes} 
-                        onComplete={() => {
-                          setShowStudyModal(false);
-                          setSelectedStudyMode(null);
-                          loadNotes();
-                          toast({
-                            title: "복습 완료",
-                            description: "플래시카드 학습이 완료되었습니다."
-                          });
-                        }} 
-                      />
-                    );
-                  })()}
-
-                  {selectedStudyMode === 'multiple-choice' && (
-                    <Quiz 
-                      notes={notes.map(n => ({
-                        id: n.id,
-                        question: n.question,
-                        wrong_answer: n.wrongAnswer,
-                        correct_answer: n.correctAnswer,
-                        explanation: null,
-                        subject_name: subject || '',
-                        book_name: book || '',
-                        chapter_name: chapter || '',
-                        is_resolved: n.isResolved
-                      }))} 
-                      onComplete={() => {
-                        setShowStudyModal(false);
-                        setSelectedStudyMode(null);
-                        loadNotes();
-                        toast({
-                          title: "퀴즈 완료",
-                          description: "객관식 퀴즈가 완료되었습니다."
-                        });
-                      }} 
-                    />
-                  )}
-
-                  {selectedStudyMode === 'subjective' && (
-                    <SubjectiveQuiz 
-                      notes={notes.map(n => ({
-                        id: n.id,
-                        question: n.question,
-                        wrong_answer: n.wrongAnswer,
-                        correct_answer: n.correctAnswer,
-                        explanation: null,
-                        subject_name: subject || '',
-                        book_name: book || '',
-                        chapter_name: chapter || '',
-                        is_resolved: n.isResolved
-                      }))} 
-                      onComplete={() => {
-                        setShowStudyModal(false);
-                        setSelectedStudyMode(null);
-                        loadNotes();
-                        toast({
-                          title: "퀴즈 완료",
-                          description: "주관식 퀴즈가 완료되었습니다."
-                        });
-                      }} 
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-
-        {/* OCR 카메라 모달 */}
-        <OCRCamera 
-          isOpen={showOCRModal}
-          onClose={() => setShowOCRModal(false)}
-          onTextExtracted={handleOCRTextExtracted}
-        />
+                    {showAnswers[note.id] && (
+                      <div className="space-y-4 border-t pt-4">
+                        <div className="grid grid-cols-1 gap-4">                         
+                          {renderAnswerField(note, 'sourceText', '근거 원문', 'bg-blue/10 border-blue/20', 'text-blue-600')}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* 복습 스케줄러 */}
+      <ReviewScheduler />
     </div>
   );
-};
-
-export default Index;
+}

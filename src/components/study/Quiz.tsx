@@ -12,8 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 interface WrongNote {
   id: string;
   question: string;
-  wrong_answer: string | null;
-  correct_answer: string;
+  source_text: string;
   explanation: string | null;
   subject_name: string;
   book_name: string;
@@ -52,20 +51,15 @@ export function Quiz({ notes, onComplete }: QuizProps) {
 
   const generateQuizQuestions = () => {
     const questions: QuizQuestion[] = notes.map(note => {
-      const options = [note.correct_answer];
+      const options = [note.source_text];
       
       // 다른 노트들에서 오답 선택지 생성
       const otherAnswers = notes
-        .filter(n => n.id !== note.id && n.correct_answer !== note.correct_answer)
-        .map(n => n.correct_answer)
-        .slice(0, 2);
+        .filter(n => n.id !== note.id && n.source_text !== note.source_text)
+        .map(n => n.source_text)
+        .slice(0, 3);
       
       options.push(...otherAnswers);
-      
-      // 원래 틀린 답이 있고 다른 선택지와 중복되지 않으면 추가
-      if (note.wrong_answer && !options.includes(note.wrong_answer)) {
-        options.push(note.wrong_answer);
-      }
       
       // 부족한 선택지는 일반적인 오답으로 채움
       while (options.length < 4) {
@@ -87,7 +81,7 @@ export function Quiz({ notes, onComplete }: QuizProps) {
         id: note.id,
         question: note.question,
         options: shuffledOptions,
-        correctAnswer: note.correct_answer,
+        correctAnswer: note.source_text,
         explanation: note.explanation,
         originalNote: note
       };

@@ -624,41 +624,38 @@ export type Database = {
         Row: {
           book_name: string
           chapter_name: string
-          correct_answer: string
           created_at: string
           explanation: string | null
           id: string
           is_resolved: boolean
           question: string
+          source_text: string
           subject_name: string
           updated_at: string
-          wrong_answer: string | null
         }
         Insert: {
           book_name: string
           chapter_name: string
-          correct_answer: string
           created_at?: string
           explanation?: string | null
           id?: string
           is_resolved?: boolean
           question: string
+          source_text: string
           subject_name: string
           updated_at?: string
-          wrong_answer?: string | null
         }
         Update: {
           book_name?: string
           chapter_name?: string
-          correct_answer?: string
           created_at?: string
           explanation?: string | null
           id?: string
           is_resolved?: boolean
           question?: string
+          source_text?: string
           subject_name?: string
           updated_at?: string
-          wrong_answer?: string | null
         }
         Relationships: []
       }

@@ -11,8 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 interface WrongNote {
   id: string;
   question: string;
-  wrong_answer: string | null;
-  correct_answer: string;
+  source_text: string;
   explanation: string | null;
   subject_name: string;
   book_name: string;
@@ -219,21 +218,12 @@ export function SubjectiveQuiz({ notes, onComplete }: SubjectiveQuizProps) {
 
           {showAnswer && (
             <div className="space-y-4">
-              <div className="bg-green-50 dark:bg-green-950 p-4 rounded-lg">
-                <h4 className="text-sm font-medium text-green-600 mb-2">정답</h4>
-                <p className="text-green-700 dark:text-green-300 whitespace-pre-wrap">
-                  {currentQuestion.correct_answer}
+              <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-600 mb-2">📋 근거 원문</h4>
+                <p className="text-blue-700 dark:text-blue-300 whitespace-pre-wrap">
+                  {currentQuestion.source_text}
                 </p>
               </div>
-
-              {currentQuestion.wrong_answer && (
-                <div className="bg-red-50 dark:bg-red-950 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-red-600 mb-2">이전 오답</h4>
-                  <p className="text-red-700 dark:text-red-300 whitespace-pre-wrap">
-                    {currentQuestion.wrong_answer}
-                  </p>
-                </div>
-              )}
 
               {currentQuestion.explanation && (
                 <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">

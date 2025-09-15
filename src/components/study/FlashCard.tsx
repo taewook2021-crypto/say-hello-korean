@@ -9,8 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 interface WrongNote {
   id: string;
   question: string;
-  wrong_answer: string | null;
-  correct_answer: string;
+  source_text: string;
   explanation: string | null;
   subject_name: string;
   book_name: string;
@@ -172,16 +171,9 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
             <CardContent className="p-8 h-full flex flex-col justify-between">
               <div className="space-y-6 flex-1">
                 <div className="text-center">
-                  <h3 className="text-lg font-medium text-green-600 mb-4">정답</h3>
-                  <p className="text-xl leading-relaxed mb-6 whitespace-pre-wrap">{currentNote.correct_answer}</p>
+                  <h3 className="text-lg font-medium text-blue-600 mb-4">근거 원문</h3>
+                  <p className="text-xl leading-relaxed mb-6 whitespace-pre-wrap">{currentNote.source_text}</p>
                 </div>
-
-                {currentNote.wrong_answer && (
-                  <div className="bg-destructive/10 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-destructive mb-2">내가 틀린 답</h4>
-                    <p className="text-destructive/80 whitespace-pre-wrap">{currentNote.wrong_answer}</p>
-                  </div>
-                )}
 
                 {currentNote.explanation && (
                   <div className="bg-primary/10 p-4 rounded-lg">
