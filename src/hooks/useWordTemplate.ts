@@ -58,7 +58,6 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
       // 템플릿에 들어갈 데이터 준비 - 표 형태로 정리
       const templateData = {
         rows: notes.map((note, index) => ({
-          번호: (index + 1).toString(),
           문제: note.question,
           근거규정: note.source_text,
           해설: note.explanation || '해설 없음'
@@ -212,21 +211,16 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
               text-align: center;
             }
             
-            .col-number {
-              width: 8%;
-              text-align: center;
-            }
-            
             .col-question {
-              width: 30%;
+              width: 50%;
             }
             
             .col-source {
-              width: 32%;
+              width: 25%;
             }
             
             .col-explanation {
-              width: 30%;
+              width: 25%;
             }
             
             .footer {
@@ -274,7 +268,6 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
           <table>
             <thead>
               <tr>
-                <th class="col-number">번호</th>
                 <th class="col-question">문제</th>
                 <th class="col-source">근거 규정</th>
                 <th class="col-explanation">해설</th>
@@ -283,7 +276,6 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
             <tbody>
               ${notes.map((note, index) => `
                 <tr>
-                  <td class="col-number">${index + 1}</td>
                   <td class="col-question content-cell">${note.question}</td>
                   <td class="col-source content-cell">${note.source_text}</td>
                   <td class="col-explanation content-cell">${note.explanation || '해설 없음'}</td>

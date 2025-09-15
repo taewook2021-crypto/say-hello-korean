@@ -64,21 +64,16 @@ export const generateWordFromTemplate = async (
           font-size: 10pt;
         }
         
-        .col-number {
-          width: 8%;
-          text-align: center;
-        }
-        
         .col-question {
-          width: 30%;
+          width: 50%;
         }
         
         .col-source {
-          width: 32%;
+          width: 25%;
         }
         
         .col-explanation {
-          width: 30%;
+          width: 25%;
         }
         
         .footer {
@@ -107,7 +102,6 @@ export const generateWordFromTemplate = async (
       <table>
         <thead>
           <tr>
-            <th class="col-number">번호</th>
             <th class="col-question">문제</th>
             <th class="col-source">근거 규정</th>
             <th class="col-explanation">해설</th>
@@ -116,7 +110,6 @@ export const generateWordFromTemplate = async (
         <tbody>
           ${notes.map((note, index) => `
             <tr>
-              <td class="col-number content-cell">${index + 1}</td>
               <td class="col-question content-cell">${note.question}</td>
               <td class="col-source content-cell">${note.sourceText}</td>
               <td class="col-explanation content-cell">${note.explanation || '해설 없음'}</td>
@@ -221,21 +214,16 @@ export const generatePdfFromTemplate = async (
             font-size: 10px;
           }
           
-          .col-number {
-            width: 6%;
-            text-align: center;
-          }
-          
           .col-question {
-            width: 31%;
+            width: 50%;
           }
           
           .col-source {
-            width: 32%;
+            width: 25%;
           }
           
           .col-explanation {
-            width: 31%;
+            width: 25%;
           }
           
           .footer {
@@ -282,7 +270,6 @@ export const generatePdfFromTemplate = async (
         <table>
           <thead>
             <tr>
-              <th class="col-number">번호</th>
               <th class="col-question">문제</th>
               <th class="col-source">근거 규정</th>
               <th class="col-explanation">해설</th>
@@ -291,7 +278,6 @@ export const generatePdfFromTemplate = async (
           <tbody>
             ${notes.map((note, index) => `
               <tr>
-                <td class="col-number">${index + 1}</td>
                 <td class="col-question content-cell">${note.question}</td>
                 <td class="col-source content-cell">${note.sourceText}</td>
                 <td class="col-explanation content-cell">${note.explanation || '해설 없음'}</td>
