@@ -308,6 +308,42 @@ export type Database = {
           },
         ]
       }
+      model_pricing: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: string[] | null
+          id: string
+          input_price_per_1k_tokens: number
+          is_active: boolean
+          model_name: string
+          output_price_per_1k_tokens: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          input_price_per_1k_tokens: number
+          is_active?: boolean
+          model_name: string
+          output_price_per_1k_tokens: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          input_price_per_1k_tokens?: number
+          is_active?: boolean
+          model_name?: string
+          output_price_per_1k_tokens?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nodes: {
         Row: {
           archive_count: number | null
@@ -581,6 +617,39 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_limits: {
+        Row: {
+          allowed_models: string[] | null
+          created_at: string
+          daily_question_limit: number
+          id: string
+          monthly_question_limit: number
+          price_monthly: number | null
+          tier_name: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_models?: string[] | null
+          created_at?: string
+          daily_question_limit: number
+          id?: string
+          monthly_question_limit: number
+          price_monthly?: number | null
+          tier_name: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_models?: string[] | null
+          created_at?: string
+          daily_question_limit?: number
+          id?: string
+          monthly_question_limit?: number
+          price_monthly?: number | null
+          tier_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       todos: {
         Row: {
           archive_name: string | null
@@ -619,6 +688,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      usage_tracking: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          input_tokens: number
+          model_name: string
+          output_tokens: number
+          question_count: number
+          total_cost: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          input_tokens?: number
+          model_name: string
+          output_tokens?: number
+          question_count?: number
+          total_cost?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          input_tokens?: number
+          model_name?: string
+          output_tokens?: number
+          question_count?: number
+          total_cost?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_tracking_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wrong_notes: {
         Row: {
@@ -671,6 +784,26 @@ export type Database = {
           performance_score?: number
         }
         Returns: number
+      }
+      check_usage_limits: {
+        Args: { p_subscription_tier?: string; p_user_id: string }
+        Returns: {
+          can_ask: boolean
+          daily_limit: number
+          daily_used: number
+          monthly_limit: number
+          monthly_used: number
+        }[]
+      }
+      update_usage_tracking: {
+        Args: {
+          p_input_tokens: number
+          p_model_name: string
+          p_output_tokens: number
+          p_total_cost: number
+          p_user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

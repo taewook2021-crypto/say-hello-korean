@@ -19,7 +19,14 @@ serve(async (req) => {
       throw new Error('OPENAI_API_KEY is not set');
     }
 
-    const { message, pdfContent, messages } = await req.json();
+    const { message, pdfContent, messages, model = 'gpt-4o-mini' } = await req.json();
+
+    console.log(`Using model: ${model}`);
+    
+    // 모델별 API 파라미터 설정
+    const isNewerModel = model.includes('gpt-5') || model.includes('gpt-4.1') || model.includes('o3') || model.includes('o4');
+    const maxTokensParam = isNewerModel ? 'max_completion_tokens' : 'max_tokens';
+    const includeTemperature = !isNewerModel; // 최신 모델들은 temperature 지원 안함
 
     // 시스템 메시지 구성
     const systemMessage = {
@@ -178,18 +185,25 @@ ${pdfContent.substring(0, 10000)}
 
     console.log('Sending request to OpenAI...');
     
+    // 요청 바디 생성 (모델별 파라미터 적용)
+    const requestBody: any = {
+      model: model,
+      messages: conversationMessages,
+      [maxTokensParam]: 1000,
+    };
+
+    // 온도 파라미터는 이전 모델에만 적용
+    if (includeTemperature) {
+      requestBody.temperature = 0.7;
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: conversationMessages,
-        max_tokens: 1000,
-        temperature: 0.7,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -202,8 +216,20 @@ ${pdfContent.substring(0, 10000)}
     console.log('OpenAI response received');
 
     const aiResponse = data.choices[0].message.content;
+    
+    // 토큰 사용량 정보 추출
+    const usage = data.usage;
+    console.log('Token usage:', usage);
 
-    return new Response(JSON.stringify({ response: aiResponse }), {
+    return new Response(JSON.stringify({ 
+      response: aiResponse,
+      usage: usage ? {
+        input_tokens: usage.prompt_tokens,
+        output_tokens: usage.completion_tokens,
+        total_tokens: usage.total_tokens
+      } : null,
+      model: model,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
