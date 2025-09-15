@@ -39,7 +39,7 @@ interface NewNote {
 }
 
 export default function Notes() {
-  const { subject, book, chapter } = useParams<{ subject: string; book: string; chapter: string }>();
+  const { subjectName, bookName, chapterName } = useParams<{ subjectName: string; bookName: string; chapterName: string }>();
   const { toast } = useToast();
   
   const [notes, setNotes] = useState<WrongNote[]>([]);
@@ -57,15 +57,15 @@ export default function Notes() {
   const [showOCR, setShowOCR] = useState(false);
   const [gptLoading, setGptLoading] = useState(false);
 
-  const decodedSubject = decodeURIComponent(subject || '');
-  const decodedBook = decodeURIComponent(book || '');
-  const decodedChapter = decodeURIComponent(chapter || '');
+  const decodedSubject = decodeURIComponent(subjectName || '');
+  const decodedBook = decodeURIComponent(bookName || '');
+  const decodedChapter = decodeURIComponent(chapterName || '');
 
   const { messages, isLoading: chatLoading, sendMessage } = useGPTChat();
 
   useEffect(() => {
     loadNotes();
-  }, [subject, book, chapter]);
+  }, [subjectName, bookName, chapterName]);
 
   const loadNotes = async () => {
     try {
@@ -100,9 +100,6 @@ export default function Notes() {
   };
 
   const handleAddNote = async () => {
-    console.log('URL Parameters:', { subject, book, chapter });
-    console.log('Decoded Parameters:', { decodedSubject, decodedBook, decodedChapter });
-    
     if (!newNote.question.trim()) {
       toast({
         title: "필수 입력",
@@ -112,7 +109,7 @@ export default function Notes() {
       return;
     }
 
-    if (!subject || !book || !chapter) {
+    if (!decodedSubject || !decodedBook || !decodedChapter) {
       toast({
         title: "경로 오류",
         description: "과목, 책, 챕터 정보가 올바르지 않습니다.",
