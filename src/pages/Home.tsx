@@ -71,6 +71,8 @@ const Home = () => {
 
     try {
       await addBook(selectedSubjectForBook, newBook.trim());
+      // 책 추가 후 해당 과목의 책 목록을 다시 로드
+      await refreshBooksForSubject(selectedSubjectForBook);
       setNewBook("");
       setShowAddBookDialog(false);
       setSelectedSubjectForBook("");
@@ -228,11 +230,14 @@ const Home = () => {
                       </div>
                     ) : (
                       <>
-                        {subjectBooks[subject]?.map((book) => (
+                        {subjectBooks[subject]?.map((book) => {
+                          const bookLink = `/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`;
+                          console.log('Book link generated:', bookLink, 'for subject:', subject, 'book:', book);
+                          return (
                           <div key={book} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
                             <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <Link
-                              to={`/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`}
+                              to={bookLink}
                               className="text-sm text-foreground flex-1 hover:underline"
                             >
                               {book}
@@ -250,11 +255,12 @@ const Home = () => {
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                            <Link to={`/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`}>
+                            <Link to={bookLink}>
                               <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover/book:opacity-100 transition-opacity" />
                             </Link>
                           </div>
-                        ))}
+                          );
+                        })}
                         
                         {/* Add Book Button */}
                         <div className="p-3">
