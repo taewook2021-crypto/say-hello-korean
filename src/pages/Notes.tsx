@@ -531,17 +531,14 @@ export default function Notes() {
       </div>
 
       {/* 학습 모드 선택 */}
-      <div className="space-y-4">
-        <Button onClick={() => handleStudyModeChange('flashcard')} className="mr-2">
-          플래시카드 학습
-        </Button>
-        <Button onClick={() => handleStudyModeChange('quiz')} className="mr-2">
-          객관식 퀴즈
-        </Button>
-        <Button onClick={() => handleStudyModeChange('subjective')}>
-          주관식 퀴즈
-        </Button>
-      </div>
+      <StudyModeSelector 
+        noteCount={notes.length}
+        onModeSelect={(mode) => {
+          if (mode === 'flashcard') handleStudyModeChange('flashcard');
+          else if (mode === 'multiple-choice') handleStudyModeChange('quiz');
+          else if (mode === 'subjective') handleStudyModeChange('subjective');
+        }}
+      />
       {showAddForm && (
         <Card>
           <CardHeader>
@@ -639,11 +636,6 @@ export default function Notes() {
         </div>
       )}
 
-      {/* 학습 모드 선택 */}
-      <StudyModeSelector 
-        onModeChange={handleStudyModeChange}
-        noteCount={notes.length}
-      />
 
       {/* 오답노트 목록 */}
       <div className="space-y-4">
