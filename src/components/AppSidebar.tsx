@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -42,6 +43,11 @@ export function AppSidebar() {
     // 임시로 하드코딩된 사용자 정보 (실제로는 auth에서 가져와야 함)
     setUserEmail("user@example.com");
   }, []);
+
+  const handleUpgrade = (planName: string) => {
+    setCurrentPlan(planName);
+    toast.success(`${planName} 플랜으로 업그레이드되었습니다!`);
+  };
 
   const toggleSubject = async (subject: string) => {
     const newExpanded = new Set(expandedSubjects);
@@ -333,6 +339,7 @@ export function AppSidebar() {
                             className="w-full" 
                             size="sm" 
                             disabled={currentPlan === "베이직"}
+                            onClick={() => handleUpgrade("베이직")}
                           >
                             {currentPlan === "베이직" ? "현재 플랜" : "업그레이드"}
                           </Button>
@@ -361,6 +368,7 @@ export function AppSidebar() {
                             className="w-full" 
                             size="sm" 
                             disabled={currentPlan === "프로"}
+                            onClick={() => handleUpgrade("프로")}
                           >
                             {currentPlan === "프로" ? "현재 플랜" : "업그레이드"}
                           </Button>
