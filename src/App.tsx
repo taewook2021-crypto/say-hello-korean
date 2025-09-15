@@ -42,8 +42,8 @@ const App = () => (
                   <Route path="/" element={<Index />} />
                   <Route path="/pdf-annotator" element={<PDFAnnotator />} />
                   <Route path="/home" element={<Home />} />
-                  <Route path="/wrong-notes/:subjectName" element={<WrongNoteSubject />} />
                   <Route path="/subject/:subjectName" element={<Subject />} />
+                  <Route path="/subject/:subjectName/wrong-notes" element={<WrongNoteSubject />} />
                   <Route path="/subject/:subjectName/book/:bookName" element={<Book />} />
                   <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
