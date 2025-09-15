@@ -68,12 +68,8 @@ export const generateWordFromTemplate = async (
           width: 50%;
         }
         
-        .col-source {
-          width: 25%;
-        }
-        
         .col-explanation {
-          width: 25%;
+          width: 50%;
         }
         
         .footer {
@@ -103,7 +99,6 @@ export const generateWordFromTemplate = async (
         <thead>
           <tr>
             <th class="col-question">문제</th>
-            <th class="col-source">근거 규정</th>
             <th class="col-explanation">해설</th>
           </tr>
         </thead>
@@ -111,7 +106,6 @@ export const generateWordFromTemplate = async (
           ${notes.map((note, index) => `
             <tr>
               <td class="col-question content-cell">${note.question}</td>
-              <td class="col-source content-cell">${note.sourceText}</td>
               <td class="col-explanation content-cell">${note.explanation || '해설 없음'}</td>
             </tr>
           `).join('')}
@@ -218,12 +212,8 @@ export const generatePdfFromTemplate = async (
             width: 50%;
           }
           
-          .col-source {
-            width: 25%;
-          }
-          
           .col-explanation {
-            width: 25%;
+            width: 50%;
           }
           
           .footer {
@@ -271,7 +261,6 @@ export const generatePdfFromTemplate = async (
           <thead>
             <tr>
               <th class="col-question">문제</th>
-              <th class="col-source">근거 규정</th>
               <th class="col-explanation">해설</th>
             </tr>
           </thead>
@@ -279,7 +268,6 @@ export const generatePdfFromTemplate = async (
             ${notes.map((note, index) => `
               <tr>
                 <td class="col-question content-cell">${note.question}</td>
-                <td class="col-source content-cell">${note.sourceText}</td>
                 <td class="col-explanation content-cell">${note.explanation || '해설 없음'}</td>
               </tr>
             `).join('')}

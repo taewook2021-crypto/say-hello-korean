@@ -59,7 +59,6 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
       const templateData = {
         rows: notes.map((note, index) => ({
           문제: note.question,
-          근거규정: note.source_text,
           해설: note.explanation || '해설 없음'
         })),
         generatedDate: new Date().toLocaleDateString('ko-KR'),
@@ -215,12 +214,8 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
               width: 50%;
             }
             
-            .col-source {
-              width: 25%;
-            }
-            
             .col-explanation {
-              width: 25%;
+              width: 50%;
             }
             
             .footer {
@@ -269,7 +264,6 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
             <thead>
               <tr>
                 <th class="col-question">문제</th>
-                <th class="col-source">근거 규정</th>
                 <th class="col-explanation">해설</th>
               </tr>
             </thead>
@@ -277,7 +271,6 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
               ${notes.map((note, index) => `
                 <tr>
                   <td class="col-question content-cell">${note.question}</td>
-                  <td class="col-source content-cell">${note.source_text}</td>
                   <td class="col-explanation content-cell">${note.explanation || '해설 없음'}</td>
                 </tr>
               `).join('')}
