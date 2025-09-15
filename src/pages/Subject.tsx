@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, BookOpen, Plus, MoreVertical, Trash2 } from "lucide-react";
@@ -114,6 +114,7 @@ const Subject = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>새 교재 추가</DialogTitle>
+              <DialogDescription>새로운 교재를 추가합니다.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>

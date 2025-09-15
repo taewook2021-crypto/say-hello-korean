@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, FileText, Plus } from "lucide-react";
@@ -114,6 +114,7 @@ const Book = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>새 단원 추가</DialogTitle>
+              <DialogDescription>새로운 단원을 추가합니다.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>

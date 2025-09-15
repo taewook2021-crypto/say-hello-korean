@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit, Upload } from "lucide-react";
@@ -232,7 +232,7 @@ const Home = () => {
                           <div key={book} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
                             <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <Link
-                              to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}
+                              to={`/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`}
                               className="text-sm text-foreground flex-1 hover:underline"
                             >
                               {book}
@@ -250,7 +250,7 @@ const Home = () => {
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                            <Link to={`/book/${encodeURIComponent(subject)}/${encodeURIComponent(book)}`}>
+                            <Link to={`/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`}>
                               <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover/book:opacity-100 transition-opacity" />
                             </Link>
                           </div>
@@ -301,6 +301,7 @@ const Home = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>새 과목 추가</DialogTitle>
+            <DialogDescription>새로운 과목을 추가합니다.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -326,6 +327,7 @@ const Home = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>새 책 추가 - {selectedSubjectForBook}</DialogTitle>
+            <DialogDescription>{selectedSubjectForBook} 과목에 새로운 책을 추가합니다.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
