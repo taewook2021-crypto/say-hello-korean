@@ -56,18 +56,14 @@ export function useUsageTracking() {
         if (limitsError) throw limitsError;
         setSubscriptionLimits(limits || []);
 
-        // Get current user's subscription tier from profiles
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('subscription_tier')
-            .eq('id', user.id)
-            .single();
-          
-          if (profile?.subscription_tier) {
-            setCurrentTier(profile.subscription_tier);
-          }
+        // 로그인 기능이 없으므로 로컬 스토리지에서 플랜 정보 읽기 (임시)
+        const savedPlan = localStorage.getItem('currentPlan');
+        if (savedPlan) {
+          const dbTier = savedPlan === '무료' ? 'free' : 
+                        savedPlan === '베이직' ? 'basic' : 'pro';
+          setCurrentTier(dbTier);
+        } else {
+          setCurrentTier('free'); // 기본값
         }
       } catch (error) {
         console.error('Error loading usage data:', error);
@@ -78,65 +74,57 @@ export function useUsageTracking() {
     loadData();
   }, []);
 
-  // Check usage limits
+  // Check usage limits (임시로 더미 데이터 반환)
   const checkUsageLimits = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
     try {
-      const { data, error } = await supabase.rpc('check_usage_limits', {
-        p_user_id: user.id,
-        p_subscription_tier: currentTier
-      });
-
-      if (error) throw error;
+      // 현재 구독 플랜에 따른 더미 사용량 데이터
+      const savedPlan = localStorage.getItem('currentPlan');
+      const tier = savedPlan === '무료' ? 'free' : 
+                  savedPlan === '베이직' ? 'basic' : 'pro';
       
-      const usage = data?.[0];
-      if (usage) {
-        setUsageData(usage);
-        return usage;
+      let dummyData;
+      if (tier === 'free') {
+        dummyData = {
+          daily_used: 3,
+          daily_limit: 5,
+          monthly_used: 24,
+          monthly_limit: 50,
+          can_ask: true
+        };
+      } else if (tier === 'basic') {
+        dummyData = {
+          daily_used: 12,
+          daily_limit: 50,
+          monthly_used: 156,
+          monthly_limit: 500,
+          can_ask: true
+        };
+      } else { // pro
+        dummyData = {
+          daily_used: 28,
+          daily_limit: 999,
+          monthly_used: 342,
+          monthly_limit: 9999,
+          can_ask: true
+        };
       }
+
+      setUsageData(dummyData);
+      return dummyData;
     } catch (error) {
       console.error('Error checking usage limits:', error);
     }
     return null;
-  }, [currentTier]);
+  }, []);
 
-  // Update usage tracking
-  const updateUsage = useCallback(async (
-    modelName: string,
-    inputTokens: number,
-    outputTokens: number
-  ) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    try {
-      // Calculate cost
-      const pricing = modelPricing.find(p => p.model_name === modelName);
-      if (!pricing) return;
-
-      const inputCost = (inputTokens / 1000) * pricing.input_price_per_1k_tokens;
-      const outputCost = (outputTokens / 1000) * pricing.output_price_per_1k_tokens;
-      const totalCost = inputCost + outputCost;
-
-      const { error } = await supabase.rpc('update_usage_tracking', {
-        p_user_id: user.id,
-        p_model_name: modelName,
-        p_input_tokens: inputTokens,
-        p_output_tokens: outputTokens,
-        p_total_cost: totalCost
-      });
-
-      if (error) throw error;
-
-      // Refresh usage data
-      await checkUsageLimits();
-    } catch (error) {
-      console.error('Error updating usage:', error);
-      toast.error('사용량 업데이트에 실패했습니다.');
-    }
-  }, [modelPricing, checkUsageLimits]);
+  // Update usage (임시로 비활성화)
+  const updateUsage = useCallback(async (modelName: string, inputTokens: number, outputTokens: number) => {
+    // 로그인 기능이 없으므로 임시로 비활성화
+    console.log('Usage update (disabled):', { modelName, inputTokens, outputTokens });
+    
+    // 사용량 데이터 새로고침
+    await checkUsageLimits();
+  }, [checkUsageLimits]);
 
   // Calculate estimated cost for a message
   const calculateEstimatedCost = useCallback((
