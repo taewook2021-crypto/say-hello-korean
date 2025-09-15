@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Home, NotebookPen, ChevronRight, FileText, FolderOpen, User, Crown, CreditCard } from "lucide-react";
+import { BookOpen, Home, NotebookPen, ChevronRight, FileText, FolderOpen, User, Crown, CreditCard, Settings } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -235,114 +235,162 @@ export function AppSidebar() {
       {/* Footer with User Info and Subscription */}
       {!collapsed && (
         <SidebarFooter className="p-4 border-t border-border">
-          {/* User Info */}
+          {/* User Info - 클릭 가능한 버튼으로 변경 */}
           <div className="mb-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                <User className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{userEmail}</p>
-                <div className="flex items-center gap-2">
-                  <Badge variant={currentPlan === "무료" ? "secondary" : "default"} className="text-xs">
-                    {currentPlan}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Subscription Section */}
-          <div className="space-y-2">
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full justify-start" size="sm">
-                  <Crown className="h-4 w-4 mr-2" />
-                  구독 업그레이드
+                <Button variant="ghost" className="w-full p-0 h-auto">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors w-full">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium truncate">{userEmail}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={currentPlan === "무료" ? "secondary" : "default"} className="text-xs">
+                          {currentPlan}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle>구독 플랜</DialogTitle>
+                  <DialogTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    계정 정보
+                  </DialogTitle>
                   <DialogDescription>
-                    더 많은 기능을 이용하세요
+                    계정 설정 및 구독 관리
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  {/* Free Plan */}
-                  <Card className={currentPlan === "무료" ? "border-primary" : ""}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center justify-between">
-                        무료
-                        {currentPlan === "무료" && <Badge>현재 플랜</Badge>}
-                      </CardTitle>
-                      <CardDescription>기본 기능</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">₩0</div>
-                      <p className="text-xs text-muted-foreground">월</p>
-                      <ul className="mt-3 space-y-1 text-sm">
-                        <li>• 일일 5회 AI 질문</li>
-                        <li>• 기본 오답노트</li>
-                        <li>• 플래시카드</li>
-                      </ul>
-                    </CardContent>
-                  </Card>
+                
+                <div className="space-y-6">
+                  {/* 사용자 정보 */}
+                  <div className="space-y-3">
+                    <h3 className="font-medium">사용자 정보</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">이메일</span>
+                        <span>{userEmail}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">가입일</span>
+                        <span>2024년 1월 15일</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">현재 플랜</span>
+                        <Badge variant={currentPlan === "무료" ? "secondary" : "default"}>
+                          {currentPlan}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
 
-                  {/* Basic Plan */}
-                  <Card className={currentPlan === "베이직" ? "border-primary" : ""}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center justify-between">
-                        베이직
-                        {currentPlan === "베이직" && <Badge>현재 플랜</Badge>}
-                      </CardTitle>
-                      <CardDescription>개인 학습자용</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">₩4,900</div>
-                      <p className="text-xs text-muted-foreground">월</p>
-                      <ul className="mt-3 space-y-1 text-sm">
-                        <li>• 일일 50회 AI 질문</li>
-                        <li>• 고급 AI 모델 사용</li>
-                        <li>• 무제한 오답노트</li>
-                        <li>• 학습 분석</li>
-                      </ul>
-                      <Button className="w-full mt-4" disabled>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        선택하기 (준비중)
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  {/* 사용량 정보 */}
+                  <div className="space-y-3">
+                    <h3 className="font-medium">이번 달 사용량</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">AI 질문</span>
+                        <span>24 / 50</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">오답노트</span>
+                        <span>127개</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">학습 시간</span>
+                        <span>18시간 32분</span>
+                      </div>
+                    </div>
+                  </div>
 
-                  {/* Pro Plan */}
-                  <Card className={currentPlan === "프로" ? "border-primary" : ""}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center justify-between">
-                        프로
-                        {currentPlan === "프로" && <Badge>현재 플랜</Badge>}
-                      </CardTitle>
-                      <CardDescription>고급 사용자용</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">₩9,900</div>
-                      <p className="text-xs text-muted-foreground">월</p>
-                      <ul className="mt-3 space-y-1 text-sm">
-                        <li>• 무제한 AI 질문</li>
-                        <li>• 모든 AI 모델 사용</li>
-                        <li>• 고급 학습 분석</li>
-                        <li>• 우선 지원</li>
-                        <li>• PDF 파일 업로드</li>
-                      </ul>
-                      <Button className="w-full mt-4" disabled>
-                        <CreditCard className="h-4 w-4 mr-2" />
-                        선택하기 (준비중)
+                  {/* 구독 업그레이드 섹션 */}
+                  <div className="space-y-3">
+                    <h3 className="font-medium">구독 업그레이드</h3>
+                    <div className="grid gap-3">
+                      {/* 베이직 플랜 */}
+                      <Card className={currentPlan === "베이직" ? "border-primary" : ""}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <h4 className="font-medium">베이직</h4>
+                              <p className="text-xs text-muted-foreground">개인 학습자용</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold">₩4,900</div>
+                              <p className="text-xs text-muted-foreground">월</p>
+                            </div>
+                          </div>
+                          <ul className="text-xs space-y-1 mb-3">
+                            <li>• 일일 50회 AI 질문</li>
+                            <li>• 고급 AI 모델 사용</li>
+                            <li>• 무제한 오답노트</li>
+                          </ul>
+                          <Button 
+                            className="w-full" 
+                            size="sm" 
+                            disabled={currentPlan === "베이직"}
+                          >
+                            {currentPlan === "베이직" ? "현재 플랜" : "업그레이드"}
+                          </Button>
+                        </CardContent>
+                      </Card>
+
+                      {/* 프로 플랜 */}
+                      <Card className={currentPlan === "프로" ? "border-primary" : ""}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div>
+                              <h4 className="font-medium">프로</h4>
+                              <p className="text-xs text-muted-foreground">고급 사용자용</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold">₩9,900</div>
+                              <p className="text-xs text-muted-foreground">월</p>
+                            </div>
+                          </div>
+                          <ul className="text-xs space-y-1 mb-3">
+                            <li>• 무제한 AI 질문</li>
+                            <li>• 모든 AI 모델</li>
+                            <li>• 고급 학습 분석</li>
+                          </ul>
+                          <Button 
+                            className="w-full" 
+                            size="sm" 
+                            disabled={currentPlan === "프로"}
+                          >
+                            {currentPlan === "프로" ? "현재 플랜" : "업그레이드"}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {/* 계정 관리 */}
+                  <div className="space-y-3 pt-3 border-t">
+                    <h3 className="font-medium">계정 관리</h3>
+                    <div className="space-y-2">
+                      <Button variant="outline" className="w-full justify-start" size="sm">
+                        <Settings className="h-4 w-4 mr-2" />
+                        계정 설정
                       </Button>
-                    </CardContent>
-                  </Card>
+                      <Button variant="outline" className="w-full justify-start" size="sm">
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        결제 내역
+                      </Button>
+                      <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700" size="sm">
+                        로그아웃
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
+
         </SidebarFooter>
       )}
     </Sidebar>
