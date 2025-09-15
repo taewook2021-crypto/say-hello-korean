@@ -339,18 +339,15 @@ export default function Notes() {
     try {
       setGptLoading(true);
       
-      const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
+              const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
         body: {
-          message: `다음 문제에 대해 다음과 같은 형식으로 답변해줘. 암기법이나 기억법은 제외하고 답변해줘:
+          message: `다음 문제에 대해 해설을 작성해줘. 근거원문과 해설을 모두 하나의 해설 섹션에 통합해서 답변해줘:
 
 문제: ${newNote.question}
 
 답변 형식:
-1. **📋 관련 기준서/법령 원문**
-[관련 기준서, 법령, 규정의 원문을 정확히 인용해줘]
-
-2. **💡 해설 및 풀이**
-[위 기준서/법령을 바탕으로 한 상세한 해설과 풀이과정을 제공해줘. 암기법이나 기억법은 포함하지 말고 논리적 이해에 집중해줘]`,
+**📖 해설**
+[출처] 관련 기준서/법령/규정의 원문을 먼저 정확히 인용하고, 이어서 해당 원문을 바탕으로 한 상세한 해설과 풀이과정을 함께 작성해줘. 암기법이나 기억법은 포함하지 말고 논리적 이해에 집중해줘.`,
           pdfContent: '',
           messages: []
         },
@@ -364,42 +361,15 @@ export default function Notes() {
       if (data?.response) {
         const response = data.response;
         
-        // 응답을 파싱해서 근거 원문과 해설을 분리
-        const lines = response.split('\n');
-        let sourceText = '';
-        let explanation = '';
-        let currentSection = '';
-        
-        for (const line of lines) {
-          if (line.includes('📋') || line.includes('관련 기준서') || line.includes('법령 원문')) {
-            currentSection = 'source';
-            continue;
-          } else if (line.includes('💡') || line.includes('해설') || line.includes('풀이')) {
-            currentSection = 'explanation';
-            continue;
-          }
-          
-          if (currentSection === 'source' && line.trim()) {
-            sourceText += line + '\n';
-          } else if (currentSection === 'explanation' && line.trim()) {
-            explanation += line + '\n';
-          }
-        }
-        
-        // 만약 분리가 안되면 전체를 해설에 넣기
-        if (!sourceText.trim() && !explanation.trim()) {
-          explanation = response;
-        }
-        
+        // GPT 응답을 해설에만 저장 (근거원문과 해설이 통합됨)
         setNewNote(prev => ({
           ...prev,
-          sourceText: sourceText.trim() || prev.sourceText,
-          explanation: explanation.trim() || prev.explanation
+          explanation: response.trim() || prev.explanation
         }));
         
         toast({
           title: "GPT 생성 완료",
-          description: "AI가 근거 원문과 해설을 생성했습니다.",
+          description: "AI가 해설을 생성했습니다.",
         });
       } else {
         throw new Error('응답을 받지 못했습니다.');
@@ -642,25 +612,15 @@ export default function Notes() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="sourceText">근거 원문</Label>
-                <Textarea
-                  id="sourceText"
-                  placeholder="관련 기준서/법령 원문을 입력하세요"
-                  value={newNote.sourceText}
-                  onChange={(e) => setNewNote({...newNote, sourceText: e.target.value})}
-                  rows={4}
-                />
-              </div>
 
               <div>
                 <Label htmlFor="explanation">해설</Label>
                 <Textarea
                   id="explanation"
-                  placeholder="해설을 입력하세요"
+                  placeholder="근거원문과 해설을 함께 입력하세요"
                   value={newNote.explanation}
                   onChange={(e) => setNewNote({...newNote, explanation: e.target.value})}
-                  rows={4}
+                  rows={6}
                 />
               </div>
 
@@ -680,7 +640,7 @@ export default function Notes() {
                 </Button>
                 <Button 
                   onClick={handleAddNote}
-                  disabled={!newNote.question || !newNote.sourceText}
+                  disabled={!newNote.question}
                 >
                   추가하기
                 </Button>
@@ -843,7 +803,6 @@ export default function Notes() {
                     {showAnswers[note.id] && (
                       <div className="space-y-4 border-t pt-4">
                         <div className="grid grid-cols-1 gap-4">                         
-                          {renderAnswerField(note, 'sourceText', '근거 원문', 'bg-blue/10 border-blue/20', 'text-blue-600')}
                           {note.explanation && renderAnswerField(note, 'explanation', '해설', 'bg-green/10 border-green/20', 'text-green-600')}
                         </div>
                       </div>
