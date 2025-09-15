@@ -44,7 +44,7 @@ const App = () => (
                   <Route path="/home" element={<Home />} />
                   <Route path="/wrong-notes/:subjectName" element={<WrongNoteSubject />} />
                   <Route path="/subject/:subjectName" element={<Subject />} />
-                  <Route path="/book/:subjectName/:bookName" element={<Book />} />
+                  <Route path="/subject/:subjectName/book/:bookName" element={<Book />} />
                   <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
