@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
@@ -20,6 +20,7 @@ import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { ReviewScheduler } from "@/components/study/ReviewScheduler";
 import OCRCamera from "@/components/OCRCamera";
+import { useGPTChat } from "@/hooks/useGPTChat";
 
 
 interface WrongNote {
@@ -45,7 +46,9 @@ const Index = () => {
   const [showStudyModal, setShowStudyModal] = useState(false);
   const [selectedStudyMode, setSelectedStudyMode] = useState<'flashcard' | 'multiple-choice' | 'subjective' | null>(null);
   const [showOCRModal, setShowOCRModal] = useState(false);
+  const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
   const { toast } = useToast();
+  const { sendMessage } = useGPTChat();
   
   const subject = decodeURIComponent(subjectName || '');
   const book = decodeURIComponent(bookName || '');
@@ -287,6 +290,52 @@ const Index = () => {
     });
   };
 
+  const generateAnswerWithGPT = async () => {
+    if (!newNote.question.trim()) {
+      toast({
+        title: "문제를 먼저 입력해주세요",
+        description: "GPT가 해설할 문제를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingAnswer(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
+        body: {
+          message: `다음 문제의 정답과 자세한 해설을 제공해주세요. 정답은 간단하게, 해설은 왜 그 답이 정답인지 단계별로 설명해주세요.\n\n문제: ${newNote.question}`,
+          pdfContent: '',
+          messages: [],
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.response) {
+        setNewNote(prev => ({
+          ...prev,
+          correctAnswer: data.response
+        }));
+        toast({
+          title: "GPT 해설 생성 완료",
+          description: "정답란에 GPT가 생성한 답안이 추가되었습니다.",
+        });
+      }
+    } catch (error) {
+      console.error('GPT 답안 생성 에러:', error);
+      toast({
+        title: "GPT 답안 생성 실패",
+        description: "답안 생성 중 오류가 발생했습니다. 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingAnswer(false);
+    }
+  };
+
   const toggleShowAnswer = (id: string) => {
     setShowAnswers(prev => ({
       ...prev,
@@ -523,12 +572,29 @@ const Index = () => {
               </div>
 
               <div>
-                <Label htmlFor="correctAnswer">정답</Label>
-                <Input
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="correctAnswer">정답</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={generateAnswerWithGPT}
+                    disabled={isGeneratingAnswer || !newNote.question.trim()}
+                    className="flex items-center gap-2"
+                  >
+                    {isGeneratingAnswer ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    {isGeneratingAnswer ? "생성 중..." : "GPT 해설"}
+                  </Button>
+                </div>
+                <Textarea
                   id="correctAnswer"
-                  placeholder="올바른 답안"
+                  placeholder="올바른 답안과 해설"
                   value={newNote.correctAnswer}
                   onChange={(e) => setNewNote({...newNote, correctAnswer: e.target.value})}
+                  rows={4}
                 />
               </div>
 
