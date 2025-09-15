@@ -42,11 +42,66 @@ export function AppSidebar() {
   useEffect(() => {
     // 임시로 하드코딩된 사용자 정보 (실제로는 auth에서 가져와야 함)
     setUserEmail("user@example.com");
+    
+    // 현재 구독 플랜 로드
+    loadCurrentPlan();
   }, []);
 
-  const handleUpgrade = (planName: string) => {
-    setCurrentPlan(planName);
-    toast.success(`${planName} 플랜으로 업그레이드되었습니다!`);
+  const loadCurrentPlan = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('subscription_tier')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.subscription_tier) {
+          setCurrentPlan(profile.subscription_tier === 'free' ? '무료' : 
+                        profile.subscription_tier === 'basic' ? '베이직' : '프로');
+        }
+      }
+    } catch (error) {
+      console.error('구독 플랜 로드 오류:', error);
+    }
+  };
+
+  const handleUpgrade = async (planName: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('로그인이 필요합니다.');
+        return;
+      }
+
+      // 플랜명을 데이터베이스 형식으로 변환
+      const dbPlanName = planName === '무료' ? 'free' : 
+                        planName === '베이직' ? 'basic' : 'pro';
+
+      // 데이터베이스 업데이트
+      const { error } = await supabase
+        .from('profiles')
+        .update({ subscription_tier: dbPlanName })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('구독 업데이트 오류:', error);
+        toast.error('구독 업데이트에 실패했습니다.');
+        return;
+      }
+
+      setCurrentPlan(planName);
+      toast.success(`${planName} 플랜으로 업그레이드되었습니다!`);
+      
+      // 페이지 새로고침하여 모든 상태 업데이트
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('구독 업그레이드 오류:', error);
+      toast.error('구독 업그레이드에 실패했습니다.');
+    }
   };
 
   const toggleSubject = async (subject: string) => {
