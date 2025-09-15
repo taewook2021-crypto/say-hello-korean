@@ -38,11 +38,6 @@ interface NewNote {
   explanation: string;
 }
 
-interface NewNote {
-  question: string;
-  sourceText: string;
-}
-
 export default function Notes() {
   const { subject, book, chapter } = useParams<{ subject: string; book: string; chapter: string }>();
   const { toast } = useToast();
@@ -105,7 +100,12 @@ export default function Notes() {
   };
 
   const handleAddNote = async () => {
-    if (!newNote.question || !newNote.sourceText || !subject || !book || !chapter) {
+    if (!newNote.question.trim() || !subject || !book || !chapter) {
+      toast({
+        title: "필수 입력",
+        description: "문제를 입력해주세요.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -113,12 +113,12 @@ export default function Notes() {
       const { data, error } = await (supabase as any)
         .from('wrong_notes')
         .insert({
-          question: newNote.question,
-          source_text: newNote.sourceText,
-          explanation: newNote.explanation || null,
-          subject_name: subject,
-          book_name: book,
-          chapter_name: chapter,
+          question: newNote.question.trim(),
+          source_text: newNote.sourceText.trim() || '',
+          explanation: newNote.explanation.trim() || '',
+          subject_name: decodedSubject,
+          book_name: decodedBook,
+          chapter_name: decodedChapter,
           is_resolved: false
         })
         .select()
