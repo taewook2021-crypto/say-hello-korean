@@ -100,6 +100,9 @@ export default function Notes() {
   };
 
   const handleAddNote = async () => {
+    console.log('URL Parameters:', { subject, book, chapter });
+    console.log('Decoded Parameters:', { decodedSubject, decodedBook, decodedChapter });
+    
     if (!newNote.question.trim()) {
       toast({
         title: "필수 입력",
@@ -109,7 +112,7 @@ export default function Notes() {
       return;
     }
 
-    if (!decodedSubject || !decodedBook || !decodedChapter) {
+    if (!subject || !book || !chapter) {
       toast({
         title: "경로 오류",
         description: "과목, 책, 챕터 정보가 올바르지 않습니다.",
