@@ -20,9 +20,6 @@ import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { TemplateDocumentGenerator } from "@/components/study/TemplateDocumentGenerator";
 import OCRCamera from "@/components/OCRCamera";
-import { useGPTChat } from "@/hooks/useGPTChat";
-import { useUsageTracking } from "@/hooks/useUsageTracking";
-import ChatInterface from "@/components/ChatInterface";
 
 
 interface WrongNote {
@@ -63,25 +60,6 @@ export default function Notes() {
   const decodedBook = decodeURIComponent(bookName || '');
   const decodedChapter = decodeURIComponent(chapterName || '');
 
-  const { messages, isLoading: chatLoading, sendMessage, selectedModel, setSelectedModel } = useGPTChat();
-  const { updateUsage } = useUsageTracking();
-
-  const handleChatMessage = async (message: string, model?: string, currentSubject?: string) => {
-    try {
-      const result = await sendMessage(message, '', model, currentSubject || decodedSubject);
-      
-      // 토큰 사용량 업데이트
-      if (result?.usage) {
-        await updateUsage(
-          result.model || model || selectedModel,
-          result.usage.input_tokens,
-          result.usage.output_tokens
-        );
-      }
-    } catch (error) {
-      console.error('Chat error:', error);
-    }
-  };
 
   useEffect(() => {
     loadNotes();
@@ -835,17 +813,6 @@ export default function Notes() {
         )}
       </div>
 
-      {/* GPT 채팅 인터페이스 */}
-      <div className="mt-8">
-        <ChatInterface
-          onSendMessage={handleChatMessage}
-          isLoading={chatLoading}
-          messages={messages}
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          currentSubject={decodedSubject} // 현재 과목 정보 전달
-        />
-      </div>
     </div>
   );
 }

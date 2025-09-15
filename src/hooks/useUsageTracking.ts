@@ -148,16 +148,10 @@ export function useUsageTracking() {
     return inputCost + outputCost;
   }, [modelPricing]);
 
-  // Get allowed models for current tier
+  // Get allowed models for current tier - 4o mini only
   const getAllowedModels = useCallback(() => {
-    console.log('Getting allowed models for tier:', currentTier);
-    console.log('Available subscription limits:', subscriptionLimits);
-    const tierLimits = subscriptionLimits.find(l => l.tier_name === currentTier);
-    console.log('Found tier limits:', tierLimits);
-    const allowedModels = tierLimits?.allowed_models || ['gpt-4o-mini'];
-    console.log('Allowed models:', allowedModels);
-    return allowedModels;
-  }, [subscriptionLimits, currentTier]);
+    return ['gpt-4o-mini'];
+  }, []);
 
   // Get usage percentage
   const getUsagePercentage = useCallback((type: 'daily' | 'monthly') => {
