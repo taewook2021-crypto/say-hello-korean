@@ -81,9 +81,9 @@ export default function StudyPlan() {
       const itemsMap = new Map<string, StudyItem>();
       
       progressData?.forEach((item) => {
-        // 문제번호에서 접미사 제거
-        const cleanProblemNumber = item.notes?.replace(/_wrong|_mistake|_correct/, '') || 'default';
-        const key = `${item.subject_name}_${item.book_name}_${item.chapter_name}_${cleanProblemNumber}`;
+        // notes는 이제 문제번호만 포함 (접미사 없음)
+        const problemNumber = item.notes || 'default';
+        const key = `${item.subject_name}_${item.book_name}_${item.chapter_name}_${problemNumber}`;
         
         if (!itemsMap.has(key)) {
           itemsMap.set(key, {
@@ -91,7 +91,7 @@ export default function StudyPlan() {
             subject_name: item.subject_name,
             book_name: item.book_name,
             chapter_name: item.chapter_name,
-            problem_number: cleanProblemNumber === 'default' ? '전체' : cleanProblemNumber,
+            problem_number: problemNumber === 'default' ? '전체' : problemNumber,
             max_rounds: 3,
             rounds_completed: {},
             round_status: {},
@@ -102,15 +102,11 @@ export default function StudyPlan() {
         const studyItem = itemsMap.get(key)!;
         studyItem.rounds_completed[item.round_number] = item.is_completed;
         
-        // O/△/X 상태 확인 (UI 버튼과 일치하도록 수정)
-        if (item.notes && item.notes.includes('_wrong')) {
-          studyItem.round_status[item.round_number] = 4; // X (틀림)
-        } else if (item.notes && item.notes.includes('_mistake')) {
-          studyItem.round_status[item.round_number] = 3; // △ (실수)
-        } else if (item.notes && item.notes.includes('_correct')) {
+        // 레코드 존재 시 기본적으로 완료 상태에 따라 판단
+        if (item.is_completed) {
           studyItem.round_status[item.round_number] = 2; // O (맞춤)
         } else {
-          studyItem.round_status[item.round_number] = 1; // 빈칸 (기본값)
+          studyItem.round_status[item.round_number] = 3; // △ (실수/틀림)
         }
       });
 
@@ -425,37 +421,58 @@ export default function StudyPlan() {
 
       console.log('Updating status:', { itemId, roundNumber, status, currentItem });
 
-      // 상태에 따른 notes 형식 결정
-      let notesSuffix = '';
-      if (status === 1) notesSuffix = ''; // 빈칸
-      else if (status === 2) notesSuffix = '_correct'; // O
-      else if (status === 3) notesSuffix = '_mistake'; // △ 
-      else if (status === 4) notesSuffix = '_wrong'; // X
-
-      const notes = `${currentItem.problem_number}${notesSuffix}`;
-
-      // 기존 해당 문제의 해당 회독 기록 삭제
-      await supabase
+      // 해당 문제의 해당 회독 기록 찾기 또는 생성
+      const { data: existingRecord, error: selectError } = await supabase
         .from('study_progress')
-        .delete()
+        .select('*')
         .eq('subject_name', currentItem.subject_name)
         .eq('book_name', currentItem.book_name)
         .eq('chapter_name', currentItem.chapter_name)
         .eq('round_number', roundNumber)
-        .like('notes', `${currentItem.problem_number}%`);
+        .eq('notes', currentItem.problem_number)
+        .single();
 
-      if (status !== 1) { // 빈칸이 아닌 경우에만 새 기록 삽입
+      if (selectError && selectError.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error('Select error:', selectError);
+        throw selectError;
+      }
+
+      // 상태에 따른 업데이트 데이터 준비
+      const updateData = {
+        subject_name: currentItem.subject_name,
+        book_name: currentItem.book_name,
+        chapter_name: currentItem.chapter_name,
+        round_number: roundNumber,
+        notes: currentItem.problem_number, // 문제번호만 저장, 접미사 없음
+        is_completed: status === 2, // O인 경우만 완료로 표시
+        completed_at: status === 2 ? new Date().toISOString() : null,
+      };
+
+      if (existingRecord) {
+        // 기존 레코드 업데이트
+        if (status === 1) {
+          // 빈칸인 경우 레코드 삭제
+          await supabase
+            .from('study_progress')
+            .delete()
+            .eq('id', existingRecord.id);
+        } else {
+          // 상태 업데이트
+          const { error } = await supabase
+            .from('study_progress')
+            .update(updateData)
+            .eq('id', existingRecord.id);
+
+          if (error) {
+            console.error('Update error:', error);
+            throw error;
+          }
+        }
+      } else if (status !== 1) {
+        // 새 레코드 생성 (빈칸이 아닌 경우만)
         const { error } = await supabase
           .from('study_progress')
-          .insert({
-            subject_name: currentItem.subject_name,
-            book_name: currentItem.book_name,
-            chapter_name: currentItem.chapter_name,
-            round_number: roundNumber,
-            notes: notes,
-            is_completed: status === 2, // O인 경우만 완료로 표시
-            completed_at: status === 2 ? new Date().toISOString() : null,
-          });
+          .insert(updateData);
 
         if (error) {
           console.error('Insert error:', error);
