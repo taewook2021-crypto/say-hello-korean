@@ -208,13 +208,22 @@ export default function StudyPlan() {
 
   const deleteStudyItem = async (item: StudyItem) => {
     try {
-      const { error } = await supabase
+      // notes 필드가 null인지 확인하여 적절한 조건으로 삭제
+      let query = supabase
         .from('study_progress')
         .delete()
         .eq('subject_name', item.subject_name)
         .eq('book_name', item.book_name)
-        .eq('chapter_name', item.chapter_name)
-        .eq('notes', item.problem_number === '전체' ? null : item.problem_number);
+        .eq('chapter_name', item.chapter_name);
+
+      // notes 필드에 따른 조건 처리
+      if (item.problem_number === '전체' || !item.problem_number) {
+        query = query.is('notes', null);
+      } else {
+        query = query.eq('notes', item.problem_number);
+      }
+
+      const { error } = await query;
 
       if (error) throw error;
 
