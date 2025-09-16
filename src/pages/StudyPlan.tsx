@@ -1,28 +1,25 @@
 import { useState, useEffect } from "react";
-import { Plus, BookOpen, Calendar, Target, CheckCircle2, Circle } from "lucide-react";
+import { Plus, BookOpen, Check, X, Edit2, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 
-interface StudyProgress {
+interface StudyItem {
   id: string;
   subject_name: string;
   book_name: string;
   chapter_name: string;
-  round_number: number;
-  is_completed: boolean;
-  completed_at?: string;
-  target_date?: string;
-  notes?: string;
+  problem_number: string;
+  max_rounds: number;
+  rounds_completed: { [round: number]: boolean };
   created_at: string;
 }
 
@@ -38,7 +35,7 @@ interface Chapter {
 }
 
 export default function StudyPlan() {
-  const [studyProgress, setStudyProgress] = useState<StudyProgress[]>([]);
+  const [studyItems, setStudyItems] = useState<StudyItem[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,8 +43,10 @@ export default function StudyPlan() {
   const [selectedSubject, setSelectedSubject] = useState("");
   const [selectedBook, setSelectedBook] = useState("");
   const [selectedChapter, setSelectedChapter] = useState("");
-  const [targetRounds, setTargetRounds] = useState(3);
-  const [targetDate, setTargetDate] = useState("");
+  const [problemNumbers, setProblemNumbers] = useState("");
+  const [maxRounds, setMaxRounds] = useState(3);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
     loadData();
@@ -56,13 +55,37 @@ export default function StudyPlan() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Load study progress
+      // Load study progress data
       const { data: progressData, error: progressError } = await supabase
         .from('study_progress')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (progressError) throw progressError;
+
+      // Group by study item and create rounds_completed object
+      const itemsMap = new Map<string, StudyItem>();
+      
+      progressData?.forEach((item) => {
+        const key = `${item.subject_name}_${item.book_name}_${item.chapter_name}_${item.notes || 'default'}`;
+        
+        if (!itemsMap.has(key)) {
+          itemsMap.set(key, {
+            id: key,
+            subject_name: item.subject_name,
+            book_name: item.book_name,
+            chapter_name: item.chapter_name,
+            problem_number: item.notes || '전체',
+            max_rounds: 3,
+            rounds_completed: {},
+            created_at: item.created_at
+          });
+        }
+        
+        const studyItem = itemsMap.get(key)!;
+        studyItem.rounds_completed[item.round_number] = item.is_completed;
+        studyItem.max_rounds = Math.max(studyItem.max_rounds, item.round_number);
+      });
 
       // Load books
       const { data: booksData, error: booksError } = await supabase
@@ -80,7 +103,7 @@ export default function StudyPlan() {
 
       if (chaptersError) throw chaptersError;
 
-      setStudyProgress(progressData || []);
+      setStudyItems(Array.from(itemsMap.values()));
       setBooks(booksData || []);
       setChapters(chaptersData || []);
     } catch (error) {
@@ -91,25 +114,32 @@ export default function StudyPlan() {
     }
   };
 
-  const handleAddStudyPlan = async () => {
-    if (!selectedSubject || !selectedBook || !selectedChapter) {
-      toast.error('모든 필드를 선택해주세요.');
+  const handleAddStudyItem = async () => {
+    if (!selectedSubject || !selectedBook || !selectedChapter || !problemNumbers) {
+      toast.error('모든 필드를 입력해주세요.');
       return;
     }
 
     try {
-      // Create study progress entries for each round
-      const studyPlans = Array.from({ length: targetRounds }, (_, index) => ({
-        subject_name: selectedSubject,
-        book_name: selectedBook,
-        chapter_name: selectedChapter,
-        round_number: index + 1,
-        target_date: targetDate || null
-      }));
+      const problems = problemNumbers.split(',').map(p => p.trim()).filter(p => p);
+      const allStudyPlans = [];
+
+      for (const problem of problems) {
+        for (let round = 1; round <= maxRounds; round++) {
+          allStudyPlans.push({
+            subject_name: selectedSubject,
+            book_name: selectedBook,
+            chapter_name: selectedChapter,
+            round_number: round,
+            notes: problem,
+            is_completed: false
+          });
+        }
+      }
 
       const { error } = await supabase
         .from('study_progress')
-        .insert(studyPlans);
+        .insert(allStudyPlans);
 
       if (error) throw error;
 
@@ -126,7 +156,7 @@ export default function StudyPlan() {
 
       if (chapterError) console.warn('Chapter creation error:', chapterError);
 
-      toast.success('학습 계획이 추가되었습니다.');
+      toast.success('회독표 항목이 추가되었습니다.');
       setIsDialogOpen(false);
       loadData();
       
@@ -134,31 +164,57 @@ export default function StudyPlan() {
       setSelectedSubject("");
       setSelectedBook("");
       setSelectedChapter("");
-      setTargetRounds(3);
-      setTargetDate("");
+      setProblemNumbers("");
+      setMaxRounds(3);
     } catch (error) {
-      console.error('Error adding study plan:', error);
-      toast.error('학습 계획 추가 중 오류가 발생했습니다.');
+      console.error('Error adding study item:', error);
+      toast.error('항목 추가 중 오류가 발생했습니다.');
     }
   };
 
-  const toggleCompletion = async (id: string, isCompleted: boolean) => {
+  const toggleRoundCompletion = async (item: StudyItem, round: number) => {
     try {
+      const isCompleted = item.rounds_completed[round] || false;
+      
       const { error } = await supabase
         .from('study_progress')
         .update({
           is_completed: !isCompleted,
           completed_at: !isCompleted ? new Date().toISOString() : null
         })
-        .eq('id', id);
+        .eq('subject_name', item.subject_name)
+        .eq('book_name', item.book_name)
+        .eq('chapter_name', item.chapter_name)
+        .eq('round_number', round)
+        .eq('notes', item.problem_number === '전체' ? null : item.problem_number);
 
       if (error) throw error;
 
-      toast.success(isCompleted ? '완료를 취소했습니다.' : '회독을 완료했습니다.');
+      toast.success(`${round}회독이 ${!isCompleted ? '완료' : '미완료'}로 변경되었습니다.`);
       loadData();
     } catch (error) {
       console.error('Error updating completion:', error);
       toast.error('상태 업데이트 중 오류가 발생했습니다.');
+    }
+  };
+
+  const deleteStudyItem = async (item: StudyItem) => {
+    try {
+      const { error } = await supabase
+        .from('study_progress')
+        .delete()
+        .eq('subject_name', item.subject_name)
+        .eq('book_name', item.book_name)
+        .eq('chapter_name', item.chapter_name)
+        .eq('notes', item.problem_number === '전체' ? null : item.problem_number);
+
+      if (error) throw error;
+
+      toast.success('항목이 삭제되었습니다.');
+      loadData();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast.error('삭제 중 오류가 발생했습니다.');
     }
   };
 
@@ -176,18 +232,10 @@ export default function StudyPlan() {
     );
   };
 
-  const groupedProgress = studyProgress.reduce((acc, progress) => {
-    const key = `${progress.subject_name}_${progress.book_name}_${progress.chapter_name}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(progress);
-    return acc;
-  }, {} as Record<string, StudyProgress[]>);
-
-  const calculateProgress = (rounds: StudyProgress[]) => {
-    const completed = rounds.filter(r => r.is_completed).length;
-    return (completed / rounds.length) * 100;
+  const getProgressPercentage = (item: StudyItem) => {
+    const totalRounds = item.max_rounds;
+    const completedRounds = Object.values(item.rounds_completed).filter(Boolean).length;
+    return totalRounds > 0 ? (completedRounds / totalRounds) * 100 : 0;
   };
 
   if (isLoading) {
@@ -195,17 +243,14 @@ export default function StudyPlan() {
       <div className="container mx-auto p-6">
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-1/2"></div>
-              </CardContent>
-            </Card>
+            <div key={i} className="h-16 bg-muted rounded animate-pulse"></div>
           ))}
         </div>
       </div>
     );
   }
+
+  const maxRoundsInData = Math.max(...studyItems.map(item => item.max_rounds), 3);
 
   return (
     <div className="container mx-auto p-6">
@@ -213,21 +258,21 @@ export default function StudyPlan() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">회독표</h1>
-          <p className="text-muted-foreground">학습 진도를 체계적으로 관리하세요</p>
+          <p className="text-muted-foreground">문제별 회독 현황을 체크하세요</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              학습 계획 추가
+              항목 추가
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>새 학습 계획 추가</DialogTitle>
+              <DialogTitle>회독표 항목 추가</DialogTitle>
               <DialogDescription>
-                과목, 교재, 단원을 선택하고 목표 회독수를 설정하세요.
+                과목, 교재, 단원을 선택하고 문제 번호를 입력하세요.
               </DialogDescription>
             </DialogHeader>
             
@@ -291,129 +336,135 @@ export default function StudyPlan() {
               )}
 
               <div>
+                <Label htmlFor="problems">문제 번호</Label>
+                <Input
+                  placeholder="예: 1, 2, 3 또는 1-10 형태로 입력"
+                  value={problemNumbers}
+                  onChange={(e) => setProblemNumbers(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  쉼표로 구분해서 여러 문제를 입력할 수 있습니다
+                </p>
+              </div>
+
+              <div>
                 <Label htmlFor="rounds">목표 회독수</Label>
                 <Input
                   type="number"
                   min="1"
                   max="10"
-                  value={targetRounds}
-                  onChange={(e) => setTargetRounds(parseInt(e.target.value) || 1)}
+                  value={maxRounds}
+                  onChange={(e) => setMaxRounds(parseInt(e.target.value) || 1)}
                 />
               </div>
 
-              <div>
-                <Label htmlFor="target-date">목표 완료일 (선택)</Label>
-                <Input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                />
-              </div>
-
-              <Button onClick={handleAddStudyPlan} className="w-full">
-                학습 계획 추가
+              <Button onClick={handleAddStudyItem} className="w-full">
+                항목 추가
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Study Progress Cards */}
-      <div className="space-y-6">
-        {Object.entries(groupedProgress).length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">학습 계획이 없습니다</h3>
-              <p className="text-muted-foreground mb-4">
-                첫 번째 학습 계획을 추가해보세요
-              </p>
-              <Button onClick={() => setIsDialogOpen(true)}>
-                학습 계획 추가
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          Object.entries(groupedProgress).map(([key, rounds]) => {
-            const [subject, book, chapter] = key.split('_');
-            const progress = calculateProgress(rounds);
-            const completedRounds = rounds.filter(r => r.is_completed).length;
-            const totalRounds = rounds.length;
-
-            return (
-              <Card key={key}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <BookOpen className="w-5 h-5" />
-                        {chapter}
-                      </CardTitle>
-                      <CardDescription>
-                        {subject} • {book}
-                      </CardDescription>
-                    </div>
-                    <Link 
-                      to={`/notes/${encodeURIComponent(subject)}/${encodeURIComponent(book)}/${encodeURIComponent(chapter)}`}
-                    >
-                      <Button variant="outline" size="sm">
-                        오답노트
-                      </Button>
-                    </Link>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Progress Bar */}
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span>진도율</span>
-                        <span>{completedRounds}/{totalRounds} 회독</span>
-                      </div>
-                      <Progress value={progress} />
-                    </div>
-
-                    {/* Round Checkboxes */}
-                    <div className="flex flex-wrap gap-2">
-                      {rounds
-                        .sort((a, b) => a.round_number - b.round_number)
-                        .map((round) => (
-                          <button
-                            key={round.id}
-                            onClick={() => toggleCompletion(round.id, round.is_completed)}
-                            className="flex items-center gap-2 p-2 rounded-lg border hover:bg-accent transition-colors"
-                          >
-                            {round.is_completed ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-600" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-muted-foreground" />
-                            )}
-                            <span className="text-sm">
-                              {round.round_number}회독
-                            </span>
-                            {round.completed_at && (
-                              <Badge variant="secondary" className="text-xs">
-                                {new Date(round.completed_at).toLocaleDateString()}
-                              </Badge>
-                            )}
-                          </button>
-                        ))}
-                    </div>
-
-                    {/* Target Date */}
-                    {rounds[0]?.target_date && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
-                        목표: {new Date(rounds[0].target_date).toLocaleDateString()}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
+      {/* Study Progress Table */}
+      {studyItems.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">회독표가 비어있습니다</h3>
+            <p className="text-muted-foreground mb-4">
+              첫 번째 항목을 추가해보세요
+            </p>
+            <Button onClick={() => setIsDialogOpen(true)}>
+              항목 추가
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>회독 현황표</CardTitle>
+            <CardDescription>
+              각 문제별 회독 완료 상황을 확인하고 체크하세요
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>과목</TableHead>
+                    <TableHead>교재</TableHead>
+                    <TableHead>단원</TableHead>
+                    <TableHead>문제</TableHead>
+                    {Array.from({ length: maxRoundsInData }, (_, i) => (
+                      <TableHead key={i + 1} className="text-center">
+                        {i + 1}회독
+                      </TableHead>
+                    ))}
+                    <TableHead>진도율</TableHead>
+                    <TableHead>오답노트</TableHead>
+                    <TableHead>삭제</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {studyItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.subject_name}</TableCell>
+                      <TableCell>{item.book_name}</TableCell>
+                      <TableCell>{item.chapter_name}</TableCell>
+                      <TableCell>{item.problem_number}</TableCell>
+                      {Array.from({ length: maxRoundsInData }, (_, i) => {
+                        const round = i + 1;
+                        const isCompleted = item.rounds_completed[round] || false;
+                        return (
+                          <TableCell key={round} className="text-center">
+                            <Button
+                              variant={isCompleted ? "default" : "outline"}
+                              size="sm"
+                              className="w-8 h-8 p-0"
+                              onClick={() => toggleRoundCompletion(item, round)}
+                            >
+                              {isCompleted ? (
+                                <Check className="w-4 h-4" />
+                              ) : (
+                                <X className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell>
+                        <Badge variant="outline">
+                          {Math.round(getProgressPercentage(item))}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Link 
+                          to={`/notes/${encodeURIComponent(item.subject_name)}/${encodeURIComponent(item.book_name)}/${encodeURIComponent(item.chapter_name)}`}
+                        >
+                          <Button variant="outline" size="sm">
+                            보기
+                          </Button>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => deleteStudyItem(item)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
