@@ -348,6 +348,17 @@ export default function StudyPlan() {
       grouped[subjectBookKey].chapters[item.chapter_name].push(item);
     });
     
+    // 각 챕터 내에서 문제 번호 순으로 정렬
+    Object.keys(grouped).forEach(subjectBookKey => {
+      Object.keys(grouped[subjectBookKey].chapters).forEach(chapterName => {
+        grouped[subjectBookKey].chapters[chapterName].sort((a, b) => {
+          const numA = parseInt(a.problem_number) || 0;
+          const numB = parseInt(b.problem_number) || 0;
+          return numA - numB;
+        });
+      });
+    });
+    
     return grouped;
   };
 
