@@ -20,18 +20,21 @@ export type Database = {
           id: string
           name: string
           subject_name: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           subject_name: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           subject_name?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -90,6 +93,7 @@ export type Database = {
           major_chapter_id: string | null
           name: string
           subject_name: string
+          user_id: string | null
         }
         Insert: {
           book_name: string
@@ -98,6 +102,7 @@ export type Database = {
           major_chapter_id?: string | null
           name: string
           subject_name: string
+          user_id?: string | null
         }
         Update: {
           book_name?: string
@@ -106,6 +111,7 @@ export type Database = {
           major_chapter_id?: string | null
           name?: string
           subject_name?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -233,6 +239,7 @@ export type Database = {
           name: string
           subject_name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           book_name: string
@@ -241,6 +248,7 @@ export type Database = {
           name: string
           subject_name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           book_name?: string
@@ -249,6 +257,7 @@ export type Database = {
           name?: string
           subject_name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -421,6 +430,7 @@ export type Database = {
           mime_type: string
           subject_name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           book_name?: string | null
@@ -433,6 +443,7 @@ export type Database = {
           mime_type: string
           subject_name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           book_name?: string | null
@@ -445,6 +456,7 @@ export type Database = {
           mime_type?: string
           subject_name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -536,6 +548,7 @@ export type Database = {
           subject_name: string
           target_date: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           book_name: string
@@ -550,6 +563,7 @@ export type Database = {
           subject_name: string
           target_date?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           book_name?: string
@@ -564,6 +578,7 @@ export type Database = {
           subject_name?: string
           target_date?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -616,16 +631,19 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -791,6 +809,7 @@ export type Database = {
           source_text: string
           subject_name: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           book_name: string
@@ -804,6 +823,7 @@ export type Database = {
           source_text: string
           subject_name: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           book_name?: string
@@ -817,6 +837,7 @@ export type Database = {
           source_text?: string
           subject_name?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

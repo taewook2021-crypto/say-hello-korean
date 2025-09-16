@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DataContextType {
   subjects: string[];
@@ -21,13 +22,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [subjectBooks, setSubjectBooks] = useState<{ [key: string]: string[] }>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const refreshSubjects = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('subjects')
         .select('name')
+        .eq('user_id', user.id)
         .order('name');
       
       if (error) throw error;
@@ -41,11 +46,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshBooksForSubject = async (subjectName: string) => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('books')
         .select('name')
         .eq('subject_name', subjectName)
+        .eq('user_id', user.id)
         .order('name');
       
       if (error) throw error;
@@ -60,10 +68,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addSubject = async (name: string) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('subjects')
-        .insert({ name: name.trim() });
+        .insert({ 
+          name: name.trim(),
+          user_id: user.id
+        });
 
       if (error) throw error;
 
@@ -85,11 +98,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteSubject = async (name: string) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('subjects')
         .delete()
-        .eq('name', name);
+        .eq('name', name)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -116,12 +132,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addBook = async (subjectName: string, bookName: string) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('books')
         .insert({ 
           name: bookName.trim(),
-          subject_name: subjectName
+          subject_name: subjectName,
+          user_id: user.id
         });
 
       if (error) throw error;
@@ -147,12 +166,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteBook = async (subjectName: string, bookName: string) => {
+    if (!user) return;
+    
     try {
       const { error } = await supabase
         .from('books')
         .delete()
         .eq('name', bookName)
-        .eq('subject_name', subjectName);
+        .eq('subject_name', subjectName)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -177,8 +199,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    refreshSubjects();
-  }, []);
+    if (user) {
+      refreshSubjects();
+    }
+  }, [user]);
 
   const value: DataContextType = {
     subjects,

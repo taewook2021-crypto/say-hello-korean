@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Home, NotebookPen, ChevronRight, FileText, FolderOpen, User, Crown, CreditCard, Settings, BarChart3 } from "lucide-react";
+import { BookOpen, Home, NotebookPen, ChevronRight, FileText, FolderOpen, User, Crown, CreditCard, Settings, BarChart3, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -20,6 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useData } from "@/contexts/DataContext";
 import { SearchBar } from "@/components/SearchBar";
 import { useSearch } from "@/contexts/SearchContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,16 +34,13 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [currentPlan, setCurrentPlan] = useState<string>("무료");
   
   const { subjects, subjectBooks, loading, refreshBooksForSubject } = useData();
   const { setSearchState } = useSearch();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
-    // 임시로 하드코딩된 사용자 정보 (실제로는 auth에서 가져와야 함)
-    setUserEmail("user@example.com");
-    
     // 로컬 스토리지에서 저장된 플랜 정보 로드
     const savedPlan = localStorage.getItem('currentPlan');
     if (savedPlan) {
@@ -266,7 +264,7 @@ export function AppSidebar() {
                       <User className="h-4 w-4 text-primary-foreground" />
                     </div>
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-medium truncate">{userEmail}</p>
+                      <p className="text-sm font-medium truncate">{user?.email}</p>
                       <div className="flex items-center gap-2">
                         <Badge variant={currentPlan === "무료" ? "secondary" : "default"} className="text-xs">
                           {currentPlan}
@@ -294,7 +292,7 @@ export function AppSidebar() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">이메일</span>
-                        <span>{userEmail}</span>
+                        <span>{user?.email}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">가입일</span>
@@ -404,7 +402,13 @@ export function AppSidebar() {
                         <CreditCard className="h-4 w-4 mr-2" />
                         결제 내역
                       </Button>
-                      <Button variant="outline" className="w-full justify-start text-red-600 hover:text-red-700" size="sm">
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start text-red-600 hover:text-red-700" 
+                        size="sm"
+                        onClick={signOut}
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
                         로그아웃
                       </Button>
                     </div>
