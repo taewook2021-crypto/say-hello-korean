@@ -397,10 +397,50 @@ export default function StudyPlan() {
       setShowInlineChapterAdd(null);
       setNewChapterName("");
       setProblemCount(1);
-    setExpandedChapters(new Set());
+      setExpandedChapters(new Set());
+      
+      // 데이터 새로고침
+      loadData();
     } catch (error) {
       console.error('Error adding chapter:', error);
       toast.error('단원 추가 중 오류가 발생했습니다.');
+    }
+  };
+
+  const updateStudyStatus = async (itemId: string, roundNumber: number, status: number) => {
+    try {
+      // 현재 아이템 찾기
+      const currentItem = studyItems.find(item => item.id === itemId);
+      if (!currentItem) return;
+
+      // 상태 업데이트
+      const updatedRoundStatus = {
+        ...currentItem.round_status,
+        [roundNumber.toString()]: status
+      };
+
+      const { error } = await supabase
+        .from('study_progress')
+        .update({ 
+          round_status: updatedRoundStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // 로컬 상태 업데이트
+      setStudyItems(prev => prev.map(item => 
+        item.id === itemId 
+          ? { ...item, round_status: updatedRoundStatus }
+          : item
+      ));
+
+      const statusText = { 1: '빈칸', 2: 'O', 3: '△', 4: 'X' }[status];
+      toast.success(`${currentItem.problem_number}번 ${roundNumber}회독 상태가 ${statusText}로 변경되었습니다.`);
+    } catch (error) {
+      console.error('Error updating study status:', error);
+      toast.error('상태 업데이트 중 오류가 발생했습니다.');
     }
   };
 
@@ -595,7 +635,7 @@ export default function StudyPlan() {
                         const chapterKey = `${data.subject_name}_${data.book_name}_${chapterName}`;
                         const isExpanded = expandedChapters.has(chapterKey);
                         
-                        return (
+                         return (
                           <React.Fragment key={chapterKey}>
                             {/* Chapter Header Row */}
                             <TableRow className="bg-muted/30 cursor-pointer hover:bg-muted/40" onClick={() => toggleChapterExpansion(chapterKey)}>
@@ -606,79 +646,62 @@ export default function StudyPlan() {
                                 </div>
                               </TableCell>
                               <TableCell colSpan={maxRoundsInData + 3} className="text-center text-muted-foreground">
-                                <Link 
-                                  to={`/notes/${encodeURIComponent(data.subject_name)}/${encodeURIComponent(data.book_name)}/${encodeURIComponent(chapterName)}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Button variant="ghost" size="sm">
-                                    오답노트 보기
-                                  </Button>
-                                </Link>
+                                {isExpanded ? '문제 목록 숨기기' : '문제 목록 보기'}
                               </TableCell>
                             </TableRow>
                             
-                            {/* Problem Rows - Only show when expanded */}
+                            {/* Chapter Items (only shown when expanded) */}
                             {isExpanded && items.map((item) => (
                               <TableRow key={item.id}>
-                                <TableCell className="pl-8 text-muted-foreground">
-                                  {item.problem_number}번
+                                <TableCell className="pl-8">{item.problem_number}번</TableCell>
+                                {Array.from({ length: maxRoundsInData }, (_, roundIndex) => {
+                                  const roundNumber = roundIndex + 1;
+                                  const roundStatus = item.round_status?.[roundNumber.toString()] || 1;
+                                  const statusMap = { 1: '', 2: 'O', 3: '△', 4: 'X' };
+                                  
+                                  return (
+                                    <TableCell key={`${item.id}-round-${roundNumber}`} className="text-center">
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button 
+                                            variant="ghost" 
+                                            className="h-8 w-8 p-0 border border-border hover:bg-muted"
+                                          >
+                                            {statusMap[roundStatus]}
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                          <DropdownMenuItem 
+                                            onClick={() => updateStudyStatus(item.id, roundNumber, 1)}
+                                          >
+                                            빈칸
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => updateStudyStatus(item.id, roundNumber, 2)}
+                                          >
+                                            O (맞춤)
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => updateStudyStatus(item.id, roundNumber, 3)}
+                                          >
+                                            △ (실수)
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            onClick={() => updateStudyStatus(item.id, roundNumber, 4)}
+                                          >
+                                            X (틀림)
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TableCell>
+                                  );
+                                })}
+                                <TableCell className="text-center">
+                                  <span className="text-sm text-muted-foreground">
+                                    {new Date(item.created_at).toLocaleDateString()}
+                                  </span>
                                 </TableCell>
-                              {Array.from({ length: maxRoundsInData }, (_, i) => {
-                                const round = i + 1;
-                                const status = item.round_status[round] || 0; // 0=빈칸, 1=O, 2=△, 3=X
-                                
-                                const getStatusDisplay = (status: number) => {
-                                  switch (status) {
-                                    case 1: return { text: 'O', color: 'text-green-600' };
-                                    case 2: return { text: '△', color: 'text-yellow-600' };
-                                    case 3: return { text: 'X', color: 'text-red-600' };
-                                    default: return { text: '', color: 'text-muted-foreground' };
-                                  }
-                                };
-                                
-                                const statusDisplay = getStatusDisplay(status);
-                                
-                                return (
-                                  <TableCell key={round} className="text-center">
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <button className={`w-8 h-8 border border-border rounded text-sm font-bold hover:bg-accent transition-colors flex items-center justify-center ${statusDisplay.color}`}>
-                                          {statusDisplay.text || '·'}
-                                        </button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent>
-                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 0)}>
-                                          빈칸
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 1)}>
-                                          <span className="text-green-600 font-bold">O</span> - 맞춘 문제
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 2)}>
-                                          <span className="text-yellow-600 font-bold">△</span> - 실수한 문제
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 3)}>
-                                          <span className="text-red-600 font-bold">X</span> - 아예 틀린 문제
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </TableCell>
-                                );
-                              })}
-                              <TableCell className="text-center">
-                                <Badge variant="outline">
-                                  {Math.round((Object.values(item.rounds_completed).filter(Boolean).length / item.max_rounds) * 100)}%
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Link 
-                                  to={`/notes/${encodeURIComponent(item.subject_name)}/${encodeURIComponent(item.book_name)}/${encodeURIComponent(item.chapter_name)}`}
-                                >
-                                  <Button variant="outline" size="sm">
-                                    보기
-                                  </Button>
-                                </Link>
-                              </TableCell>
-                              <TableCell className="text-center">
+                                <TableCell className="text-center">
                                 <Button
                                   variant="outline"
                                   size="sm"
