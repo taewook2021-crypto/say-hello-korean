@@ -20,7 +20,7 @@ interface StudyItem {
   problem_number: string;
   max_rounds: number;
   rounds_completed: { [round: number]: boolean };
-  round_status: { [round: number]: number }; // 0=빈칸, 1=O, 2=X
+  round_status: { [round: number]: number }; // 0=빈칸, 1=O, 2=△, 3=X
   created_at: string;
 }
 
@@ -98,11 +98,13 @@ export default function StudyPlan() {
         const studyItem = itemsMap.get(key)!;
         studyItem.rounds_completed[item.round_number] = item.is_completed;
         
-        // O/X 상태 확인 (notes에 _wrong이 포함되어 있으면 X, 완료되어 있으면 O, 아니면 빈칸)
+        // O/△/X 상태 확인
         if (item.notes && item.notes.includes('_wrong')) {
-          studyItem.round_status[item.round_number] = 2; // X
+          studyItem.round_status[item.round_number] = 3; // X (아예 틀림)
+        } else if (item.notes && item.notes.includes('_mistake')) {
+          studyItem.round_status[item.round_number] = 2; // △ (실수)
         } else if (item.is_completed) {
-          studyItem.round_status[item.round_number] = 1; // O
+          studyItem.round_status[item.round_number] = 1; // O (맞음)
         } else {
           studyItem.round_status[item.round_number] = 0; // 빈칸
         }
@@ -215,12 +217,19 @@ export default function StudyPlan() {
         
         if (error) throw error;
       } else {
-        // O(1) 또는 X(2): 회독 기록 업데이트/생성
+        // O(1), △(2), X(3): 회독 기록 업데이트/생성
+        let notesSuffix = '';
+        if (status === 2) notesSuffix = '_mistake';
+        else if (status === 3) notesSuffix = '_wrong';
+        
         updateData = {
-          is_completed: status === 1,
+          is_completed: status === 1, // O일 때만 완료로 표시
           completed_at: status === 1 ? new Date().toISOString() : null,
-          notes: `${item.problem_number}${status === 2 ? '_wrong' : ''}`
         };
+
+        const notes = item.problem_number === '전체' ? 
+          (notesSuffix ? notesSuffix : null) : 
+          `${item.problem_number}${notesSuffix}`;
 
         const { error } = await supabase
           .from('study_progress')
@@ -229,14 +238,15 @@ export default function StudyPlan() {
             book_name: item.book_name,
             chapter_name: item.chapter_name,
             round_number: round,
-            notes: item.problem_number === '전체' ? (status === 2 ? '_wrong' : null) : updateData.notes,
+            notes: notes,
             ...updateData
           });
 
         if (error) throw error;
       }
 
-      toast.success(`${round}회독이 ${status === 0 ? '삭제' : status === 1 ? 'O로 표시' : 'X로 표시'}되었습니다.`);
+      const statusText = ['삭제', 'O로 표시', '△로 표시', 'X로 표시'][status];
+      toast.success(`${round}회독이 ${statusText}되었습니다.`);
       loadData();
     } catch (error) {
       console.error('Error updating status:', error);
@@ -386,6 +396,11 @@ export default function StudyPlan() {
         <div>
           <h1 className="text-3xl font-bold">회독표</h1>
           <p className="text-muted-foreground">문제별 회독 현황을 체크하세요</p>
+          <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
+            <span><span className="font-mono font-bold">O</span>: 맞춘 문제</span>
+            <span><span className="font-mono font-bold">△</span>: 실수한 문제</span>
+            <span><span className="font-mono font-bold">X</span>: 아예 틀린 문제</span>
+          </div>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -400,6 +415,13 @@ export default function StudyPlan() {
               <DialogTitle>회독표 항목 추가</DialogTitle>
               <DialogDescription>
                 과목, 교재, 단원을 선택하고 문제 번호를 입력하세요.
+                <div className="mt-2 p-3 bg-muted rounded-lg text-sm">
+                  <p className="font-medium mb-1">표시 가이드라인:</p>
+                  <p><span className="font-mono">O</span> - 맞춘 문제</p>
+                  <p><span className="font-mono">△</span> - 실수한 문제 (개념은 알지만 계산 실수 등)</p>
+                  <p><span className="font-mono">X</span> - 아예 틀린 문제 (개념 모름)</p>
+                  <p><span className="font-mono">빈칸</span> - 아직 안 푼 문제</p>
+                </div>
               </DialogDescription>
             </DialogHeader>
             
@@ -565,19 +587,19 @@ export default function StudyPlan() {
                               </TableCell>
                               {Array.from({ length: maxRoundsInData }, (_, i) => {
                                 const round = i + 1;
-                                const status = item.round_status[round] || 0; // 0=빈칸, 1=O, 2=X
+                                const status = item.round_status[round] || 0; // 0=빈칸, 1=O, 2=△, 3=X
                                 
                                 return (
                                   <TableCell key={round} className="text-center">
                                     <button
                                       className="w-8 h-8 border border-border rounded text-sm font-medium hover:bg-accent transition-colors flex items-center justify-center"
                                       onClick={() => {
-                                        // 빈칸(0) → O(1) → X(2) → 빈칸(0) 순환
-                                        const nextStatus = (status + 1) % 3;
+                                        // 빈칸(0) → O(1) → △(2) → X(3) → 빈칸(0) 순환
+                                        const nextStatus = (status + 1) % 4;
                                         handleStatusUpdate(item.id, round, nextStatus);
                                       }}
                                     >
-                                      {status === 1 ? 'O' : status === 2 ? 'X' : ''}
+                                      {status === 1 ? 'O' : status === 2 ? '△' : status === 3 ? 'X' : ''}
                                     </button>
                                   </TableCell>
                                 );
