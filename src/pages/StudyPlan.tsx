@@ -20,6 +20,7 @@ interface StudyItem {
   problem_number: string;
   max_rounds: number;
   rounds_completed: { [round: number]: boolean };
+  round_status: { [round: number]: number }; // 0=빈칸, 1=O, 2=X
   created_at: string;
 }
 
@@ -89,12 +90,23 @@ export default function StudyPlan() {
             problem_number: item.notes || '전체',
             max_rounds: 3,
             rounds_completed: {},
+            round_status: {},
             created_at: item.created_at
           });
         }
         
         const studyItem = itemsMap.get(key)!;
         studyItem.rounds_completed[item.round_number] = item.is_completed;
+        
+        // O/X 상태 확인 (notes에 _wrong이 포함되어 있으면 X, 완료되어 있으면 O, 아니면 빈칸)
+        if (item.notes && item.notes.includes('_wrong')) {
+          studyItem.round_status[item.round_number] = 2; // X
+        } else if (item.is_completed) {
+          studyItem.round_status[item.round_number] = 1; // O
+        } else {
+          studyItem.round_status[item.round_number] = 0; // 빈칸
+        }
+        
         studyItem.max_rounds = Math.max(studyItem.max_rounds, item.round_number);
       });
 
@@ -183,28 +195,51 @@ export default function StudyPlan() {
     }
   };
 
-  const toggleRoundCompletion = async (item: StudyItem, round: number) => {
+  const handleStatusUpdate = async (itemId: string, round: number, status: number) => {
+    const item = studyItems.find(i => i.id === itemId);
+    if (!item) return;
+
     try {
-      const isCompleted = item.rounds_completed[round] || false;
+      let updateData: any = {};
       
-      const { error } = await supabase
-        .from('study_progress')
-        .update({
-          is_completed: !isCompleted,
-          completed_at: !isCompleted ? new Date().toISOString() : null
-        })
-        .eq('subject_name', item.subject_name)
-        .eq('book_name', item.book_name)
-        .eq('chapter_name', item.chapter_name)
-        .eq('round_number', round)
-        .eq('notes', item.problem_number === '전체' ? null : item.problem_number);
+      if (status === 0) {
+        // 빈칸: 회독 기록 삭제
+        const { error } = await supabase
+          .from('study_progress')
+          .delete()
+          .eq('subject_name', item.subject_name)
+          .eq('book_name', item.book_name)
+          .eq('chapter_name', item.chapter_name)
+          .eq('round_number', round)
+          .eq('notes', item.problem_number === '전체' ? null : item.problem_number);
+        
+        if (error) throw error;
+      } else {
+        // O(1) 또는 X(2): 회독 기록 업데이트/생성
+        updateData = {
+          is_completed: status === 1,
+          completed_at: status === 1 ? new Date().toISOString() : null,
+          notes: `${item.problem_number}${status === 2 ? '_wrong' : ''}`
+        };
 
-      if (error) throw error;
+        const { error } = await supabase
+          .from('study_progress')
+          .upsert({
+            subject_name: item.subject_name,
+            book_name: item.book_name,
+            chapter_name: item.chapter_name,
+            round_number: round,
+            notes: item.problem_number === '전체' ? (status === 2 ? '_wrong' : null) : updateData.notes,
+            ...updateData
+          });
 
-      toast.success(`${round}회독이 ${!isCompleted ? '완료' : '미완료'}로 변경되었습니다.`);
+        if (error) throw error;
+      }
+
+      toast.success(`${round}회독이 ${status === 0 ? '삭제' : status === 1 ? 'O로 표시' : 'X로 표시'}되었습니다.`);
       loadData();
     } catch (error) {
-      console.error('Error updating completion:', error);
+      console.error('Error updating status:', error);
       toast.error('상태 업데이트 중 오류가 발생했습니다.');
     }
   };
@@ -530,21 +565,20 @@ export default function StudyPlan() {
                               </TableCell>
                               {Array.from({ length: maxRoundsInData }, (_, i) => {
                                 const round = i + 1;
-                                const isCompleted = item.rounds_completed[round] || false;
+                                const status = item.round_status[round] || 0; // 0=빈칸, 1=O, 2=X
+                                
                                 return (
                                   <TableCell key={round} className="text-center">
-                                    <Button
-                                      variant={isCompleted ? "default" : "outline"}
-                                      size="sm"
-                                      className="w-8 h-8 p-0"
-                                      onClick={() => toggleRoundCompletion(item, round)}
+                                    <button
+                                      className="w-8 h-8 border border-border rounded text-sm font-medium hover:bg-accent transition-colors flex items-center justify-center"
+                                      onClick={() => {
+                                        // 빈칸(0) → O(1) → X(2) → 빈칸(0) 순환
+                                        const nextStatus = (status + 1) % 3;
+                                        handleStatusUpdate(item.id, round, nextStatus);
+                                      }}
                                     >
-                                      {isCompleted ? (
-                                        <Check className="w-4 h-4" />
-                                      ) : (
-                                        <X className="w-4 h-4" />
-                                      )}
-                                    </Button>
+                                      {status === 1 ? 'O' : status === 2 ? 'X' : ''}
+                                    </button>
                                   </TableCell>
                                 );
                               })}
