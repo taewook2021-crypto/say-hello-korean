@@ -55,6 +55,9 @@ export default function StudyPlan() {
   const [selectedChapter, setSelectedChapter] = useState("");
   const [problemNumbers, setProblemNumbers] = useState("");
   const [maxRounds, setMaxRounds] = useState(3);
+  const [newChapterName, setNewChapterName] = useState("");
+  const [problemCount, setProblemCount] = useState(1);
+  const [showInlineChapterAdd, setShowInlineChapterAdd] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -123,23 +126,23 @@ export default function StudyPlan() {
   };
 
   const handleAddStudyItem = async () => {
-    if (!selectedSubject || !selectedBook || !selectedChapter || !problemNumbers) {
+    if (!selectedSubject || !selectedBook || !selectedChapter || !problemCount) {
       toast.error('모든 필드를 입력해주세요.');
       return;
     }
 
     try {
-      const problems = problemNumbers.split(',').map(p => p.trim()).filter(p => p);
       const allStudyPlans = [];
 
-      for (const problem of problems) {
+      // 1번부터 problemCount까지 문제 생성
+      for (let problemNum = 1; problemNum <= problemCount; problemNum++) {
         for (let round = 1; round <= maxRounds; round++) {
           allStudyPlans.push({
             subject_name: selectedSubject,
             book_name: selectedBook,
             chapter_name: selectedChapter,
             round_number: round,
-            notes: problem,
+            notes: problemNum.toString(),
             is_completed: false
           });
         }
@@ -172,7 +175,7 @@ export default function StudyPlan() {
       setSelectedSubject("");
       setSelectedBook("");
       setSelectedChapter("");
-      setProblemNumbers("");
+      setProblemCount(1);
       setMaxRounds(3);
     } catch (error) {
       console.error('Error adding study item:', error);
@@ -271,6 +274,59 @@ export default function StudyPlan() {
     });
     
     return grouped;
+  };
+
+  const handleInlineChapterAdd = async (subjectName: string, bookName: string) => {
+    if (!newChapterName || !problemCount) {
+      toast.error('단원명과 문제 수를 입력해주세요.');
+      return;
+    }
+
+    try {
+      const allStudyPlans = [];
+
+      // 1번부터 problemCount까지 문제 생성
+      for (let problemNum = 1; problemNum <= problemCount; problemNum++) {
+        for (let round = 1; round <= 3; round++) {
+          allStudyPlans.push({
+            subject_name: subjectName,
+            book_name: bookName,
+            chapter_name: newChapterName,
+            round_number: round,
+            notes: problemNum.toString(),
+            is_completed: false
+          });
+        }
+      }
+
+      const { error } = await supabase
+        .from('study_progress')
+        .insert(allStudyPlans);
+
+      if (error) throw error;
+
+      // Create chapter if it doesn't exist
+      const { error: chapterError } = await supabase
+        .from('chapters')
+        .upsert({
+          name: newChapterName,
+          book_name: bookName,
+          subject_name: subjectName
+        }, {
+          onConflict: 'name,book_name,subject_name'
+        });
+
+      if (chapterError) console.warn('Chapter creation error:', chapterError);
+
+      toast.success('단원이 추가되었습니다.');
+      setShowInlineChapterAdd(null);
+      setNewChapterName("");
+      setProblemCount(1);
+      loadData();
+    } catch (error) {
+      console.error('Error adding chapter:', error);
+      toast.error('단원 추가 중 오류가 발생했습니다.');
+    }
   };
 
   if (isLoading) {
@@ -372,14 +428,16 @@ export default function StudyPlan() {
               )}
 
               <div>
-                <Label htmlFor="problems">문제 번호</Label>
+                <Label htmlFor="problems">문제 수</Label>
                 <Input
-                  placeholder="예: 1, 2, 3 또는 1-10 형태로 입력"
-                  value={problemNumbers}
-                  onChange={(e) => setProblemNumbers(e.target.value)}
+                  type="number"
+                  min="1"
+                  placeholder="이 단원의 총 문제 수를 입력하세요"
+                  value={problemCount}
+                  onChange={(e) => setProblemCount(parseInt(e.target.value) || 1)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  쉼표로 구분해서 여러 문제를 입력할 수 있습니다
+                  1번부터 {problemCount}번까지 자동으로 생성됩니다
                 </p>
               </div>
 
@@ -448,10 +506,10 @@ export default function StudyPlan() {
                     <TableBody>
                       {Object.entries(data.chapters).map(([chapterName, items]) => (
                         <React.Fragment key={chapterName}>
-                          {/* Chapter Header Row */}
+                           {/* Chapter Header Row */}
                           <TableRow className="bg-muted/30">
                             <TableCell className="font-semibold">
-                              {chapterName}
+                              {chapterName} ({items.length}문제)
                             </TableCell>
                             <TableCell colSpan={maxRoundsInData + 3} className="text-center text-muted-foreground">
                               <Link 
@@ -517,6 +575,66 @@ export default function StudyPlan() {
                           ))}
                         </React.Fragment>
                       ))}
+                      
+                      {/* Add Chapter Row */}
+                      {showInlineChapterAdd === `${data.subject_name}_${data.book_name}` ? (
+                        <TableRow>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="새 단원명"
+                                value={newChapterName}
+                                onChange={(e) => setNewChapterName(e.target.value)}
+                                className="h-8"
+                              />
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="문제수"
+                                value={problemCount}
+                                onChange={(e) => setProblemCount(parseInt(e.target.value) || 1)}
+                                className="h-8 w-20"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell colSpan={maxRoundsInData + 3}>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm"
+                                onClick={() => handleInlineChapterAdd(data.subject_name, data.book_name)}
+                              >
+                                <Save className="w-4 h-4 mr-2" />
+                                저장
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => {
+                                  setShowInlineChapterAdd(null);
+                                  setNewChapterName("");
+                                  setProblemCount(1);
+                                }}
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                취소
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={maxRoundsInData + 4} className="text-center">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => setShowInlineChapterAdd(`${data.subject_name}_${data.book_name}`)}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              단원 추가
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
