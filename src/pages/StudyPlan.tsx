@@ -532,6 +532,49 @@ export default function StudyPlan() {
     }
   };
 
+  const handleDeleteBook = async (subjectName: string, bookName: string) => {
+    try {
+      const confirmed = window.confirm(`"${subjectName} - ${bookName}" 교재를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 해당 교재의 모든 회독 기록이 삭제됩니다.`);
+      
+      if (!confirmed) return;
+
+      // 해당 교재의 모든 study_progress 데이터 삭제
+      const { error: progressError } = await supabase
+        .from('study_progress')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName);
+
+      if (progressError) throw progressError;
+
+      // 해당 교재의 모든 chapters 데이터 삭제
+      const { error: chaptersError } = await supabase
+        .from('chapters')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName);
+
+      if (chaptersError) throw chaptersError;
+
+      // books 테이블에서도 삭제
+      const { error: bookError } = await supabase
+        .from('books')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('name', bookName);
+
+      if (bookError) throw bookError;
+
+      toast.success(`"${subjectName} - ${bookName}" 교재가 삭제되었습니다.`);
+      
+      // 데이터 새로고침
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting book:', error);
+      toast.error('교재 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -694,13 +737,26 @@ export default function StudyPlan() {
           {Object.entries(groupedData).map(([subjectBookKey, data]) => (
             <Card key={subjectBookKey}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5" />
-                  {data.subject_name} - {data.book_name}
-                </CardTitle>
-                <CardDescription>
-                  단원별 문제 회독 현황
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5" />
+                      {data.subject_name} - {data.book_name}
+                    </CardTitle>
+                    <CardDescription>
+                      단원별 문제 회독 현황
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteBook(data.subject_name, data.book_name)}
+                    className="flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    교재 삭제
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
