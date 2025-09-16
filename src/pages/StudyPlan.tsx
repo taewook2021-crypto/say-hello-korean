@@ -82,7 +82,7 @@ export default function StudyPlan() {
       
       progressData?.forEach((item) => {
         // 문제번호에서 접미사 제거
-        const cleanProblemNumber = item.notes?.replace(/_wrong|_mistake/, '') || 'default';
+        const cleanProblemNumber = item.notes?.replace(/_wrong|_mistake|_correct/, '') || 'default';
         const key = `${item.subject_name}_${item.book_name}_${item.chapter_name}_${cleanProblemNumber}`;
         
         if (!itemsMap.has(key)) {
@@ -102,18 +102,16 @@ export default function StudyPlan() {
         const studyItem = itemsMap.get(key)!;
         studyItem.rounds_completed[item.round_number] = item.is_completed;
         
-        // O/△/X 상태 확인
+        // O/△/X 상태 확인 (UI 버튼과 일치하도록 수정)
         if (item.notes && item.notes.includes('_wrong')) {
-          studyItem.round_status[item.round_number] = 3; // X (아예 틀림)
+          studyItem.round_status[item.round_number] = 4; // X (틀림)
         } else if (item.notes && item.notes.includes('_mistake')) {
-          studyItem.round_status[item.round_number] = 2; // △ (실수)
-        } else if (item.notes) {
-          studyItem.round_status[item.round_number] = 1; // O (맞음)
+          studyItem.round_status[item.round_number] = 3; // △ (실수)
+        } else if (item.notes && item.notes.includes('_correct')) {
+          studyItem.round_status[item.round_number] = 2; // O (맞춤)
         } else {
-          studyItem.round_status[item.round_number] = 0; // 빈칸
+          studyItem.round_status[item.round_number] = 1; // 빈칸 (기본값)
         }
-        
-        studyItem.max_rounds = Math.max(studyItem.max_rounds, item.round_number);
       });
 
       console.log('Processed items:', Array.from(itemsMap.values()));
