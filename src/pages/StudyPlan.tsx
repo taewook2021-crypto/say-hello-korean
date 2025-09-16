@@ -116,6 +116,38 @@ export default function StudyPlan() {
 
       console.log('Processed items:', Array.from(itemsMap.values()));
 
+      // 단원별로 문제를 그룹화하고 순서대로 번호 매기기
+      const studyItemsArray = Array.from(itemsMap.values());
+      const chapterGroups = new Map<string, StudyItem[]>();
+      
+      // 단원별로 그룹화
+      studyItemsArray.forEach(item => {
+        const chapterKey = `${item.subject_name}_${item.book_name}_${item.chapter_name}`;
+        if (!chapterGroups.has(chapterKey)) {
+          chapterGroups.set(chapterKey, []);
+        }
+        chapterGroups.get(chapterKey)!.push(item);
+      });
+
+      // 각 단원 내에서 문제번호 순으로 정렬하고 순차 번호 할당
+      const finalStudyItems: StudyItem[] = [];
+      chapterGroups.forEach((items, chapterKey) => {
+        // 문제번호로 정렬 (숫자 형태로)
+        items.sort((a, b) => {
+          const numA = parseInt(a.problem_number) || 0;
+          const numB = parseInt(b.problem_number) || 0;
+          return numA - numB;
+        });
+        
+        // 순차적으로 번호 재할당
+        items.forEach((item, index) => {
+          item.problem_number = (index + 1).toString();
+          finalStudyItems.push(item);
+        });
+      });
+
+      setStudyItems(finalStudyItems);
+
       // Load books
       const { data: booksData, error: booksError } = await supabase
         .from('books')
@@ -132,7 +164,6 @@ export default function StudyPlan() {
 
       if (chaptersError) throw chaptersError;
 
-      setStudyItems(Array.from(itemsMap.values()));
       setBooks(booksData || []);
       setChapters(chaptersData || []);
     } catch (error) {
