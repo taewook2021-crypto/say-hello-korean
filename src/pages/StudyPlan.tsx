@@ -98,17 +98,13 @@ export default function StudyPlan() {
     }
 
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
       // Create study progress entries for each round
       const studyPlans = Array.from({ length: targetRounds }, (_, index) => ({
         subject_name: selectedSubject,
         book_name: selectedBook,
         chapter_name: selectedChapter,
         round_number: index + 1,
-        target_date: targetDate || null,
-        user_id: user?.id
+        target_date: targetDate || null
       }));
 
       const { error } = await supabase
