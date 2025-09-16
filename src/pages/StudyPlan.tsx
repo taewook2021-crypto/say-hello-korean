@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, BookOpen, Check, X, Edit2, Save, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, BookOpen, Check, X, Edit2, Save, Trash2, ChevronDown, ChevronRight, FileText, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -616,6 +616,66 @@ export default function StudyPlan() {
     }
   };
 
+
+  const handleCreateWrongNote = async (subjectName: string, bookName: string, chapterName: string, problemNumber: string, roundNumber: number) => {
+    const question = prompt(`${problemNumber}번 ${roundNumber}회독 오답노트의 문제를 입력하세요:`);
+    if (!question) return;
+
+    const sourceText = prompt("문제 원문을 입력하세요 (선택사항):") || "";
+    const explanation = prompt("해설을 입력하세요 (선택사항):") || "";
+
+    try {
+      const { error } = await supabase
+        .from('wrong_notes')
+        .insert({
+          subject_name: subjectName,
+          book_name: bookName,
+          chapter_name: chapterName,
+          question: question,
+          source_text: sourceText,
+          explanation: explanation,
+          round_number: roundNumber
+        });
+
+      if (error) throw error;
+
+      toast.success('오답노트가 생성되었습니다.');
+    } catch (error) {
+      console.error('Error creating wrong note:', error);
+      toast.error('오답노트 생성 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleViewWrongNotes = async (subjectName: string, bookName: string, chapterName: string, problemNumber: string, roundNumber: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('wrong_notes')
+        .select('*')
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('chapter_name', chapterName)
+        .eq('round_number', roundNumber)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        toast.info(`${problemNumber}번 ${roundNumber}회독에 대한 오답노트가 없습니다.`);
+        return;
+      }
+
+      // 오답노트 목록을 alert로 표시 (나중에 더 나은 UI로 개선 가능)
+      const notesList = data.map((note, index) => 
+        `${index + 1}. ${note.question}\n${note.explanation ? '해설: ' + note.explanation : ''}\n생성일: ${new Date(note.created_at).toLocaleDateString()}`
+      ).join('\n\n');
+
+      alert(`${chapterName} ${problemNumber}번 ${roundNumber}회독 오답노트:\n\n${notesList}`);
+    } catch (error) {
+      console.error('Error fetching wrong notes:', error);
+      toast.error('오답노트 조회 중 오류가 발생했습니다.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -860,48 +920,70 @@ export default function StudyPlan() {
                             {isExpanded && items.map((item) => (
                               <TableRow key={item.id}>
                                 <TableCell className="pl-8">{item.problem_number}번</TableCell>
-                                {Array.from({ length: maxRoundsInData }, (_, roundIndex) => {
-                                  const roundNumber = roundIndex + 1;
-                                  const roundStatus = item.round_status?.[roundNumber.toString()] || 1;
-                                  const statusMap = { 1: '', 2: 'O', 3: '△', 4: 'X' };
-                                  
-                                  return (
-                                    <TableCell key={`${item.id}-round-${roundNumber}`} className="text-center">
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button 
-                                            variant="ghost" 
-                                            className="h-8 w-8 p-0 border border-border hover:bg-muted"
-                                          >
-                                            {statusMap[roundStatus]}
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent>
-                                          <DropdownMenuItem 
-                                            onClick={() => updateStudyStatus(item.id, roundNumber, 1)}
-                                          >
-                                            빈칸
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => updateStudyStatus(item.id, roundNumber, 2)}
-                                          >
-                                            O (맞춤)
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => updateStudyStatus(item.id, roundNumber, 3)}
-                                          >
-                                            △ (실수)
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem 
-                                            onClick={() => updateStudyStatus(item.id, roundNumber, 4)}
-                                          >
-                                            X (틀림)
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    </TableCell>
-                                  );
-                                })}
+                                 {Array.from({ length: maxRoundsInData }, (_, roundIndex) => {
+                                   const roundNumber = roundIndex + 1;
+                                   const roundStatus = item.round_status?.[roundNumber.toString()] || 1;
+                                   const statusMap = { 1: '', 2: 'O', 3: '△', 4: 'X' };
+                                   
+                                   return (
+                                     <TableCell key={`${item.id}-round-${roundNumber}`} className="text-center">
+                                       <div className="flex flex-col items-center gap-1">
+                                         <DropdownMenu>
+                                           <DropdownMenuTrigger asChild>
+                                             <Button 
+                                               variant="ghost" 
+                                               className="h-8 w-8 p-0 border border-border hover:bg-muted"
+                                             >
+                                               {statusMap[roundStatus]}
+                                             </Button>
+                                           </DropdownMenuTrigger>
+                                           <DropdownMenuContent>
+                                             <DropdownMenuItem 
+                                               onClick={() => updateStudyStatus(item.id, roundNumber, 1)}
+                                             >
+                                               빈칸
+                                             </DropdownMenuItem>
+                                             <DropdownMenuItem 
+                                               onClick={() => updateStudyStatus(item.id, roundNumber, 2)}
+                                             >
+                                               O (맞춤)
+                                             </DropdownMenuItem>
+                                             <DropdownMenuItem 
+                                               onClick={() => updateStudyStatus(item.id, roundNumber, 3)}
+                                             >
+                                               △ (실수)
+                                             </DropdownMenuItem>
+                                             <DropdownMenuItem 
+                                               onClick={() => updateStudyStatus(item.id, roundNumber, 4)}
+                                             >
+                                               X (틀림)
+                                             </DropdownMenuItem>
+                                           </DropdownMenuContent>
+                                         </DropdownMenu>
+                                         <div className="flex gap-1">
+                                           <Button
+                                             variant="ghost"
+                                             size="sm"
+                                             className="h-5 w-5 p-0 text-xs"
+                                             onClick={() => handleCreateWrongNote(data.subject_name, data.book_name, chapterName, item.problem_number, roundNumber)}
+                                             title="오답노트 생성"
+                                           >
+                                             <FileText className="w-3 h-3" />
+                                           </Button>
+                                           <Button
+                                             variant="ghost"
+                                             size="sm"
+                                             className="h-5 w-5 p-0 text-xs"
+                                             onClick={() => handleViewWrongNotes(data.subject_name, data.book_name, chapterName, item.problem_number, roundNumber)}
+                                             title="오답노트 조회"
+                                           >
+                                             <Eye className="w-3 h-3" />
+                                           </Button>
+                                         </div>
+                                       </div>
+                                     </TableCell>
+                                   );
+                                 })}
                                 <TableCell className="text-center">
                                   <span className="text-sm text-muted-foreground">
                                     {new Date(item.created_at).toLocaleDateString()}
