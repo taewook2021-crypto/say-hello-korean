@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -80,7 +81,9 @@ export default function StudyPlan() {
       const itemsMap = new Map<string, StudyItem>();
       
       progressData?.forEach((item) => {
-        const key = `${item.subject_name}_${item.book_name}_${item.chapter_name}_${item.notes || 'default'}`;
+        // 문제번호에서 접미사 제거
+        const cleanProblemNumber = item.notes?.replace(/_wrong|_mistake/, '') || 'default';
+        const key = `${item.subject_name}_${item.book_name}_${item.chapter_name}_${cleanProblemNumber}`;
         
         if (!itemsMap.has(key)) {
           itemsMap.set(key, {
@@ -88,7 +91,7 @@ export default function StudyPlan() {
             subject_name: item.subject_name,
             book_name: item.book_name,
             chapter_name: item.chapter_name,
-            problem_number: item.notes?.replace(/_wrong|_mistake/, '') || '전체',
+            problem_number: cleanProblemNumber === 'default' ? '전체' : cleanProblemNumber,
             max_rounds: 3,
             rounds_completed: {},
             round_status: {},
@@ -104,7 +107,7 @@ export default function StudyPlan() {
           studyItem.round_status[item.round_number] = 3; // X (아예 틀림)
         } else if (item.notes && item.notes.includes('_mistake')) {
           studyItem.round_status[item.round_number] = 2; // △ (실수)
-        } else if (item.is_completed) {
+        } else if (item.notes) {
           studyItem.round_status[item.round_number] = 1; // O (맞음)
         } else {
           studyItem.round_status[item.round_number] = 0; // 빈칸
@@ -208,7 +211,7 @@ export default function StudyPlan() {
 
     try {
       if (status === 0) {
-        // 빈칸: 회독 기록 삭제
+        // 빈칸: 해당 round의 모든 기록 삭제
         const { error } = await supabase
           .from('study_progress')
           .delete()
@@ -216,7 +219,7 @@ export default function StudyPlan() {
           .eq('book_name', item.book_name)
           .eq('chapter_name', item.chapter_name)
           .eq('round_number', round)
-          .eq('notes', item.problem_number);
+          .like('notes', `${item.problem_number}%`);
         
         if (error) {
           console.error('Delete error:', error);
@@ -231,29 +234,33 @@ export default function StudyPlan() {
         
         const notes = `${item.problem_number}${notesSuffix}`;
         
-        const upsertData = {
-          subject_name: item.subject_name,
-          book_name: item.book_name,
-          chapter_name: item.chapter_name,
-          round_number: round,
-          notes: notes,
-          is_completed: status === 1, // O일 때만 완료로 표시
-          completed_at: status === 1 ? new Date().toISOString() : null,
-        };
-
-        console.log('Upserting data:', upsertData);
-
-        const { error, data } = await supabase
+        // 기존 기록 삭제 후 새로 삽입
+        await supabase
           .from('study_progress')
-          .upsert(upsertData, {
-            onConflict: 'subject_name,book_name,chapter_name,round_number,notes'
+          .delete()
+          .eq('subject_name', item.subject_name)
+          .eq('book_name', item.book_name)
+          .eq('chapter_name', item.chapter_name)
+          .eq('round_number', round)
+          .like('notes', `${item.problem_number}%`);
+
+        const { error } = await supabase
+          .from('study_progress')
+          .insert({
+            subject_name: item.subject_name,
+            book_name: item.book_name,
+            chapter_name: item.chapter_name,
+            round_number: round,
+            notes: notes,
+            is_completed: status === 1,
+            completed_at: status === 1 ? new Date().toISOString() : null,
           });
 
         if (error) {
-          console.error('Upsert error:', error);
+          console.error('Insert error:', error);
           throw error;
         }
-        console.log('Upserted successfully:', data);
+        console.log('Inserted successfully');
       }
 
       const statusText = ['삭제', 'O로 표시', '△로 표시', 'X로 표시'][status];
@@ -589,7 +596,7 @@ export default function StudyPlan() {
                         const isExpanded = expandedChapters.has(chapterKey);
                         
                         return (
-                          <React.Fragment key={chapterName}>
+                          <React.Fragment key={chapterKey}>
                             {/* Chapter Header Row */}
                             <TableRow className="bg-muted/30 cursor-pointer hover:bg-muted/40" onClick={() => toggleChapterExpansion(chapterKey)}>
                               <TableCell className="font-semibold">
@@ -620,18 +627,40 @@ export default function StudyPlan() {
                                 const round = i + 1;
                                 const status = item.round_status[round] || 0; // 0=빈칸, 1=O, 2=△, 3=X
                                 
+                                const getStatusDisplay = (status: number) => {
+                                  switch (status) {
+                                    case 1: return { text: 'O', color: 'text-green-600' };
+                                    case 2: return { text: '△', color: 'text-yellow-600' };
+                                    case 3: return { text: 'X', color: 'text-red-600' };
+                                    default: return { text: '', color: 'text-muted-foreground' };
+                                  }
+                                };
+                                
+                                const statusDisplay = getStatusDisplay(status);
+                                
                                 return (
                                   <TableCell key={round} className="text-center">
-                                    <button
-                                      className="w-8 h-8 border border-border rounded text-sm font-medium hover:bg-accent transition-colors flex items-center justify-center"
-                                      onClick={() => {
-                                        // 빈칸(0) → O(1) → △(2) → X(3) → 빈칸(0) 순환
-                                        const nextStatus = (status + 1) % 4;
-                                        handleStatusUpdate(item.id, round, nextStatus);
-                                      }}
-                                    >
-                                      {status === 1 ? 'O' : status === 2 ? '△' : status === 3 ? 'X' : ''}
-                                    </button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <button className={`w-8 h-8 border border-border rounded text-sm font-bold hover:bg-accent transition-colors flex items-center justify-center ${statusDisplay.color}`}>
+                                          {statusDisplay.text || '·'}
+                                        </button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 0)}>
+                                          빈칸
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 1)}>
+                                          <span className="text-green-600 font-bold">O</span> - 맞춘 문제
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 2)}>
+                                          <span className="text-yellow-600 font-bold">△</span> - 실수한 문제
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleStatusUpdate(item.id, round, 3)}>
+                                          <span className="text-red-600 font-bold">X</span> - 아예 틀린 문제
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </TableCell>
                                 );
                               })}
