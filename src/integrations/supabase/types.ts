@@ -535,7 +535,6 @@ export type Database = {
           subject_name: string
           target_date: string | null
           updated_at: string
-          user_id: string | null
         }
         Insert: {
           book_name: string
@@ -549,7 +548,6 @@ export type Database = {
           subject_name: string
           target_date?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Update: {
           book_name?: string
@@ -563,7 +561,6 @@ export type Database = {
           subject_name?: string
           target_date?: string | null
           updated_at?: string
-          user_id?: string | null
         }
         Relationships: []
       }

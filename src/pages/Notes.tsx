@@ -53,6 +53,7 @@ export default function Notes() {
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } }>({});
   const [studyMode, setStudyMode] = useState<'list' | 'flashcard' | 'quiz' | 'subjective'>('list');
   const [currentStudyNotes, setCurrentStudyNotes] = useState<any[]>([]);
+  const [currentRound, setCurrentRound] = useState(1);
   const [showOCR, setShowOCR] = useState(false);
   const [gptLoading, setGptLoading] = useState(false);
 
