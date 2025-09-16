@@ -420,30 +420,53 @@ export default function StudyPlan() {
     try {
       // 현재 아이템 찾기
       const currentItem = studyItems.find(item => item.id === itemId);
-      if (!currentItem) return;
+      if (!currentItem) {
+        console.error('Current item not found:', itemId);
+        return;
+      }
 
-      // 상태 업데이트
-      const updatedRoundStatus = {
-        ...currentItem.round_status,
-        [roundNumber.toString()]: status
-      };
+      console.log('Updating status:', { itemId, roundNumber, status, currentItem });
 
-      const { error } = await supabase
+      // 상태에 따른 notes 형식 결정
+      let notesSuffix = '';
+      if (status === 1) notesSuffix = ''; // 빈칸
+      else if (status === 2) notesSuffix = '_correct'; // O
+      else if (status === 3) notesSuffix = '_mistake'; // △ 
+      else if (status === 4) notesSuffix = '_wrong'; // X
+
+      const notes = `${currentItem.problem_number}${notesSuffix}`;
+
+      // 기존 해당 문제의 해당 회독 기록 삭제
+      await supabase
         .from('study_progress')
-        .update({ 
-          round_status: updatedRoundStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', itemId);
+        .delete()
+        .eq('subject_name', currentItem.subject_name)
+        .eq('book_name', currentItem.book_name)
+        .eq('chapter_name', currentItem.chapter_name)
+        .eq('round_number', roundNumber)
+        .like('notes', `${currentItem.problem_number}%`);
 
-      if (error) throw error;
+      if (status !== 1) { // 빈칸이 아닌 경우에만 새 기록 삽입
+        const { error } = await supabase
+          .from('study_progress')
+          .insert({
+            subject_name: currentItem.subject_name,
+            book_name: currentItem.book_name,
+            chapter_name: currentItem.chapter_name,
+            round_number: roundNumber,
+            notes: notes,
+            is_completed: status === 2, // O인 경우만 완료로 표시
+            completed_at: status === 2 ? new Date().toISOString() : null,
+          });
 
-      // 로컬 상태 업데이트
-      setStudyItems(prev => prev.map(item => 
-        item.id === itemId 
-          ? { ...item, round_status: updatedRoundStatus }
-          : item
-      ));
+        if (error) {
+          console.error('Insert error:', error);
+          throw error;
+        }
+      }
+
+      // 상태 업데이트 후 데이터 새로고침
+      await loadData();
 
       const statusText = { 1: '빈칸', 2: 'O', 3: '△', 4: 'X' }[status];
       toast.success(`${currentItem.problem_number}번 ${roundNumber}회독 상태가 ${statusText}로 변경되었습니다.`);
