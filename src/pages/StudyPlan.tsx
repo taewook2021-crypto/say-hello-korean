@@ -575,6 +575,42 @@ export default function StudyPlan() {
     }
   };
 
+  const handleDeleteChapter = async (subjectName: string, bookName: string, chapterName: string) => {
+    try {
+      const confirmed = window.confirm(`"${chapterName}" 단원을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 해당 단원의 모든 회독 기록이 삭제됩니다.`);
+      
+      if (!confirmed) return;
+
+      // 해당 단원의 모든 study_progress 데이터 삭제
+      const { error: progressError } = await supabase
+        .from('study_progress')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('chapter_name', chapterName);
+
+      if (progressError) throw progressError;
+
+      // chapters 테이블에서도 삭제
+      const { error: chapterError } = await supabase
+        .from('chapters')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('name', chapterName);
+
+      if (chapterError) throw chapterError;
+
+      toast.success(`"${chapterName}" 단원이 삭제되었습니다.`);
+      
+      // 데이터 새로고침
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      toast.error('단원 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -781,18 +817,39 @@ export default function StudyPlan() {
                         
                          return (
                           <React.Fragment key={chapterKey}>
-                            {/* Chapter Header Row */}
-                            <TableRow className="bg-muted/30 cursor-pointer hover:bg-muted/40" onClick={() => toggleChapterExpansion(chapterKey)}>
-                              <TableCell className="font-semibold">
-                                <div className="flex items-center gap-2">
-                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                  {chapterName} ({items.length}문제)
-                                </div>
-                              </TableCell>
-                              <TableCell colSpan={maxRoundsInData + 3} className="text-center text-muted-foreground">
-                                {isExpanded ? '문제 목록 숨기기' : '문제 목록 보기'}
-                              </TableCell>
-                            </TableRow>
+                             {/* Chapter Header Row */}
+                             <TableRow className="bg-muted/30">
+                               <TableCell className="font-semibold">
+                                 <div 
+                                   className="flex items-center gap-2 cursor-pointer hover:text-primary" 
+                                   onClick={() => toggleChapterExpansion(chapterKey)}
+                                 >
+                                   {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                   {chapterName} ({items.length}문제)
+                                 </div>
+                               </TableCell>
+                               <TableCell colSpan={maxRoundsInData + 2} className="text-center text-muted-foreground">
+                                 <div 
+                                   className="cursor-pointer hover:text-primary"
+                                   onClick={() => toggleChapterExpansion(chapterKey)}
+                                 >
+                                   {isExpanded ? '문제 목록 숨기기' : '문제 목록 보기'}
+                                 </div>
+                               </TableCell>
+                               <TableCell className="text-center">
+                                 <Button
+                                   variant="destructive"
+                                   size="sm"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleDeleteChapter(data.subject_name, data.book_name, chapterName);
+                                   }}
+                                   className="h-6 w-6 p-0"
+                                 >
+                                   <Trash2 className="w-3 h-3" />
+                                 </Button>
+                               </TableCell>
+                             </TableRow>
                             
                             {/* Chapter Items (only shown when expanded) */}
                             {isExpanded && items.map((item) => (
