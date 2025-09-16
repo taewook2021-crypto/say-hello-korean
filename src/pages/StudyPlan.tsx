@@ -592,11 +592,11 @@ export default function StudyPlan() {
 
   const handleDeleteChapter = async (subjectName: string, bookName: string, chapterName: string) => {
     try {
-      const confirmed = window.confirm(`"${chapterName}" 단원을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 해당 단원의 모든 회독 기록이 삭제됩니다.`);
+      const confirmed = window.confirm(`"${chapterName}" 단원의 회독 기록을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 해당 단원의 모든 회독 기록이 삭제됩니다.\n(단원 자체는 유지되어 다시 추가할 수 있습니다)`);
       
       if (!confirmed) return;
 
-      // 해당 단원의 모든 study_progress 데이터 삭제
+      // 해당 단원의 모든 study_progress 데이터만 삭제 (chapters 테이블은 유지)
       const { error: progressError } = await supabase
         .from('study_progress')
         .delete()
@@ -606,23 +606,13 @@ export default function StudyPlan() {
 
       if (progressError) throw progressError;
 
-      // chapters 테이블에서도 삭제
-      const { error: chapterError } = await supabase
-        .from('chapters')
-        .delete()
-        .eq('subject_name', subjectName)
-        .eq('book_name', bookName)
-        .eq('name', chapterName);
-
-      if (chapterError) throw chapterError;
-
-      toast.success(`"${chapterName}" 단원이 삭제되었습니다.`);
+      toast.success(`"${chapterName}" 단원의 회독 기록이 삭제되었습니다.`);
       
       // 데이터 새로고침
       await loadData();
     } catch (error) {
-      console.error('Error deleting chapter:', error);
-      toast.error('단원 삭제 중 오류가 발생했습니다.');
+      console.error('Error deleting chapter progress:', error);
+      toast.error('단원 회독 기록 삭제 중 오류가 발생했습니다.');
     }
   };
 
