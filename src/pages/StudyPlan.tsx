@@ -211,10 +211,25 @@ export default function StudyPlan() {
           book_name: selectedBook,
           subject_name: selectedSubject
         }, {
-          onConflict: 'name,book_name,subject_name'
+          onConflict: 'name,book_name,subject_name',
+          ignoreDuplicates: false
         });
 
-      if (chapterError) console.warn('Chapter creation error:', chapterError);
+      if (chapterError) {
+        console.warn('Chapter creation error:', chapterError);
+        // If upsert fails, try direct insert
+        const { error: insertError } = await supabase
+          .from('chapters')
+          .insert({
+            name: selectedChapter,
+            book_name: selectedBook,
+            subject_name: selectedSubject
+          });
+        
+        if (insertError && !insertError.message.includes('duplicate')) {
+          console.error('Chapter insert error:', insertError);
+        }
+      }
 
       toast.success('회독표 항목이 추가되었습니다.');
       setIsDialogOpen(false);
