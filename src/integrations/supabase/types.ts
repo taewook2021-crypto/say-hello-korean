@@ -522,6 +522,51 @@ export type Database = {
           },
         ]
       }
+      study_progress: {
+        Row: {
+          book_name: string
+          chapter_name: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          notes: string | null
+          round_number: number
+          subject_name: string
+          target_date: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          book_name: string
+          chapter_name: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          notes?: string | null
+          round_number?: number
+          subject_name: string
+          target_date?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          book_name?: string
+          chapter_name?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          notes?: string | null
+          round_number?: number
+          subject_name?: string
+          target_date?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       study_sessions: {
         Row: {
           completed_at: string
@@ -742,6 +787,7 @@ export type Database = {
           id: string
           is_resolved: boolean
           question: string
+          round_number: number | null
           source_text: string
           subject_name: string
           updated_at: string
@@ -754,6 +800,7 @@ export type Database = {
           id?: string
           is_resolved?: boolean
           question: string
+          round_number?: number | null
           source_text: string
           subject_name: string
           updated_at?: string
@@ -766,6 +813,7 @@ export type Database = {
           id?: string
           is_resolved?: boolean
           question?: string
+          round_number?: number | null
           source_text?: string
           subject_name?: string
           updated_at?: string

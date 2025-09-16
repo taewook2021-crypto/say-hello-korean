@@ -63,7 +63,30 @@ export default function Notes() {
 
   useEffect(() => {
     loadNotes();
+    loadCurrentRound();
   }, [subjectName, bookName, chapterName]);
+
+  const loadCurrentRound = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('study_progress')
+        .select('round_number')
+        .eq('subject_name', decodedSubject)
+        .eq('book_name', decodedBook)
+        .eq('chapter_name', decodedChapter)
+        .eq('is_completed', false)
+        .order('round_number', { ascending: true })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setCurrentRound(data[0].round_number);
+      }
+    } catch (error) {
+      console.error('Error loading current round:', error);
+    }
+  };
 
   const loadNotes = async () => {
     try {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Home, NotebookPen, ChevronRight, FileText, FolderOpen, User, Crown, CreditCard, Settings } from "lucide-react";
+import { BookOpen, Home, NotebookPen, ChevronRight, FileText, FolderOpen, User, Crown, CreditCard, Settings, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -128,6 +128,7 @@ export function AppSidebar() {
 
   const mainItems = [
     { title: "홈", url: "/", icon: Home },
+    { title: "회독표", url: "/study-plan", icon: BarChart3 },
   ];
 
   const isActive = (path: string) => currentPath === path;
