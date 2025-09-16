@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, BookOpen, Check, X, Edit2, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,16 @@ interface Chapter {
   subject_name: string;
 }
 
+interface GroupedData {
+  [subjectAndBook: string]: {
+    subject_name: string;
+    book_name: string;
+    chapters: {
+      [chapter: string]: StudyItem[];
+    };
+  };
+}
+
 export default function StudyPlan() {
   const [studyItems, setStudyItems] = useState<StudyItem[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
@@ -45,8 +55,6 @@ export default function StudyPlan() {
   const [selectedChapter, setSelectedChapter] = useState("");
   const [problemNumbers, setProblemNumbers] = useState("");
   const [maxRounds, setMaxRounds] = useState(3);
-  const [editingItem, setEditingItem] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
     loadData();
@@ -232,10 +240,28 @@ export default function StudyPlan() {
     );
   };
 
-  const getProgressPercentage = (item: StudyItem) => {
-    const totalRounds = item.max_rounds;
-    const completedRounds = Object.values(item.rounds_completed).filter(Boolean).length;
-    return totalRounds > 0 ? (completedRounds / totalRounds) * 100 : 0;
+  const getGroupedData = (): GroupedData => {
+    const grouped: GroupedData = {};
+    
+    studyItems.forEach(item => {
+      const subjectBookKey = `${item.subject_name}_${item.book_name}`;
+      
+      if (!grouped[subjectBookKey]) {
+        grouped[subjectBookKey] = {
+          subject_name: item.subject_name,
+          book_name: item.book_name,
+          chapters: {}
+        };
+      }
+      
+      if (!grouped[subjectBookKey].chapters[item.chapter_name]) {
+        grouped[subjectBookKey].chapters[item.chapter_name] = [];
+      }
+      
+      grouped[subjectBookKey].chapters[item.chapter_name].push(item);
+    });
+    
+    return grouped;
   };
 
   if (isLoading) {
@@ -250,6 +276,7 @@ export default function StudyPlan() {
     );
   }
 
+  const groupedData = getGroupedData();
   const maxRoundsInData = Math.max(...studyItems.map(item => item.max_rounds), 3);
 
   return (
@@ -366,8 +393,8 @@ export default function StudyPlan() {
         </Dialog>
       </div>
 
-      {/* Study Progress Table */}
-      {studyItems.length === 0 ? (
+      {/* Study Tables by Subject/Book */}
+      {Object.keys(groupedData).length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -381,89 +408,113 @@ export default function StudyPlan() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>회독 현황표</CardTitle>
-            <CardDescription>
-              각 문제별 회독 완료 상황을 확인하고 체크하세요
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>과목</TableHead>
-                    <TableHead>교재</TableHead>
-                    <TableHead>단원</TableHead>
-                    <TableHead>문제</TableHead>
-                    {Array.from({ length: maxRoundsInData }, (_, i) => (
-                      <TableHead key={i + 1} className="text-center">
-                        {i + 1}회독
-                      </TableHead>
-                    ))}
-                    <TableHead>진도율</TableHead>
-                    <TableHead>오답노트</TableHead>
-                    <TableHead>삭제</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {studyItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.subject_name}</TableCell>
-                      <TableCell>{item.book_name}</TableCell>
-                      <TableCell>{item.chapter_name}</TableCell>
-                      <TableCell>{item.problem_number}</TableCell>
-                      {Array.from({ length: maxRoundsInData }, (_, i) => {
-                        const round = i + 1;
-                        const isCompleted = item.rounds_completed[round] || false;
-                        return (
-                          <TableCell key={round} className="text-center">
-                            <Button
-                              variant={isCompleted ? "default" : "outline"}
-                              size="sm"
-                              className="w-8 h-8 p-0"
-                              onClick={() => toggleRoundCompletion(item, round)}
-                            >
-                              {isCompleted ? (
-                                <Check className="w-4 h-4" />
-                              ) : (
-                                <X className="w-4 h-4" />
-                              )}
-                            </Button>
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell>
-                        <Badge variant="outline">
-                          {Math.round(getProgressPercentage(item))}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Link 
-                          to={`/notes/${encodeURIComponent(item.subject_name)}/${encodeURIComponent(item.book_name)}/${encodeURIComponent(item.chapter_name)}`}
-                        >
-                          <Button variant="outline" size="sm">
-                            보기
-                          </Button>
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteStudyItem(item)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-8">
+          {Object.entries(groupedData).map(([subjectBookKey, data]) => (
+            <Card key={subjectBookKey}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  {data.subject_name} - {data.book_name}
+                </CardTitle>
+                <CardDescription>
+                  단원별 문제 회독 현황
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-48">단원 / 문제</TableHead>
+                        {Array.from({ length: maxRoundsInData }, (_, i) => (
+                          <TableHead key={i + 1} className="text-center w-20">
+                            {i + 1}회독
+                          </TableHead>
+                        ))}
+                        <TableHead className="text-center w-24">진도율</TableHead>
+                        <TableHead className="text-center w-24">오답노트</TableHead>
+                        <TableHead className="text-center w-20">삭제</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(data.chapters).map(([chapterName, items]) => (
+                        <React.Fragment key={chapterName}>
+                          {/* Chapter Header Row */}
+                          <TableRow className="bg-muted/30">
+                            <TableCell className="font-semibold">
+                              {chapterName}
+                            </TableCell>
+                            <TableCell colSpan={maxRoundsInData + 3} className="text-center text-muted-foreground">
+                              <Link 
+                                to={`/notes/${encodeURIComponent(data.subject_name)}/${encodeURIComponent(data.book_name)}/${encodeURIComponent(chapterName)}`}
+                              >
+                                <Button variant="ghost" size="sm">
+                                  오답노트 보기
+                                </Button>
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                          
+                          {/* Problem Rows */}
+                          {items.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="pl-8 text-muted-foreground">
+                                {item.problem_number}번
+                              </TableCell>
+                              {Array.from({ length: maxRoundsInData }, (_, i) => {
+                                const round = i + 1;
+                                const isCompleted = item.rounds_completed[round] || false;
+                                return (
+                                  <TableCell key={round} className="text-center">
+                                    <Button
+                                      variant={isCompleted ? "default" : "outline"}
+                                      size="sm"
+                                      className="w-8 h-8 p-0"
+                                      onClick={() => toggleRoundCompletion(item, round)}
+                                    >
+                                      {isCompleted ? (
+                                        <Check className="w-4 h-4" />
+                                      ) : (
+                                        <X className="w-4 h-4" />
+                                      )}
+                                    </Button>
+                                  </TableCell>
+                                );
+                              })}
+                              <TableCell className="text-center">
+                                <Badge variant="outline">
+                                  {Math.round((Object.values(item.rounds_completed).filter(Boolean).length / item.max_rounds) * 100)}%
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Link 
+                                  to={`/notes/${encodeURIComponent(item.subject_name)}/${encodeURIComponent(item.book_name)}/${encodeURIComponent(item.chapter_name)}`}
+                                >
+                                  <Button variant="outline" size="sm">
+                                    보기
+                                  </Button>
+                                </Link>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => deleteStudyItem(item)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );
