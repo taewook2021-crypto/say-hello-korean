@@ -532,6 +532,7 @@ export type Database = {
           is_completed: boolean
           notes: string | null
           round_number: number
+          status: string | null
           subject_name: string
           target_date: string | null
           updated_at: string
@@ -545,6 +546,7 @@ export type Database = {
           is_completed?: boolean
           notes?: string | null
           round_number?: number
+          status?: string | null
           subject_name: string
           target_date?: string | null
           updated_at?: string
@@ -558,6 +560,7 @@ export type Database = {
           is_completed?: boolean
           notes?: string | null
           round_number?: number
+          status?: string | null
           subject_name?: string
           target_date?: string | null
           updated_at?: string

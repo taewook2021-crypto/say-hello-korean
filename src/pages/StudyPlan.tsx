@@ -102,11 +102,15 @@ export default function StudyPlan() {
         const studyItem = itemsMap.get(key)!;
         studyItem.rounds_completed[item.round_number] = item.is_completed;
         
-        // 레코드 존재 시 기본적으로 완료 상태에 따라 판단
-        if (item.is_completed) {
+        // 새로운 status 필드를 사용하여 O/△/X 상태 확인
+        if (item.status === 'correct') {
           studyItem.round_status[item.round_number] = 2; // O (맞춤)
+        } else if (item.status === 'mistake') {
+          studyItem.round_status[item.round_number] = 3; // △ (실수)
+        } else if (item.status === 'wrong') {
+          studyItem.round_status[item.round_number] = 4; // X (틀림)
         } else {
-          studyItem.round_status[item.round_number] = 3; // △ (실수/틀림)
+          studyItem.round_status[item.round_number] = 1; // 빈칸 (기본값)
         }
       });
 
@@ -438,12 +442,18 @@ export default function StudyPlan() {
       }
 
       // 상태에 따른 업데이트 데이터 준비
+      let statusValue = null;
+      if (status === 2) statusValue = 'correct'; // O
+      else if (status === 3) statusValue = 'mistake'; // △
+      else if (status === 4) statusValue = 'wrong'; // X
+
       const updateData = {
         subject_name: currentItem.subject_name,
         book_name: currentItem.book_name,
         chapter_name: currentItem.chapter_name,
         round_number: roundNumber,
-        notes: currentItem.problem_number, // 문제번호만 저장, 접미사 없음
+        notes: currentItem.problem_number, // 문제번호만 저장
+        status: statusValue,
         is_completed: status === 2, // O인 경우만 완료로 표시
         completed_at: status === 2 ? new Date().toISOString() : null,
       };
