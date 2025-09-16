@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, BookOpen, Check, X, Edit2, Save, Trash2 } from "lucide-react";
+import { Plus, BookOpen, Check, X, Edit2, Save, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -59,6 +59,7 @@ export default function StudyPlan() {
   const [newChapterName, setNewChapterName] = useState("");
   const [problemCount, setProblemCount] = useState(1);
   const [showInlineChapterAdd, setShowInlineChapterAdd] = useState<string | null>(null);
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadData();
@@ -87,7 +88,7 @@ export default function StudyPlan() {
             subject_name: item.subject_name,
             book_name: item.book_name,
             chapter_name: item.chapter_name,
-            problem_number: item.notes || '전체',
+            problem_number: item.notes?.replace(/_wrong|_mistake/, '') || '전체',
             max_rounds: 3,
             rounds_completed: {},
             round_status: {},
@@ -111,6 +112,8 @@ export default function StudyPlan() {
         
         studyItem.max_rounds = Math.max(studyItem.max_rounds, item.round_number);
       });
+
+      console.log('Processed items:', Array.from(itemsMap.values()));
 
       // Load books
       const { data: booksData, error: booksError } = await supabase
@@ -201,9 +204,9 @@ export default function StudyPlan() {
     const item = studyItems.find(i => i.id === itemId);
     if (!item) return;
 
+    console.log('Updating status:', { itemId, round, status, item });
+
     try {
-      let updateData: any = {};
-      
       if (status === 0) {
         // 빈칸: 회독 기록 삭제
         const { error } = await supabase
@@ -213,41 +216,51 @@ export default function StudyPlan() {
           .eq('book_name', item.book_name)
           .eq('chapter_name', item.chapter_name)
           .eq('round_number', round)
-          .eq('notes', item.problem_number === '전체' ? null : item.problem_number);
+          .eq('notes', item.problem_number);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Delete error:', error);
+          throw error;
+        }
+        console.log('Deleted successfully');
       } else {
         // O(1), △(2), X(3): 회독 기록 업데이트/생성
         let notesSuffix = '';
         if (status === 2) notesSuffix = '_mistake';
         else if (status === 3) notesSuffix = '_wrong';
         
-        updateData = {
+        const notes = `${item.problem_number}${notesSuffix}`;
+        
+        const upsertData = {
+          subject_name: item.subject_name,
+          book_name: item.book_name,
+          chapter_name: item.chapter_name,
+          round_number: round,
+          notes: notes,
           is_completed: status === 1, // O일 때만 완료로 표시
           completed_at: status === 1 ? new Date().toISOString() : null,
         };
 
-        const notes = item.problem_number === '전체' ? 
-          (notesSuffix ? notesSuffix : null) : 
-          `${item.problem_number}${notesSuffix}`;
+        console.log('Upserting data:', upsertData);
 
-        const { error } = await supabase
+        const { error, data } = await supabase
           .from('study_progress')
-          .upsert({
-            subject_name: item.subject_name,
-            book_name: item.book_name,
-            chapter_name: item.chapter_name,
-            round_number: round,
-            notes: notes,
-            ...updateData
+          .upsert(upsertData, {
+            onConflict: 'subject_name,book_name,chapter_name,round_number,notes'
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Upsert error:', error);
+          throw error;
+        }
+        console.log('Upserted successfully:', data);
       }
 
       const statusText = ['삭제', 'O로 표시', '△로 표시', 'X로 표시'][status];
       toast.success(`${round}회독이 ${statusText}되었습니다.`);
-      loadData();
+      
+      // 데이터 새로고침
+      await loadData();
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('상태 업데이트 중 오류가 발생했습니다.');
@@ -276,7 +289,7 @@ export default function StudyPlan() {
       if (error) throw error;
 
       toast.success('항목이 삭제되었습니다.');
-      loadData();
+    setExpandedChapters(new Set());
     } catch (error) {
       console.error('Error deleting item:', error);
       toast.error('삭제 중 오류가 발생했습니다.');
@@ -295,6 +308,16 @@ export default function StudyPlan() {
     return chapters.filter(chapter => 
       chapter.subject_name === subject && chapter.book_name === book
     );
+  };
+
+  const toggleChapterExpansion = (chapterKey: string) => {
+    const newExpanded = new Set(expandedChapters);
+    if (newExpanded.has(chapterKey)) {
+      newExpanded.delete(chapterKey);
+    } else {
+      newExpanded.add(chapterKey);
+    }
+    setExpandedChapters(newExpanded);
   };
 
   const getGroupedData = (): GroupedData => {
@@ -367,7 +390,7 @@ export default function StudyPlan() {
       setShowInlineChapterAdd(null);
       setNewChapterName("");
       setProblemCount(1);
-      loadData();
+    setExpandedChapters(new Set());
     } catch (error) {
       console.error('Error adding chapter:', error);
       toast.error('단원 추가 중 오류가 발생했습니다.');
@@ -561,30 +584,38 @@ export default function StudyPlan() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {Object.entries(data.chapters).map(([chapterName, items]) => (
-                        <React.Fragment key={chapterName}>
-                           {/* Chapter Header Row */}
-                          <TableRow className="bg-muted/30">
-                            <TableCell className="font-semibold">
-                              {chapterName} ({items.length}문제)
-                            </TableCell>
-                            <TableCell colSpan={maxRoundsInData + 3} className="text-center text-muted-foreground">
-                              <Link 
-                                to={`/notes/${encodeURIComponent(data.subject_name)}/${encodeURIComponent(data.book_name)}/${encodeURIComponent(chapterName)}`}
-                              >
-                                <Button variant="ghost" size="sm">
-                                  오답노트 보기
-                                </Button>
-                              </Link>
-                            </TableCell>
-                          </TableRow>
-                          
-                          {/* Problem Rows */}
-                          {items.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="pl-8 text-muted-foreground">
-                                {item.problem_number}번
+                      {Object.entries(data.chapters).map(([chapterName, items]) => {
+                        const chapterKey = `${data.subject_name}_${data.book_name}_${chapterName}`;
+                        const isExpanded = expandedChapters.has(chapterKey);
+                        
+                        return (
+                          <React.Fragment key={chapterName}>
+                            {/* Chapter Header Row */}
+                            <TableRow className="bg-muted/30 cursor-pointer hover:bg-muted/40" onClick={() => toggleChapterExpansion(chapterKey)}>
+                              <TableCell className="font-semibold">
+                                <div className="flex items-center gap-2">
+                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                  {chapterName} ({items.length}문제)
+                                </div>
                               </TableCell>
+                              <TableCell colSpan={maxRoundsInData + 3} className="text-center text-muted-foreground">
+                                <Link 
+                                  to={`/notes/${encodeURIComponent(data.subject_name)}/${encodeURIComponent(data.book_name)}/${encodeURIComponent(chapterName)}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Button variant="ghost" size="sm">
+                                    오답노트 보기
+                                  </Button>
+                                </Link>
+                              </TableCell>
+                            </TableRow>
+                            
+                            {/* Problem Rows - Only show when expanded */}
+                            {isExpanded && items.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="pl-8 text-muted-foreground">
+                                  {item.problem_number}번
+                                </TableCell>
                               {Array.from({ length: maxRoundsInData }, (_, i) => {
                                 const round = i + 1;
                                 const status = item.round_status[round] || 0; // 0=빈칸, 1=O, 2=△, 3=X
@@ -626,11 +657,12 @@ export default function StudyPlan() {
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </React.Fragment>
-                      ))}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </React.Fragment>
+                        );
+                      })}
                       
                       {/* Add Chapter Row */}
                       {showInlineChapterAdd === `${data.subject_name}_${data.book_name}` ? (
