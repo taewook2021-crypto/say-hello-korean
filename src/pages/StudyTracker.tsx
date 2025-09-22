@@ -12,6 +12,7 @@ interface StudyData {
   id: string;
   subject: string;
   textbook: string;
+  maxRounds: number;
   chapters: Chapter[];
   createdAt: Date;
 }
@@ -24,7 +25,7 @@ interface Chapter {
 
 interface Problem {
   number: number;
-  status: '⭕' | '🔺' | '❌' | null;
+  rounds: { [roundNumber: number]: '⭕' | '🔺' | '❌' | null };
   hasNote: boolean;
 }
 
@@ -45,6 +46,7 @@ export default function StudyTracker() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newSubject, setNewSubject] = useState("");
   const [newTextbook, setNewTextbook] = useState("");
+  const [maxRounds, setMaxRounds] = useState(3);
 
   useEffect(() => {
     loadStudyData();
@@ -110,11 +112,17 @@ export default function StudyTracker() {
       return;
     }
 
+    if (maxRounds < 1) {
+      toast.error("회독 수는 1회 이상이어야 합니다.");
+      return;
+    }
+
     // 빈 회독표 생성 (단원 없음)
     const newStudyData: StudyData = {
       id: Date.now().toString(),
       subject: newSubject.trim(),
       textbook: newTextbook.trim(),
+      maxRounds: maxRounds,
       chapters: [], // 빈 배열로 시작
       createdAt: new Date()
     };
@@ -149,6 +157,7 @@ export default function StudyTracker() {
     // 폼 초기화
     setNewSubject("");
     setNewTextbook("");
+    setMaxRounds(3);
     setIsCreateDialogOpen(false);
     
     toast.success("회독표가 생성되었습니다! 이제 단원을 추가해보세요.");
@@ -220,6 +229,23 @@ export default function StudyTracker() {
                     onChange={(e) => setNewTextbook(e.target.value)}
                     placeholder="예: 개념원리"
                   />
+                </div>
+                
+                {/* 회독 수 설정 */}
+                <div>
+                  <Label htmlFor="maxRounds">회독 수</Label>
+                  <Input
+                    id="maxRounds"
+                    value={maxRounds.toString()}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 1;
+                      setMaxRounds(Math.max(1, Math.min(10, value)));
+                    }}
+                    placeholder="예: 3"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    최대 10회까지 설정 가능합니다
+                  </p>
                 </div>
                 
                 <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-md">

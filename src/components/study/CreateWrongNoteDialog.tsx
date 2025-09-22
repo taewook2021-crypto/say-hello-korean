@@ -10,6 +10,7 @@ interface StudyData {
   id: string;
   subject: string;
   textbook: string;
+  maxRounds: number;
   chapters: Chapter[];
   createdAt: Date;
 }
@@ -22,7 +23,7 @@ interface Chapter {
 
 interface Problem {
   number: number;
-  status: '⭕' | '🔺' | '❌' | null;
+  rounds: { [roundNumber: number]: '⭕' | '🔺' | '❌' | null };
   hasNote: boolean;
 }
 

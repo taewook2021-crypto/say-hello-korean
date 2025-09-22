@@ -13,6 +13,7 @@ interface StudyData {
   id: string;
   subject: string;
   textbook: string;
+  maxRounds: number;
   chapters: Chapter[];
   createdAt: Date;
 }
@@ -25,7 +26,7 @@ interface Chapter {
 
 interface Problem {
   number: number;
-  status: '⭕' | '🔺' | '❌' | null;
+  rounds: { [roundNumber: number]: '⭕' | '🔺' | '❌' | null };
   hasNote: boolean;
 }
 
@@ -56,13 +57,16 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     setExpandedChapters(newExpanded);
   };
 
-  const updateProblemStatus = (chapterOrder: number, problemNumber: number, status: '⭕' | '🔺' | '❌' | null) => {
+  const updateProblemStatus = (chapterOrder: number, problemNumber: number, roundNumber: number, status: '⭕' | '🔺' | '❌' | null) => {
     const updatedChapters = studyData.chapters.map(chapter => {
       if (chapter.order === chapterOrder) {
         return {
           ...chapter,
           problems: chapter.problems.map(problem => 
-            problem.number === problemNumber ? { ...problem, status } : problem
+            problem.number === problemNumber ? { 
+              ...problem, 
+              rounds: { ...problem.rounds, [roundNumber]: status }
+            } : problem
           )
         };
       }
@@ -129,7 +133,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       name: newChapterName.trim(),
       problems: Array.from({ length: newChapterProblemCount }, (_, i) => ({
         number: i + 1,
-        status: null,
+        rounds: {}, // 빈 객체로 시작
         hasNote: false
       }))
     };
@@ -246,21 +250,47 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
               {/* 진도율 표시 */}
               <div className="flex items-center gap-2">
                 {(() => {
-                  const completed = chapter.problems.filter(p => p.status === '⭕').length;
-                  const partial = chapter.problems.filter(p => p.status === '🔺').length;
-                  const wrong = chapter.problems.filter(p => p.status === '❌').length;
-                  const total = chapter.problems.length;
-                  const percentage = Math.round((completed / total) * 100);
+                  const totalProblems = chapter.problems.length;
+                  const maxRounds = studyData.maxRounds;
+                  let completedCount = 0;
+                  let partialCount = 0;
+                  let wrongCount = 0;
+                  
+                  // 모든 회독이 완료된 문제 수 계산
+                  chapter.problems.forEach(problem => {
+                    let allCompleted = true;
+                    let hasAny = false;
+                    let hasPartial = false;
+                    let hasWrong = false;
+                    
+                    for (let round = 1; round <= maxRounds; round++) {
+                      const status = problem.rounds[round];
+                      if (status) {
+                        hasAny = true;
+                        if (status === '🔺') hasPartial = true;
+                        if (status === '❌') hasWrong = true;
+                        if (status !== '⭕') allCompleted = false;
+                      } else {
+                        allCompleted = false;
+                      }
+                    }
+                    
+                    if (allCompleted && hasAny) completedCount++;
+                    else if (hasPartial) partialCount++;
+                    else if (hasWrong) wrongCount++;
+                  });
+                  
+                  const percentage = Math.round((completedCount / totalProblems) * 100);
                   
                   return (
                     <>
                       <span className="text-sm text-muted-foreground">
-                        {completed}/{total} ({percentage}%)
+                        {completedCount}/{totalProblems} ({percentage}%)
                       </span>
                       <div className="flex gap-1">
-                        {completed > 0 && <Badge className="text-xs bg-green-500">⭕{completed}</Badge>}
-                        {partial > 0 && <Badge className="text-xs bg-yellow-500">🔺{partial}</Badge>}
-                        {wrong > 0 && <Badge className="text-xs bg-red-500">❌{wrong}</Badge>}
+                        {completedCount > 0 && <Badge className="text-xs bg-green-500">⭕{completedCount}</Badge>}
+                        {partialCount > 0 && <Badge className="text-xs bg-yellow-500">🔺{partialCount}</Badge>}
+                        {wrongCount > 0 && <Badge className="text-xs bg-red-500">❌{wrongCount}</Badge>}
                       </div>
                     </>
                   );
@@ -275,7 +305,11 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center w-20">문제</TableHead>
-                      <TableHead className="text-center">상태</TableHead>
+                      {Array.from({ length: studyData.maxRounds }, (_, i) => (
+                        <TableHead key={i + 1} className="text-center w-24">
+                          {i + 1}회독
+                        </TableHead>
+                      ))}
                       <TableHead className="text-center w-32">오답노트</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -285,46 +319,53 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                         <TableCell className="text-center font-medium">
                           {problem.number}
                         </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center gap-1">
-                            <button
-                              onClick={() => updateProblemStatus(chapter.order, problem.number, '⭕')}
-                              className={`w-8 h-8 rounded border-2 flex items-center justify-center text-lg transition-all ${
-                                problem.status === '⭕' 
-                                  ? 'border-green-500 bg-green-50' 
-                                  : 'border-border hover:border-green-300'
-                              }`}
-                            >
-                              {problem.status === '⭕' ? '⭕' : ''}
-                            </button>
-                            <button
-                              onClick={() => updateProblemStatus(chapter.order, problem.number, '🔺')}
-                              className={`w-8 h-8 rounded border-2 flex items-center justify-center text-lg transition-all ${
-                                problem.status === '🔺' 
-                                  ? 'border-yellow-500 bg-yellow-50' 
-                                  : 'border-border hover:border-yellow-300'
-                              }`}
-                            >
-                              {problem.status === '🔺' ? '🔺' : ''}
-                            </button>
-                            <button
-                              onClick={() => updateProblemStatus(chapter.order, problem.number, '❌')}
-                              className={`w-8 h-8 rounded border-2 flex items-center justify-center text-lg transition-all ${
-                                problem.status === '❌' 
-                                  ? 'border-red-500 bg-red-50' 
-                                  : 'border-border hover:border-red-300'
-                              }`}
-                            >
-                              {problem.status === '❌' ? '❌' : ''}
-                            </button>
-                            <button
-                              onClick={() => updateProblemStatus(chapter.order, problem.number, null)}
-                              className="w-8 h-8 rounded border-2 border-border hover:border-muted-foreground flex items-center justify-center text-xs text-muted-foreground"
-                            >
-                              지움
-                            </button>
-                          </div>
-                        </TableCell>
+                        {Array.from({ length: studyData.maxRounds }, (_, roundIndex) => {
+                          const roundNumber = roundIndex + 1;
+                          const status = problem.rounds[roundNumber];
+                          return (
+                            <TableCell key={roundNumber} className="text-center">
+                              <div className="flex justify-center gap-1">
+                                <button
+                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, '⭕')}
+                                  className={`w-6 h-6 rounded border flex items-center justify-center text-sm transition-all ${
+                                    status === '⭕' 
+                                      ? 'border-green-500 bg-green-50 text-green-700' 
+                                      : 'border-border hover:border-green-300'
+                                  }`}
+                                >
+                                  {status === '⭕' ? '⭕' : ''}
+                                </button>
+                                <button
+                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, '🔺')}
+                                  className={`w-6 h-6 rounded border flex items-center justify-center text-sm transition-all ${
+                                    status === '🔺' 
+                                      ? 'border-yellow-500 bg-yellow-50 text-yellow-700' 
+                                      : 'border-border hover:border-yellow-300'
+                                  }`}
+                                >
+                                  {status === '🔺' ? '🔺' : ''}
+                                </button>
+                                <button
+                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, '❌')}
+                                  className={`w-6 h-6 rounded border flex items-center justify-center text-sm transition-all ${
+                                    status === '❌' 
+                                      ? 'border-red-500 bg-red-50 text-red-700' 
+                                      : 'border-border hover:border-red-300'
+                                  }`}
+                                >
+                                  {status === '❌' ? '❌' : ''}
+                                </button>
+                                <button
+                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, null)}
+                                  className="w-6 h-6 rounded border border-border hover:border-muted-foreground flex items-center justify-center text-xs text-muted-foreground"
+                                  title="지우기"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </TableCell>
+                          );
+                        })}
                         <TableCell className="text-center">
                           {problem.hasNote ? (
                             <Button
