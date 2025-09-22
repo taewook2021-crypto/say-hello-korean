@@ -52,20 +52,32 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
 
   // 선택된 과목에 따른 교재 목록 가져오기
   useEffect(() => {
+    console.log('Book fetch conditions:', {
+      subject: filters.subject,
+      shouldFetch: filters.subject && filters.subject !== 'all'
+    });
+    
     if (filters.subject && filters.subject !== 'all') {
       const fetchBooks = async () => {
-        const { data } = await supabase
+        console.log('Fetching books for subject:', filters.subject);
+        const { data, error } = await supabase
           .from('books')
           .select('name')
           .eq('subject_name', filters.subject)
           .order('name');
         
+        console.log('Books response:', { data, error });
+        
         if (data) {
           setBooks(data.map(item => item.name));
+        }
+        if (error) {
+          console.error('Error fetching books:', error);
         }
       };
       fetchBooks();
     } else {
+      console.log('Clearing books - subject not selected');
       setBooks([]);
     }
     
@@ -75,21 +87,34 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
 
   // 선택된 교재에 따른 단원 목록 가져오기
   useEffect(() => {
+    console.log('Chapter fetch conditions:', {
+      subject: filters.subject,
+      book: filters.book,
+      shouldFetch: filters.subject && filters.subject !== 'all' && filters.book && filters.book !== 'all'
+    });
+    
     if (filters.subject && filters.subject !== 'all' && filters.book && filters.book !== 'all') {
       const fetchChapters = async () => {
-        const { data } = await supabase
+        console.log('Fetching chapters for:', filters.subject, filters.book);
+        const { data, error } = await supabase
           .from('chapters')
           .select('name')
           .eq('subject_name', filters.subject)
           .eq('book_name', filters.book)
           .order('name');
         
+        console.log('Chapters response:', { data, error });
+        
         if (data) {
           setChapters(data.map(item => item.name));
+        }
+        if (error) {
+          console.error('Error fetching chapters:', error);
         }
       };
       fetchChapters();
     } else {
+      console.log('Clearing chapters - conditions not met');
       setChapters([]);
     }
     
