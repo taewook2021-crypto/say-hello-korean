@@ -318,20 +318,29 @@ export default function StudyTracker() {
       }
 
       console.log('Saving book:', newTextbook.trim());
-      const { error: bookError } = await supabase
+      
+      // Check if book already exists
+      const { data: existingBook } = await supabase
         .from('books')
-        .upsert({ 
-          name: newTextbook.trim(),
-          subject_name: newSubject.trim(),
-          user_id: null // 현재 인증 없이 사용
-        }, { 
-          onConflict: 'name,subject_name,user_id',
-          ignoreDuplicates: true 
-        });
+        .select('id')
+        .eq('name', newTextbook.trim())
+        .eq('subject_name', newSubject.trim())
+        .single();
 
-      if (bookError) {
-        console.error('Book insert error:', bookError);
+      if (!existingBook) {
+        const { error: bookError } = await supabase
+          .from('books')
+          .insert({ 
+            name: newTextbook.trim(),
+            subject_name: newSubject.trim(),
+            user_id: null // 현재 인증 없이 사용
+          });
+
+        if (bookError) {
+          console.error('Book insert error:', bookError);
+        }
       }
+
 
       // 빈 회독표 생성 (단원 없음)
       const newStudyData: StudyData = {
