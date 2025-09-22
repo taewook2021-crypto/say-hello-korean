@@ -53,6 +53,11 @@ export default function StudyTracker() {
   const [newBookName, setNewBookName] = useState("");
   const [newBookMaxRounds, setNewBookMaxRounds] = useState("");
   
+  // Navigation state for hierarchical folder structure
+  const [currentView, setCurrentView] = useState<'subjects' | 'books' | 'study'>('subjects');
+  const [selectedSubject, setSelectedSubject] = useState<string>("");
+  const [selectedBook, setSelectedBook] = useState<string>("");
+  
   const { 
     subjects, 
     loading,
@@ -319,106 +324,179 @@ export default function StudyTracker() {
           </DialogContent>
         </Dialog>
 
-        {/* 폴더 구조 */}
-        <div className="space-y-4">
-          {subjects.length === 0 ? (
-            <Card className="p-8 text-center">
-              <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">회독표가 없습니다</h3>
-              <p className="text-muted-foreground mb-4">
-                첫 번째 회독표를 만들어 공부를 시작해보세요!
-              </p>
-            </Card>
-          ) : (
-            subjects.map((subject) => (
-              <Card key={subject.name} className="overflow-hidden">
-                <CardHeader
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => toggleSubjectExpansion(subject.name)}
+        {/* Breadcrumb Navigation */}
+        {(currentView === 'books' || currentView === 'study') && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setCurrentView('subjects')}
+              className="p-0 h-auto hover:text-primary"
+            >
+              과목
+            </Button>
+            {currentView === 'books' && (
+              <>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-foreground font-medium">{selectedSubject}</span>
+              </>
+            )}
+            {currentView === 'study' && (
+              <>
+                <ChevronRight className="w-4 h-4" />
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setCurrentView('books')}
+                  className="p-0 h-auto hover:text-primary"
                 >
-                  <div className="flex items-center gap-2">
-                    {subject.isExpanded ? (
-                      <FolderOpen className="w-5 h-5 text-primary" />
-                    ) : (
-                      <Folder className="w-5 h-5 text-primary" />
-                    )}
-                    <CardTitle className="text-foreground">{subject.name}</CardTitle>
-                    <span className="text-sm text-muted-foreground">
-                      ({subject.books.length}개 교재)
-                    </span>
-                    {subject.isExpanded ? (
-                      <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground" />
-                    )}
-                  </div>
-                </CardHeader>
+                  {selectedSubject}
+                </Button>
+                <ChevronRight className="w-4 h-4" />
+                <span className="text-foreground font-medium">{selectedBook}</span>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Content based on current view */}
+        <div className="space-y-4">
+          {currentView === 'subjects' && (
+            <>
+              {subjects.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">회독표가 없습니다</h3>
+                  <p className="text-muted-foreground mb-4">
+                    첫 번째 회독표를 만들어 공부를 시작해보세요!
+                  </p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {subjects.map((subject) => (
+                    <Card 
+                      key={subject.name} 
+                      className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105"
+                      onClick={() => {
+                        setSelectedSubject(subject.name);
+                        setCurrentView('books');
+                      }}
+                    >
+                      <CardContent className="p-6 text-center">
+                        <Folder className="w-12 h-12 text-primary mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">{subject.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {subject.books.length}개 교재
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {currentView === 'books' && (
+            <>
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-foreground">{selectedSubject} 교재</h2>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleAddBookToSubject(selectedSubject)}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  교재 추가
+                </Button>
+              </div>
+              
+              {(() => {
+                const subject = subjects.find(s => s.name === selectedSubject);
+                if (!subject || subject.books.length === 0) {
+                  return (
+                    <Card className="p-8 text-center">
+                      <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-foreground mb-2">교재가 없습니다</h3>
+                      <p className="text-muted-foreground mb-4">
+                        첫 번째 교재를 추가해서 회독표를 시작해보세요!
+                      </p>
+                      <Button onClick={() => handleAddBookToSubject(selectedSubject)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        교재 추가
+                      </Button>
+                    </Card>
+                  );
+                }
                 
-                {subject.isExpanded && (
-                  <CardContent className="pt-0">
-                    <div className="space-y-2">
-                      {subject.books.length === 0 ? (
-                        <div className="text-center p-6 text-muted-foreground">
-                          <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm mb-3">이 과목에 교재가 없습니다</p>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleAddBookToSubject(subject.name)}
-                          >
-                            <Plus className="w-3 h-3 mr-1" />
-                            교재 추가
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex justify-end mb-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => handleAddBookToSubject(subject.name)}
-                            >
-                              <Plus className="w-3 h-3 mr-1" />
-                              교재 추가
-                            </Button>
-                          </div>
-                          {subject.books.map((book) => (
-                            <div key={book.name} className="border border-border rounded-lg">
-                              <div
-                                className="p-3 cursor-pointer hover:bg-muted/30 transition-colors flex items-center gap-2"
-                                onClick={() => toggleBookExpansion(subject.name, book.name)}
-                              >
-                                <BookOpen className="w-4 h-4 text-accent" />
-                                <span className="font-medium text-foreground">{book.name}</span>
-                                <span className="text-sm text-muted-foreground">
-                                  ({book.studyData.chapters.length}개 단원)
-                                </span>
-                                {book.isExpanded ? (
-                                  <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground" />
-                                )}
-                              </div>
-                              
-                              {book.isExpanded && (
-                                <div className="border-t border-border p-4">
-                                   <StudyTable 
-                                    studyData={book.studyData}
-                                    onUpdateStudyData={(updatedData) => {
-                                      updateStudyProgress(subject.name, book.name, updatedData);
-                                    }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            ))
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {subject.books.map((book) => (
+                      <Card 
+                        key={book.name} 
+                        className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105"
+                        onClick={() => {
+                          setSelectedBook(book.name);
+                          setCurrentView('study');
+                        }}
+                      >
+                        <CardContent className="p-6 text-center">
+                          <BookOpen className="w-12 h-12 text-accent mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-foreground mb-2">{book.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {book.studyData.chapters.length}개 단원
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            최대 {book.studyData.maxRounds}회독
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                );
+              })()}
+            </>
+          )}
+
+          {currentView === 'study' && (
+            <>
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-foreground">{selectedBook} 회독표</h2>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setCurrentView('books')}
+                >
+                  교재 목록으로 돌아가기
+                </Button>
+              </div>
+              
+              {(() => {
+                const subject = subjects.find(s => s.name === selectedSubject);
+                const book = subject?.books.find(b => b.name === selectedBook);
+                
+                if (!book) {
+                  return (
+                    <Card className="p-8 text-center">
+                      <h3 className="text-lg font-semibold text-foreground mb-2">교재를 찾을 수 없습니다</h3>
+                      <Button onClick={() => setCurrentView('books')}>
+                        교재 목록으로 돌아가기
+                      </Button>
+                    </Card>
+                  );
+                }
+                
+                return (
+                  <Card>
+                    <CardContent className="p-6">
+                      <StudyTable 
+                        studyData={book.studyData}
+                        onUpdateStudyData={(updatedData) => {
+                          updateStudyProgress(selectedSubject, selectedBook, updatedData);
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+            </>
           )}
         </div>
       </div>
