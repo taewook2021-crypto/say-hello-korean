@@ -53,7 +53,7 @@ export default function StudyTracker() {
     loadStudyData();
   }, []);
 
-  const loadStudyData = () => {
+  const loadStudyData = async () => {
     const savedData = localStorage.getItem('aro-study-data');
     if (savedData) {
       const parsed = JSON.parse(savedData);
@@ -69,6 +69,76 @@ export default function StudyTracker() {
         }))
       }));
       setSubjects(processedData);
+      
+      // 데이터베이스로 마이그레이션
+      await migrateToDatabase(processedData);
+    }
+  };
+
+  const migrateToDatabase = async (localData: SubjectFolder[]) => {
+    try {
+      console.log('Starting migration to database...');
+      
+      for (const subject of localData) {
+        // 과목 저장
+        console.log('Migrating subject:', subject.name);
+        const { error: subjectError } = await supabase
+          .from('subjects')
+          .upsert({ 
+            name: subject.name,
+            user_id: null
+          }, { 
+            onConflict: 'name,user_id',
+            ignoreDuplicates: true 
+          });
+
+        if (subjectError) {
+          console.error('Subject migration error:', subjectError);
+        }
+
+        for (const book of subject.books) {
+          // 교재 저장
+          console.log('Migrating book:', book.name, 'for subject:', subject.name);
+          const { error: bookError } = await supabase
+            .from('books')
+            .upsert({ 
+              name: book.name,
+              subject_name: subject.name,
+              user_id: null
+            }, { 
+              onConflict: 'name,subject_name,user_id',
+              ignoreDuplicates: true 
+            });
+
+          if (bookError) {
+            console.error('Book migration error:', bookError);
+          }
+
+          // 단원 저장
+          for (const chapter of book.studyData.chapters) {
+            console.log('Migrating chapter:', chapter.name, 'for book:', book.name);
+            const { error: chapterError } = await supabase
+              .from('chapters')
+              .upsert({
+                name: chapter.name,
+                subject_name: subject.name,
+                book_name: book.name,
+                user_id: null
+              }, { 
+                onConflict: 'name,subject_name,book_name,user_id',
+                ignoreDuplicates: true 
+              });
+
+            if (chapterError) {
+              console.error('Chapter migration error:', chapterError);
+            }
+          }
+        }
+      }
+      
+      console.log('Migration completed successfully!');
+    } catch (error) {
+      console.error('Migration failed:', error);
     }
   };
 
