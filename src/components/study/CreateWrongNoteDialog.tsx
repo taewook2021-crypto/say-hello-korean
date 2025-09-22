@@ -80,6 +80,7 @@ export function CreateWrongNoteDialog({
       const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
         body: {
           message: `다음 문제에 대한 해설을 작성해주세요:\n\n${problemText}`,
+          messages: [], // 빈 배열로 초기화
           model: 'gpt-4o-mini',
           currentSubject: studyData.subject
         }
