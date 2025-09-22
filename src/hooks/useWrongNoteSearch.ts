@@ -76,17 +76,17 @@ export const useWrongNoteSearch = () => {
     }
 
     // 과목 필터
-    if (filters.subject) {
+    if (filters.subject && filters.subject !== 'all') {
       query = query.eq('subject_name', filters.subject);
     }
 
     // 교재 필터
-    if (filters.book) {
+    if (filters.book && filters.book !== 'all') {
       query = query.eq('book_name', filters.book);
     }
 
     // 단원 필터
-    if (filters.chapter) {
+    if (filters.chapter && filters.chapter !== 'all') {
       query = query.eq('chapter_name', filters.chapter);
     }
 

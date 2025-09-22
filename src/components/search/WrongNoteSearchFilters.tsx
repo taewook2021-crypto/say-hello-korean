@@ -26,9 +26,9 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
 }) => {
   const [filters, setFilters] = useState<SearchFilters>({
     dateRange: 'all',
-    subject: '',
-    book: '',
-    chapter: ''
+    subject: 'all',
+    book: 'all',
+    chapter: 'all'
   });
 
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -52,7 +52,7 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
 
   // 선택된 과목에 따른 교재 목록 가져오기
   useEffect(() => {
-    if (filters.subject) {
+    if (filters.subject && filters.subject !== 'all') {
       const fetchBooks = async () => {
         const { data } = await supabase
           .from('books')
@@ -70,12 +70,12 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
     }
     
     // 과목이 변경되면 교재와 단원 초기화
-    setFilters(prev => ({ ...prev, book: '', chapter: '' }));
+    setFilters(prev => ({ ...prev, book: 'all', chapter: 'all' }));
   }, [filters.subject]);
 
   // 선택된 교재에 따른 단원 목록 가져오기
   useEffect(() => {
-    if (filters.subject && filters.book) {
+    if (filters.subject && filters.subject !== 'all' && filters.book && filters.book !== 'all') {
       const fetchChapters = async () => {
         const { data } = await supabase
           .from('chapters')
@@ -94,7 +94,7 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
     }
     
     // 교재가 변경되면 단원 초기화
-    setFilters(prev => ({ ...prev, chapter: '' }));
+    setFilters(prev => ({ ...prev, chapter: 'all' }));
   }, [filters.subject, filters.book]);
 
   // 필터 변경 시 상위 컴포넌트에 알림
@@ -109,9 +109,9 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
   const clearFilters = () => {
     setFilters({
       dateRange: 'all',
-      subject: '',
-      book: '',
-      chapter: ''
+      subject: 'all',
+      book: 'all',
+      chapter: 'all'
     });
   };
 
@@ -173,7 +173,7 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
               <SelectValue placeholder="과목을 선택하세요" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">전체 과목</SelectItem>
+              <SelectItem value="all">전체 과목</SelectItem>
               {subjects.map(subject => (
                 <SelectItem key={subject} value={subject}>
                   {subject}
@@ -189,13 +189,13 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
           <Select 
             value={filters.book} 
             onValueChange={(value) => updateFilter('book', value)}
-            disabled={!filters.subject}
+            disabled={!filters.subject || filters.subject === 'all'}
           >
             <SelectTrigger>
-              <SelectValue placeholder={filters.subject ? "교재를 선택하세요" : "먼저 과목을 선택하세요"} />
+              <SelectValue placeholder={filters.subject && filters.subject !== 'all' ? "교재를 선택하세요" : "먼저 과목을 선택하세요"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">전체 교재</SelectItem>
+              <SelectItem value="all">전체 교재</SelectItem>
               {books.map(book => (
                 <SelectItem key={book} value={book}>
                   {book}
@@ -211,13 +211,13 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
           <Select 
             value={filters.chapter} 
             onValueChange={(value) => updateFilter('chapter', value)}
-            disabled={!filters.book}
+            disabled={!filters.book || filters.book === 'all'}
           >
             <SelectTrigger>
-              <SelectValue placeholder={filters.book ? "단원을 선택하세요" : "먼저 교재를 선택하세요"} />
+              <SelectValue placeholder={filters.book && filters.book !== 'all' ? "단원을 선택하세요" : "먼저 교재를 선택하세요"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">전체 단원</SelectItem>
+              <SelectItem value="all">전체 단원</SelectItem>
               {chapters.map(chapter => (
                 <SelectItem key={chapter} value={chapter}>
                   {chapter}
@@ -241,30 +241,30 @@ export const WrongNoteSearchFilters: React.FC<WrongNoteSearchFiltersProps> = ({
                   />
                 </Badge>
               )}
-              {filters.subject && (
+              {filters.subject && filters.subject !== 'all' && (
                 <Badge variant="outline" className="gap-1">
                   과목: {filters.subject}
                   <X 
                     className="h-3 w-3 cursor-pointer" 
-                    onClick={() => updateFilter('subject', '')}
+                    onClick={() => updateFilter('subject', 'all')}
                   />
                 </Badge>
               )}
-              {filters.book && (
+              {filters.book && filters.book !== 'all' && (
                 <Badge variant="outline" className="gap-1">
                   교재: {filters.book}
                   <X 
                     className="h-3 w-3 cursor-pointer" 
-                    onClick={() => updateFilter('book', '')}
+                    onClick={() => updateFilter('book', 'all')}
                   />
                 </Badge>
               )}
-              {filters.chapter && (
+              {filters.chapter && filters.chapter !== 'all' && (
                 <Badge variant="outline" className="gap-1">
                   단원: {filters.chapter}
                   <X 
                     className="h-3 w-3 cursor-pointer" 
-                    onClick={() => updateFilter('chapter', '')}
+                    onClick={() => updateFilter('chapter', 'all')}
                   />
                 </Badge>
               )}

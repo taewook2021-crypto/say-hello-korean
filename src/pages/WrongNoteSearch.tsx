@@ -13,9 +13,9 @@ interface SearchFilters {
 export default function WrongNoteSearch() {
   const [filters, setFilters] = useState<SearchFilters>({
     dateRange: 'all',
-    subject: '',
-    book: '',
-    chapter: ''
+    subject: 'all',
+    book: 'all',
+    chapter: 'all'
   });
 
   const {
