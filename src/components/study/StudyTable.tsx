@@ -49,6 +49,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [newChapterProblemCount, setNewChapterProblemCount] = useState("");
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds || 3);
+  const [chapterProblemCounts, setChapterProblemCounts] = useState<{[chapterOrder: number]: number}>({});
 
   const toggleChapterExpansion = (chapterOrder: number) => {
     const newExpanded = new Set(expandedChapters);
@@ -161,7 +162,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     toast.success(`${newChapterName.trim()} 단원이 추가되었습니다!`);
   };
 
-  const handleUpdateMaxRounds = () => {
+  const handleUpdateSettings = () => {
     if (newMaxRounds < 1) {
       toast.error("회독 수는 1회 이상이어야 합니다.");
       return;
@@ -170,6 +171,15 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     if (newMaxRounds > 10) {
       toast.error("회독 수는 10회 이하여야 합니다.");
       return;
+    }
+
+    // 문제 수 변경 검증
+    for (const [chapterOrder, newProblemCount] of Object.entries(chapterProblemCounts)) {
+      if (newProblemCount < 1) {
+        const chapter = studyData.chapters.find(ch => ch.order === parseInt(chapterOrder));
+        toast.error(`${chapter?.name || '단원'}의 문제 수는 1개 이상이어야 합니다.`);
+        return;
+      }
     }
 
     // 회독 수가 감소하는 경우, 해당 회독의 데이터 삭제 확인
@@ -191,19 +201,64 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       }
     }
 
-    // 회독 수가 감소하는 경우 해당 회독 데이터 제거
-    const updatedChapters = studyData.chapters.map(chapter => ({
-      ...chapter,
-      problems: chapter.problems.map(problem => {
+    // 문제 수가 감소하는 경우, 해당 문제의 데이터 삭제 확인
+    const problemCountChanges = Object.entries(chapterProblemCounts).filter(([chapterOrder, newCount]) => {
+      const chapter = studyData.chapters.find(ch => ch.order === parseInt(chapterOrder));
+      return chapter && newCount < chapter.problems.length;
+    });
+
+    if (problemCountChanges.length > 0) {
+      const hasDataInRemovedProblems = problemCountChanges.some(([chapterOrder, newCount]) => {
+        const chapter = studyData.chapters.find(ch => ch.order === parseInt(chapterOrder));
+        if (!chapter) return false;
+        
+        return chapter.problems.slice(newCount).some(problem => {
+          if (!problem.rounds) return false;
+          return Object.values(problem.rounds).some(status => status !== null);
+        });
+      });
+
+      if (hasDataInRemovedProblems) {
+        if (!confirm('문제 수를 줄이면 해당 문제들의 데이터가 삭제됩니다. 계속하시겠습니까?')) {
+          return;
+        }
+      }
+    }
+
+    // 회독 수와 문제 수 업데이트
+    const updatedChapters = studyData.chapters.map(chapter => {
+      const newProblemCount = chapterProblemCounts[chapter.order] || chapter.problems.length;
+      let updatedProblems = [...chapter.problems];
+
+      // 문제 수 조정
+      if (newProblemCount > chapter.problems.length) {
+        // 문제 추가
+        const additionalProblems = Array.from({ length: newProblemCount - chapter.problems.length }, (_, i) => ({
+          number: chapter.problems.length + i + 1,
+          rounds: {},
+          hasNote: false
+        }));
+        updatedProblems = [...updatedProblems, ...additionalProblems];
+      } else if (newProblemCount < chapter.problems.length) {
+        // 문제 제거
+        updatedProblems = updatedProblems.slice(0, newProblemCount);
+      }
+
+      // 회독 수가 감소하는 경우 해당 회독 데이터 제거
+      updatedProblems = updatedProblems.map(problem => {
         const currentRounds = problem.rounds || {};
         const newRounds = { ...currentRounds };
-        // 새로운 최대 회독 수를 초과하는 회독 데이터 삭제
         for (let round = newMaxRounds + 1; round <= (studyData.maxRounds || 3); round++) {
           delete newRounds[round];
         }
         return { ...problem, rounds: newRounds };
-      })
-    }));
+      });
+
+      return {
+        ...chapter,
+        problems: updatedProblems
+      };
+    });
 
     const updatedStudyData = {
       ...studyData,
@@ -213,8 +268,9 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
 
     onUpdateStudyData(updatedStudyData);
     setIsSettingsDialogOpen(false);
+    setChapterProblemCounts({});
     
-    toast.success(`회독 수가 ${newMaxRounds}회로 변경되었습니다.`);
+    toast.success('설정이 변경되었습니다.');
   };
 
   // 챕터를 order 순으로 정렬 (순서 유지를 위해 중요!)
@@ -235,14 +291,14 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                 설정
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>회독표 설정</DialogTitle>
                 <DialogDescription>
-                  회독 수를 변경할 수 있습니다
+                  회독 수와 각 단원의 문제 수를 변경할 수 있습니다
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
                   <Label htmlFor="maxRounds">최대 회독 수</Label>
                   <Input
@@ -263,14 +319,53 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                     </p>
                   )}
                 </div>
+
+                <div>
+                  <Label>단원별 문제 수</Label>
+                  <div className="space-y-3 mt-2">
+                    {sortedChapters.map((chapter) => {
+                      const currentCount = chapterProblemCounts[chapter.order] ?? chapter.problems.length;
+                      return (
+                        <div key={chapter.order} className="flex items-center gap-3 p-3 border border-border rounded-lg">
+                          <div className="flex-1">
+                            <span className="font-medium text-sm">{chapter.order}. {chapter.name}</span>
+                            <p className="text-xs text-muted-foreground">현재: {chapter.problems.length}문제</p>
+                          </div>
+                          <div className="w-24">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={currentCount.toString()}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value) || 1;
+                                setChapterProblemCounts(prev => ({
+                                  ...prev,
+                                  [chapter.order]: Math.max(1, value)
+                                }));
+                              }}
+                              className="text-center"
+                            />
+                          </div>
+                          {currentCount < chapter.problems.length && (
+                            <p className="text-xs text-destructive">
+                              ⚠️ 데이터 삭제됨
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => {
                     setNewMaxRounds(studyData.maxRounds || 3);
+                    setChapterProblemCounts({});
                     setIsSettingsDialogOpen(false);
                   }}>
                     취소
                   </Button>
-                  <Button onClick={handleUpdateMaxRounds}>
+                  <Button onClick={handleUpdateSettings}>
                     변경하기
                   </Button>
                 </div>
