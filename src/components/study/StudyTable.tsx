@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings } from "lucide-react";
+import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X } from "lucide-react";
 import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -670,7 +670,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                           
                           return (
                             <TableCell key={roundNumber} className="text-center">
-                              <div className="flex justify-center">
+                              <div className="flex justify-center relative">
                                 <button
                                   onClick={handleStatusClick}
                                   onDoubleClick={handleStatusDoubleClick}
@@ -687,6 +687,18 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                                 >
                                   {status || ''}
                                 </button>
+                                {status && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      updateProblemStatus(chapter.order, problem.number, roundNumber, null);
+                                    }}
+                                    className="absolute -top-1 -right-1 w-4 h-4 bg-muted-foreground/60 hover:bg-destructive text-white rounded-full flex items-center justify-center transition-colors"
+                                    title="상태 삭제"
+                                  >
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                )}
                               </div>
                             </TableCell>
                           );
