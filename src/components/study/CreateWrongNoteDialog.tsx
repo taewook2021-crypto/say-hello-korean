@@ -36,9 +36,7 @@ interface WrongNote {
   status: '🔺' | '❌';
   content: {
     problemText: string;
-    wrongReason: string;
-    keyConcept: string;
-    reviewPoint: string;
+    answer: string;
   };
   createdAt: Date;
 }
@@ -63,9 +61,7 @@ export function CreateWrongNoteDialog({
   onNoteCreated
 }: CreateWrongNoteDialogProps) {
   const [problemText, setProblemText] = useState("");
-  const [wrongReason, setWrongReason] = useState("");
-  const [keyConcept, setKeyConcept] = useState("");
-  const [reviewPoint, setReviewPoint] = useState("");
+  const [answer, setAnswer] = useState("");
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
@@ -76,8 +72,8 @@ export function CreateWrongNoteDialog({
       return;
     }
 
-    if (!wrongReason.trim()) {
-      toast.error("틀린 이유를 입력해주세요.");
+    if (!answer.trim()) {
+      toast.error("정답을 입력해주세요.");
       return;
     }
 
@@ -90,9 +86,7 @@ export function CreateWrongNoteDialog({
       status,
       content: {
         problemText: problemText.trim(),
-        wrongReason: wrongReason.trim(),
-        keyConcept: keyConcept.trim(),
-        reviewPoint: reviewPoint.trim()
+        answer: answer.trim()
       },
       createdAt: new Date()
     };
@@ -107,9 +101,7 @@ export function CreateWrongNoteDialog({
     
     // 폼 초기화
     setProblemText("");
-    setWrongReason("");
-    setKeyConcept("");
-    setReviewPoint("");
+    setAnswer("");
     
     onNoteCreated();
   };
@@ -117,9 +109,7 @@ export function CreateWrongNoteDialog({
   const handleCancel = () => {
     // 폼 초기화
     setProblemText("");
-    setWrongReason("");
-    setKeyConcept("");
-    setReviewPoint("");
+    setAnswer("");
     onClose();
   };
 
@@ -139,7 +129,7 @@ export function CreateWrongNoteDialog({
         <div className="space-y-4">
           {/* 문제 내용 */}
           <div>
-            <Label htmlFor="problemText">문제 내용 *</Label>
+            <Label htmlFor="problemText">문제 *</Label>
             <Textarea
               id="problemText"
               value={problemText}
@@ -149,39 +139,15 @@ export function CreateWrongNoteDialog({
             />
           </div>
 
-          {/* 틀린 이유 */}
+          {/* 정답 */}
           <div>
-            <Label htmlFor="wrongReason">틀린 이유 *</Label>
+            <Label htmlFor="answer">정답 *</Label>
             <Textarea
-              id="wrongReason"
-              value={wrongReason}
-              onChange={(e) => setWrongReason(e.target.value)}
-              placeholder="왜 틀렸는지 분석해보세요..."
-              className="min-h-20"
-            />
-          </div>
-
-          {/* 핵심 개념 */}
-          <div>
-            <Label htmlFor="keyConcept">핵심 개념</Label>
-            <Textarea
-              id="keyConcept"
-              value={keyConcept}
-              onChange={(e) => setKeyConcept(e.target.value)}
-              placeholder="이 문제의 핵심 개념이나 공식을 정리해보세요..."
-              className="min-h-20"
-            />
-          </div>
-
-          {/* 다시 볼 포인트 */}
-          <div>
-            <Label htmlFor="reviewPoint">다시 볼 포인트</Label>
-            <Textarea
-              id="reviewPoint"
-              value={reviewPoint}
-              onChange={(e) => setReviewPoint(e.target.value)}
-              placeholder="다음에 같은 실수를 하지 않기 위한 포인트를 적어보세요..."
-              className="min-h-20"
+              id="answer"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder="정답과 풀이 과정을 작성해주세요..."
+              className="min-h-24"
             />
           </div>
 
