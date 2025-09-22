@@ -91,9 +91,6 @@ export const generateWordFromTemplate = async (
       </style>
     </head>
     <body>
-      <div class="header">
-        <h1>CPA _ ARO : Archive Remind Output</h1>
-      </div>
       
       <table>
         <thead>
@@ -252,10 +249,6 @@ export const generatePdfFromTemplate = async (
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>CPA _ ARO : Archive Remind Output</h1>
-          <p>생성일: ${new Date().toLocaleDateString('ko-KR')} | 총 ${notes.length}개 문항</p>
-        </div>
         
         <table>
           <thead>
