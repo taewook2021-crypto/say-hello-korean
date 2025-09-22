@@ -74,6 +74,8 @@ const Book = () => {
     
     try {
       console.log('Adding chapter:', newChapterName.trim(), 'to book:', decodeURIComponent(bookName), 'in subject:', decodeURIComponent(subjectName));
+      
+      // 1. 데이터베이스에 단원 추가
       const { error } = await (supabase as any)
         .from('chapters')
         .insert({ 
@@ -87,12 +89,19 @@ const Book = () => {
         throw error;
       }
       
+      // 2. 회독표에도 단원 추가
+      await addChapterToStudyTracker(
+        decodeURIComponent(subjectName), 
+        decodeURIComponent(bookName), 
+        newChapterName.trim()
+      );
+      
       setChapters([...chapters, newChapterName.trim()]);
       setNewChapterName("");
       setIsDialogOpen(false);
       toast({
         title: "성공",
-        description: "새 단원이 추가되었습니다.",
+        description: "새 단원이 추가되고 회독표에도 연동되었습니다.",
       });
     } catch (error) {
       console.error('Error adding chapter:', error);
@@ -104,6 +113,114 @@ const Book = () => {
         title: "임시 저장",
         description: "단원이 임시로 추가되었습니다. 데이터베이스 설정 후 영구 저장됩니다.",
       });
+    }
+  };
+
+  // 회독표에 단원 추가하는 함수
+  const addChapterToStudyTracker = async (subjectName: string, bookName: string, chapterName: string) => {
+    try {
+      // 로컬 스토리지에서 회독표 데이터 가져오기
+      const savedData = localStorage.getItem('aro-study-data');
+      if (!savedData) {
+        // 회독표가 없으면 새로 생성
+        await createStudyPlanIfNotExists(subjectName, bookName);
+      }
+      
+      const studyData = savedData ? JSON.parse(savedData) : [];
+      
+      // 해당 과목과 교재의 회독표 찾기
+      const subjectIndex = studyData.findIndex((s: any) => s.name === subjectName);
+      if (subjectIndex === -1) {
+        await createStudyPlanIfNotExists(subjectName, bookName);
+        return;
+      }
+      
+      const bookIndex = studyData[subjectIndex].books.findIndex((b: any) => b.name === bookName);
+      if (bookIndex === -1) {
+        await createStudyPlanIfNotExists(subjectName, bookName);
+        return;
+      }
+      
+      // 단원이 이미 존재하는지 확인
+      const existingChapter = studyData[subjectIndex].books[bookIndex].studyData.chapters
+        .find((ch: any) => ch.name === chapterName);
+      
+      if (existingChapter) {
+        console.log('Chapter already exists in study tracker');
+        return;
+      }
+      
+      // 새 단원 추가 (기본 30문제로 설정)
+      const newChapter = {
+        order: studyData[subjectIndex].books[bookIndex].studyData.chapters.length + 1,
+        name: chapterName,
+        problems: Array.from({ length: 30 }, (_, i) => ({
+          number: i + 1,
+          rounds: {},
+          hasNote: false
+        }))
+      };
+      
+      studyData[subjectIndex].books[bookIndex].studyData.chapters.push(newChapter);
+      
+      // 로컬 스토리지에 저장
+      localStorage.setItem('aro-study-data', JSON.stringify(studyData));
+      
+      console.log('Chapter added to study tracker successfully');
+    } catch (error) {
+      console.error('Error adding chapter to study tracker:', error);
+    }
+  };
+
+  // 회독표가 없으면 생성하는 함수
+  const createStudyPlanIfNotExists = async (subjectName: string, bookName: string) => {
+    try {
+      const savedData = localStorage.getItem('aro-study-data');
+      const studyData = savedData ? JSON.parse(savedData) : [];
+      
+      const newStudyData = {
+        id: Date.now().toString(),
+        subject: subjectName,
+        textbook: bookName,
+        maxRounds: 3, // 기본 3회독
+        chapters: [],
+        createdAt: new Date().toISOString()
+      };
+      
+      let updatedSubjects = [...studyData];
+      
+      // 기존 과목이 있는지 확인
+      const existingSubjectIndex = updatedSubjects.findIndex((s: any) => s.name === subjectName);
+      
+      if (existingSubjectIndex >= 0) {
+        // 기존 과목에 새 교재 추가
+        const existingBookIndex = updatedSubjects[existingSubjectIndex].books
+          .findIndex((b: any) => b.name === bookName);
+        
+        if (existingBookIndex === -1) {
+          updatedSubjects[existingSubjectIndex].books.push({
+            name: bookName,
+            studyData: newStudyData,
+            isExpanded: false
+          });
+        }
+      } else {
+        // 새 과목 생성
+        updatedSubjects.push({
+          name: subjectName,
+          books: [{
+            name: bookName,
+            studyData: newStudyData,
+            isExpanded: false
+          }],
+          isExpanded: true
+        });
+      }
+      
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+      console.log('Study plan created for', subjectName, '-', bookName);
+    } catch (error) {
+      console.error('Error creating study plan:', error);
     }
   };
 
