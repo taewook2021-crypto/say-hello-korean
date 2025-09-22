@@ -6,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { DataProvider } from "@/contexts/DataContext";
+import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
@@ -19,7 +20,8 @@ import NotFound from "./pages/NotFound";
 
 const App = () => (
     <DataProvider>
-      <SearchProvider>
+      <UnifiedDataProvider>
+        <SearchProvider>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -54,7 +56,8 @@ const App = () => (
         </TooltipProvider>
       </ThemeProvider>
     </SearchProvider>
-  </DataProvider>
+  </UnifiedDataProvider>
+</DataProvider>
 );
 
 export default App;

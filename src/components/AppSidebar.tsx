@@ -24,47 +24,25 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
 export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
-  const [subjects, setSubjects] = useState<string[]>([]);
+  const { getSubjectNames, addSubject } = useUnifiedData();
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
 
-  useEffect(() => {
-    loadSubjects();
-  }, []);
+  const subjects = getSubjectNames();
 
-  const loadSubjects = () => {
-    // ARO 회독표에서 사용하는 과목들 로드
-    const savedData = localStorage.getItem('aro-study-data');
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-      const subjectNames = parsed.map((subject: any) => subject.name);
-      setSubjects(subjectNames);
+  const handleAddSubject = async () => {
+    try {
+      await addSubject(newSubjectName.trim());
+      setNewSubjectName("");
+      setIsAddSubjectDialogOpen(false);
+    } catch (error) {
+      // Error already handled in context
     }
-  };
-
-  const handleAddSubject = () => {
-    if (!newSubjectName.trim()) {
-      toast.error("과목명을 입력해주세요.");
-      return;
-    }
-
-    if (subjects.includes(newSubjectName.trim())) {
-      toast.error("이미 존재하는 과목입니다.");
-      return;
-    }
-
-    const updatedSubjects = [...subjects, newSubjectName.trim()];
-    setSubjects(updatedSubjects);
-    
-    // 실제로는 localStorage에 빈 과목 데이터를 추가하지 않고, 
-    // 회독표 생성시에만 실제 데이터가 저장되도록 함
-    toast.success(`${newSubjectName.trim()} 과목이 추가되었습니다.`);
-    setNewSubjectName("");
-    setIsAddSubjectDialogOpen(false);
   };
 
   const mainItems = [

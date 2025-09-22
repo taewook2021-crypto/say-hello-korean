@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useData } from "@/contexts/DataContext";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,21 +32,12 @@ const Home = () => {
   const [deleteTargetName, setDeleteTargetName] = useState("");
   
   const { toast } = useToast();
-  const { subjects, subjectBooks, loading, refreshBooksForSubject, addSubject, deleteSubject, deleteBook, addBook } = useData();
+  const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject } = useUnifiedData();
   const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
 
   const loadBooksForSubject = async (subjectName: string) => {
-    if (subjectBooks[subjectName]) return;
-    
-    setBooksLoading(prev => ({ ...prev, [subjectName]: true }));
-    
-    try {
-      await refreshBooksForSubject(subjectName);
-    } catch (error) {
-      console.error('Error loading books:', error);
-    } finally {
-      setBooksLoading(prev => ({ ...prev, [subjectName]: false }));
-    }
+    // UnifiedData에서는 이미 책 정보가 있으므로 별도 로딩 불필요
+    return;
   };
 
   async function toggleSubject(subject: string) {
@@ -74,8 +66,6 @@ const Home = () => {
 
     try {
       await addBook(selectedSubjectForBook, newBook.trim());
-      // 책 추가 후 해당 과목의 책 목록을 다시 로드
-      await refreshBooksForSubject(selectedSubjectForBook);
       setNewBook("");
       setShowAddBookDialog(false);
       setSelectedSubjectForBook("");
@@ -245,25 +235,25 @@ const Home = () => {
           ) : (
             <div className="space-y-2">
               {subjects.map((subject) => (
-                <div key={subject} className="group">
+                <div key={subject.name} className="group">
                   <div className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/30 transition-colors">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toggleSubject(subject)}
+                      onClick={() => toggleSubject(subject.name)}
                       className="p-1 h-8 w-8"
                     >
                       <ChevronRight 
                         className={`h-4 w-4 transition-transform ${
-                          expandedSubject === subject ? 'rotate-90' : ''
+                          expandedSubject === subject.name ? 'rotate-90' : ''
                         }`} 
                       />
                     </Button>
                     
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground text-lg">{subject}</h3>
+                      <h3 className="font-medium text-foreground text-lg">{subject.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {subjectBooks[subject] ? `${subjectBooks[subject].length}개의 책` : '책을 추가해보세요'}
+                        {subject.books.length > 0 ? `${subject.books.length}개의 책` : '책을 추가해보세요'}
                       </p>
                     </div>
                     
@@ -275,7 +265,7 @@ const Home = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openDeleteDialog('subject', subject)}>
+                          <DropdownMenuItem onClick={() => openDeleteDialog('subject', subject.name)}>
                             <Trash2 className="h-4 w-4 mr-2" />
                             삭제
                           </DropdownMenuItem>
@@ -283,7 +273,7 @@ const Home = () => {
                       </DropdownMenu>
                       
                       <Link 
-                        to={`/subject/${encodeURIComponent(subject)}`}
+                        to={`/subject/${encodeURIComponent(subject.name)}`}
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Button variant="ghost" size="sm">
@@ -294,9 +284,9 @@ const Home = () => {
                   </div>
 
                   {/* Expanded Books */}
-                  {expandedSubject === subject && (
+                  {expandedSubject === subject.name && (
                     <div className="ml-12 mt-2 space-y-1">
-                      {booksLoading[subject] ? (
+                      {booksLoading[subject.name] ? (
                         <div className="space-y-2">
                           {Array.from({ length: 2 }).map((_, index) => (
                             <div key={index} className="h-8 bg-muted rounded animate-pulse"></div>
@@ -304,9 +294,9 @@ const Home = () => {
                         </div>
                       ) : (
                         <>
-                          {subjectBooks[subject]?.map((book) => {
-                            const bookLink = `/subject/${encodeURIComponent(subject)}/book/${encodeURIComponent(book)}`;
-                            console.log('Book link generated:', bookLink, 'for subject:', subject, 'book:', book);
+                          {subject.books?.map((book) => {
+                            const bookLink = `/subject/${encodeURIComponent(subject.name)}/book/${encodeURIComponent(book)}`;
+                            console.log('Book link generated:', bookLink, 'for subject:', subject.name, 'book:', book);
                             return (
                             <div key={book} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
                               <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -323,7 +313,7 @@ const Home = () => {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openDeleteDialog('book', book, subject)}>
+                                  <DropdownMenuItem onClick={() => openDeleteDialog('book', book, subject.name)}>
                                     <Trash2 className="h-3 w-3 mr-2" />
                                     삭제
                                   </DropdownMenuItem>
@@ -339,7 +329,7 @@ const Home = () => {
                           {/* Add Book Button */}
                           <div className="p-3">
                             <Button 
-                              onClick={() => openAddBookDialog(subject)}
+                              onClick={() => openAddBookDialog(subject.name)}
                               variant="outline"
                               size="sm"
                               className="w-full h-8 text-xs"
@@ -349,7 +339,7 @@ const Home = () => {
                             </Button>
                           </div>
                           
-                          {(!subjectBooks[subject] || subjectBooks[subject].length === 0) && (
+                          {(!subject.books || subject.books.length === 0) && (
                             <p className="text-sm text-muted-foreground italic p-3">
                               등록된 책이 없습니다
                             </p>
