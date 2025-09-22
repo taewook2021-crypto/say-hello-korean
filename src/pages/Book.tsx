@@ -241,12 +241,12 @@ const Book = () => {
         .eq('chapter_name', chapterToDelete);
 
       // 2. 데이터베이스에서 단원 삭제
-      await supabase
+      const { error: chapterDeleteError } = await supabase
         .from('chapters')
         .delete()
         .eq('subject_name', decodeURIComponent(subjectName || ''))
         .eq('book_name', decodeURIComponent(bookName || ''))
-        .eq('chapter_name', chapterToDelete);
+        .eq('name', chapterToDelete);
 
       // 3. 회독표에서도 단원 삭제
       await deleteChapterFromStudyTracker(

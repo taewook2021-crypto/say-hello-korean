@@ -54,6 +54,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds || 3);
   const [chapterProblemCounts, setChapterProblemCounts] = useState<{[chapterOrder: number]: string}>({});
   const [isDeleteChapterDialogOpen, setIsDeleteChapterDialogOpen] = useState(false);
+  const [chapterToDelete, setChapterToDelete] = useState<Chapter | null>(null);
 
   const toggleChapterExpansion = (chapterOrder: number) => {
     const newExpanded = new Set(expandedChapters);
@@ -326,7 +327,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
         .delete()
         .eq('subject_name', studyData.subject)
         .eq('book_name', studyData.textbook)
-        .eq('chapter_name', chapterToDelete.name);
+        .eq('name', chapterToDelete.name);
 
       if (chapterError) {
         console.error('Error deleting chapter:', chapterError);

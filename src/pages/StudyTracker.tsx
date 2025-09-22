@@ -48,30 +48,133 @@ export default function StudyTracker() {
   const [newSubject, setNewSubject] = useState("");
   const [newTextbook, setNewTextbook] = useState("");
   const [maxRounds, setMaxRounds] = useState("");
+  const [isAddBookDialogOpen, setIsAddBookDialogOpen] = useState(false);
+  const [selectedSubjectForBook, setSelectedSubjectForBook] = useState("");
+  const [newBookName, setNewBookName] = useState("");
+  const [newBookMaxRounds, setNewBookMaxRounds] = useState("");
 
   useEffect(() => {
     loadStudyData();
   }, []);
 
   const loadStudyData = async () => {
-    const savedData = localStorage.getItem('aro-study-data');
-    if (savedData) {
-      const parsed = JSON.parse(savedData);
-      // Convert dates back from strings
-      const processedData = parsed.map((subject: any) => ({
-        ...subject,
-        books: subject.books.map((book: any) => ({
-          ...book,
-          studyData: {
-            ...book.studyData,
-            createdAt: new Date(book.studyData.createdAt)
+    try {
+      // 먼저 데이터베이스에서 모든 과목을 불러온다
+      const { data: dbSubjects, error: subjectsError } = await supabase
+        .from('subjects')
+        .select('name')
+        .order('name');
+
+      if (subjectsError) {
+        console.error('Error loading subjects:', subjectsError);
+      }
+
+      // 각 과목에 대해 책들을 불러온다
+      let allSubjects: SubjectFolder[] = [];
+
+      if (dbSubjects && dbSubjects.length > 0) {
+        for (const subject of dbSubjects) {
+          const { data: books, error: booksError } = await supabase
+            .from('books')
+            .select('name')
+            .eq('subject_name', subject.name)
+            .order('name');
+
+          if (booksError) {
+            console.error('Error loading books for subject:', subject.name, booksError);
           }
-        }))
-      }));
-      setSubjects(processedData);
-      
-      // 데이터베이스로 마이그레이션
-      await migrateToDatabase(processedData);
+
+          const subjectFolder: SubjectFolder = {
+            name: subject.name,
+            books: [],
+            isExpanded: false
+          };
+
+          if (books && books.length > 0) {
+            // 책이 있는 경우, 각 책에 대해 회독표 데이터를 생성
+            for (const book of books) {
+              const studyData: StudyData = {
+                id: `${subject.name}-${book.name}`,
+                subject: subject.name,
+                textbook: book.name,
+                maxRounds: 3,
+                chapters: [],
+                createdAt: new Date()
+              };
+
+              subjectFolder.books.push({
+                name: book.name,
+                studyData,
+                isExpanded: false
+              });
+            }
+          }
+
+          allSubjects.push(subjectFolder);
+        }
+      }
+
+      // 로컬 스토리지에서 기존 데이터도 확인하고 병합
+      const savedData = localStorage.getItem('aro-study-data');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        const processedData = parsed.map((subject: any) => ({
+          ...subject,
+          books: subject.books.map((book: any) => ({
+            ...book,
+            studyData: {
+              ...book.studyData,
+              createdAt: new Date(book.studyData.createdAt)
+            }
+          }))
+        }));
+
+        // 로컬 데이터와 DB 데이터를 병합
+        for (const localSubject of processedData) {
+          const existingSubject = allSubjects.find(s => s.name === localSubject.name);
+          if (existingSubject) {
+            // 기존 과목에 로컬 데이터의 책들을 병합
+            for (const localBook of localSubject.books) {
+              const existingBook = existingSubject.books.find(b => b.name === localBook.name);
+              if (existingBook) {
+                // 기존 책의 회독표 데이터를 로컬 데이터로 업데이트
+                existingBook.studyData = localBook.studyData;
+                existingBook.isExpanded = localBook.isExpanded;
+              } else {
+                // 새 책 추가
+                existingSubject.books.push(localBook);
+              }
+            }
+            existingSubject.isExpanded = localSubject.isExpanded;
+          } else {
+            // 새 과목 추가
+            allSubjects.push(localSubject);
+          }
+        }
+
+        // 데이터베이스로 마이그레이션
+        await migrateToDatabase(processedData);
+      }
+
+      setSubjects(allSubjects);
+    } catch (error) {
+      console.error('Error loading study data:', error);
+      // 오류 발생 시 로컬 스토리지에서만 로드
+      const savedData = localStorage.getItem('aro-study-data');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        const processedData = parsed.map((subject: any) => ({
+          ...subject,
+          books: subject.books.map((book: any) => ({
+            ...book,
+            studyData: {
+              ...book.studyData,
+              createdAt: new Date(book.studyData.createdAt)
+            }
+          }))
+        }));
+        setSubjects(processedData);
+      }
     }
   };
 
@@ -274,6 +377,87 @@ export default function StudyTracker() {
     }
   };
 
+  const handleAddBookToSubject = async (subjectName: string) => {
+    setSelectedSubjectForBook(subjectName);
+    setNewBookName("");
+    setNewBookMaxRounds("3");
+    setIsAddBookDialogOpen(true);
+  };
+
+  const handleCreateBookForSubject = async () => {
+    if (!newBookName.trim()) {
+      toast.error("교재명을 입력해주세요.");
+      return;
+    }
+
+    if (!newBookMaxRounds || parseInt(newBookMaxRounds) < 1) {
+      toast.error("회독 수를 입력해주세요. (1회 이상)");
+      return;
+    }
+
+    const maxRoundsNumber = parseInt(newBookMaxRounds);
+    if (maxRoundsNumber > 10) {
+      toast.error("회독 수는 10회 이하여야 합니다.");
+      return;
+    }
+
+    try {
+      // 데이터베이스에 교재 저장
+      const { error: bookError } = await supabase
+        .from('books')
+        .upsert({ 
+          name: newBookName.trim(),
+          subject_name: selectedSubjectForBook,
+          user_id: null
+        }, { 
+          onConflict: 'name,subject_name,user_id',
+          ignoreDuplicates: true 
+        });
+
+      if (bookError) {
+        console.error('Book insert error:', bookError);
+      }
+
+      // 새 회독표 데이터 생성
+      const newStudyData: StudyData = {
+        id: `${selectedSubjectForBook}-${newBookName.trim()}`,
+        subject: selectedSubjectForBook,
+        textbook: newBookName.trim(),
+        maxRounds: maxRoundsNumber,
+        chapters: [],
+        createdAt: new Date()
+      };
+
+      // 로컬 상태 업데이트
+      const updatedSubjects = subjects.map(subject => 
+        subject.name === selectedSubjectForBook
+          ? {
+              ...subject,
+              books: [
+                ...subject.books,
+                {
+                  name: newBookName.trim(),
+                  studyData: newStudyData,
+                  isExpanded: false
+                }
+              ]
+            }
+          : subject
+      );
+
+      saveStudyData(updatedSubjects);
+      setIsAddBookDialogOpen(false);
+      setNewBookName("");
+      setNewBookMaxRounds("");
+      setSelectedSubjectForBook("");
+      
+      toast.success("교재가 추가되었습니다!");
+    } catch (error) {
+      console.error('Error adding book:', error);
+      toast.error("교재 추가 중 오류가 발생했습니다.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -371,6 +555,52 @@ export default function StudyTracker() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* 교재 추가 다이얼로그 */}
+          <Dialog open={isAddBookDialogOpen} onOpenChange={setIsAddBookDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{selectedSubjectForBook}에 교재 추가</DialogTitle>
+                <DialogDescription>
+                  새로운 교재를 추가하고 회독표를 생성하세요
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="bookName">교재명</Label>
+                  <Input
+                    id="bookName"
+                    value={newBookName}
+                    onChange={(e) => setNewBookName(e.target.value)}
+                    placeholder="예: 개념원리"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="bookMaxRounds">회독 수</Label>
+                  <Input
+                    id="bookMaxRounds"
+                    value={newBookMaxRounds}
+                    onChange={(e) => setNewBookMaxRounds(e.target.value)}
+                    placeholder="회독 수를 입력하세요 (예: 3)"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    최대 10회까지 설정 가능합니다
+                  </p>
+                </div>
+                
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setIsAddBookDialogOpen(false)}>
+                    취소
+                  </Button>
+                  <Button onClick={handleCreateBookForSubject}>
+                    추가하기
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* 폴더 구조 */}
@@ -411,7 +641,32 @@ export default function StudyTracker() {
                 {subject.isExpanded && (
                   <CardContent className="pt-0">
                     <div className="space-y-2">
-                      {subject.books.map((book) => (
+                      {subject.books.length === 0 ? (
+                        <div className="text-center p-6 text-muted-foreground">
+                          <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm mb-3">이 과목에 교재가 없습니다</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleAddBookToSubject(subject.name)}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            교재 추가
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-end mb-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleAddBookToSubject(subject.name)}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              교재 추가
+                            </Button>
+                          </div>
+                          {subject.books.map((book) => (
                         <div key={book.name} className="border border-border rounded-lg">
                           <div
                             className="p-3 cursor-pointer hover:bg-muted/30 transition-colors flex items-center gap-2"
@@ -446,9 +701,11 @@ export default function StudyTracker() {
                                 }}
                               />
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            )}
+                          </div>
+                        ))}
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 )}
