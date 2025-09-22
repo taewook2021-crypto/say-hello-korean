@@ -47,7 +47,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [newChapterName, setNewChapterName] = useState("");
   const [newChapterProblemCount, setNewChapterProblemCount] = useState(1);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
-  const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds);
+  const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds || 3);
 
   const toggleChapterExpansion = (chapterOrder: number) => {
     const newExpanded = new Set(expandedChapters);
@@ -220,7 +220,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       {/* 상단 버튼들 */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-foreground">
-          {studyData.subject} &gt; {studyData.textbook} (최대 {studyData.maxRounds}회독)
+          {studyData.subject} &gt; {studyData.textbook} (최대 {studyData.maxRounds || 3}회독)
         </h3>
         <div className="flex gap-2">
           <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
@@ -242,7 +242,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   <Label htmlFor="maxRounds">최대 회독 수</Label>
                   <Input
                     id="maxRounds"
-                    value={newMaxRounds.toString()}
+                    value={(newMaxRounds || 3).toString()}
                     onChange={(e) => {
                       const value = parseInt(e.target.value) || 1;
                       setNewMaxRounds(Math.max(1, Math.min(10, value)));
@@ -250,9 +250,9 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                     placeholder="예: 3"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    현재: {studyData.maxRounds}회 | 최대 10회까지 설정 가능
+                    현재: {studyData.maxRounds || 3}회 | 최대 10회까지 설정 가능
                   </p>
-                  {newMaxRounds < studyData.maxRounds && (
+                  {newMaxRounds < (studyData.maxRounds || 3) && (
                     <p className="text-xs text-destructive mt-1">
                       ⚠️ 회독 수를 줄이면 해당 회독의 데이터가 삭제됩니다
                     </p>
@@ -260,7 +260,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => {
-                    setNewMaxRounds(studyData.maxRounds);
+                    setNewMaxRounds(studyData.maxRounds || 3);
                     setIsSettingsDialogOpen(false);
                   }}>
                     취소
@@ -301,7 +301,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   <Label htmlFor="problemCount">문제 수</Label>
                   <Input
                     id="problemCount"
-                    value={newChapterProblemCount.toString()}
+                    value={(newChapterProblemCount || 1).toString()}
                     onChange={(e) => {
                       const value = parseInt(e.target.value) || 0;
                       setNewChapterProblemCount(Math.max(1, value));
@@ -362,7 +362,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
               <div className="flex items-center gap-2">
                 {(() => {
                   const totalProblems = chapter.problems.length;
-                  const maxRounds = studyData.maxRounds;
+                  const maxRounds = studyData.maxRounds || 3;
                   let completedCount = 0;
                   let partialCount = 0;
                   let wrongCount = 0;
@@ -416,7 +416,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-center w-20">문제</TableHead>
-                      {Array.from({ length: studyData.maxRounds }, (_, i) => (
+                      {Array.from({ length: studyData.maxRounds || 3 }, (_, i) => (
                         <TableHead key={i + 1} className="text-center w-24">
                           {i + 1}회독
                         </TableHead>
@@ -430,7 +430,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                         <TableCell className="text-center font-medium">
                           {problem.number}
                         </TableCell>
-                        {Array.from({ length: studyData.maxRounds }, (_, roundIndex) => {
+                        {Array.from({ length: studyData.maxRounds || 3 }, (_, roundIndex) => {
                           const roundNumber = roundIndex + 1;
                           const status = problem.rounds[roundNumber];
                           return (
