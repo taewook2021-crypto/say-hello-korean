@@ -73,6 +73,11 @@ export default function StudyTracker() {
     }
   };
 
+  const getExistingSubjects = (): string[] => {
+    // 기존에 저장된 과목들 반환
+    return subjects.map(s => s.name);
+  };
+
   const saveStudyData = (data: SubjectFolder[]) => {
     localStorage.setItem('aro-study-data', JSON.stringify(data));
     setSubjects(data);
@@ -218,12 +223,31 @@ export default function StudyTracker() {
                 {/* 과목명 */}
                 <div>
                   <Label htmlFor="subject">과목명</Label>
-                  <Input
-                    id="subject"
-                    value={newSubject}
-                    onChange={(e) => setNewSubject(e.target.value)}
-                    placeholder="예: 수학"
-                  />
+                  <div className="space-y-2">
+                    {/* 기존 과목 추천 */}
+                    {getExistingSubjects().length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {getExistingSubjects().map((existingSubject) => (
+                          <Button
+                            key={existingSubject}
+                            type="button"
+                            variant={newSubject === existingSubject ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setNewSubject(existingSubject)}
+                          >
+                            {existingSubject}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    {/* 직접 입력 */}
+                    <Input
+                      id="subject"
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      placeholder="새 과목명 입력 또는 위에서 선택"
+                    />
+                  </div>
                 </div>
                 
                 {/* 교재명 */}

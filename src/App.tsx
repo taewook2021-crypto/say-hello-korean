@@ -27,20 +27,14 @@ const App = () => (
           disableTransitionOnChange
         >
         <TooltipProvider>
-          <SidebarProvider>
+          <SidebarProvider defaultOpen={true}>
             <div className="min-h-screen flex w-full">
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                {/* Header with Sidebar Trigger */}
-                <header className="fixed top-0 left-0 right-0 h-12 flex items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50">
-                  <SidebarTrigger className="ml-4" />
-                  <div className="ml-4 font-semibold text-foreground">학습 도우미</div>
-                </header>
-
                 <AppSidebar />
 
-                <main className="flex-1 pt-12">
+                <main className="flex-1">
                   <Routes>
                     <Route path="/" element={<Index />} />
                     
