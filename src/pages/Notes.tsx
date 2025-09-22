@@ -150,7 +150,8 @@ export default function Notes() {
           subject_name: decodedSubject,
           book_name: decodedBook,
           chapter_name: decodedChapter,
-          is_resolved: false
+          is_resolved: false,
+          user_id: null // 개발 모드에서는 null로 설정
         })
         .select()
         .single();
@@ -165,7 +166,8 @@ export default function Notes() {
           next_review_date: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1일 후
           interval_days: 1,
           review_count: 0,
-          is_completed: false
+          is_completed: false,
+          user_id: null // 개발 모드에서는 null로 설정
         });
 
       if (scheduleError) {
