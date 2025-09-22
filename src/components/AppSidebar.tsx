@@ -20,7 +20,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useData } from "@/contexts/DataContext";
 import { SearchBar } from "@/components/SearchBar";
 import { useSearch } from "@/contexts/SearchContext";
-import { useAuth } from "@/contexts/AuthContext";
+
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,9 @@ export function AppSidebar() {
   
   const { subjects, subjectBooks, loading, refreshBooksForSubject } = useData();
   const { setSearchState } = useSearch();
-  const { user, signOut } = useAuth();
+  
+  // 더미 사용자 정보 (인증 제거)
+  const dummyUser = { email: 'user@example.com' };
 
   useEffect(() => {
     // 로컬 스토리지에서 저장된 플랜 정보 로드
@@ -264,7 +266,7 @@ export function AppSidebar() {
                       <User className="h-4 w-4 text-primary-foreground" />
                     </div>
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-medium truncate">{user?.email}</p>
+                      <p className="text-sm font-medium truncate">{dummyUser.email}</p>
                       <div className="flex items-center gap-2">
                         <Badge variant={currentPlan === "무료" ? "secondary" : "default"} className="text-xs">
                           {currentPlan}
@@ -292,7 +294,7 @@ export function AppSidebar() {
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">이메일</span>
-                        <span>{user?.email}</span>
+                        <span>{dummyUser.email}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">가입일</span>
@@ -401,15 +403,6 @@ export function AppSidebar() {
                       <Button variant="outline" className="w-full justify-start" size="sm">
                         <CreditCard className="h-4 w-4 mr-2" />
                         결제 내역
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-start text-red-600 hover:text-red-700" 
-                        size="sm"
-                        onClick={signOut}
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        로그아웃
                       </Button>
                     </div>
                   </div>

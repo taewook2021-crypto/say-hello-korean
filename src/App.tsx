@@ -7,20 +7,17 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { DataProvider } from "@/contexts/DataContext";
 import { SearchProvider } from "@/contexts/SearchContext";
-import { AuthProvider } from "@/contexts/AuthContext";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
 import Home from "./pages/Home";
 import WrongNoteSubject from "./pages/WrongNoteSubject";
 import StudyPlan from "./pages/StudyPlan";
-import Auth from "./pages/Auth";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
-  <AuthProvider>
     <DataProvider>
       <SearchProvider>
         <ThemeProvider
@@ -46,7 +43,7 @@ const App = () => (
                 <main className="flex-1 pt-12">
                   <Routes>
                     <Route path="/" element={<Index />} />
-                    <Route path="/auth" element={<Auth />} />
+                    
                     <Route path="/home" element={<Home />} />
                     <Route path="/study-plan" element={<StudyPlan />} />
                     <Route path="/subject/:subjectName" element={<Subject />} />
@@ -64,7 +61,6 @@ const App = () => (
       </ThemeProvider>
     </SearchProvider>
   </DataProvider>
-  </AuthProvider>
 );
 
 export default App;
