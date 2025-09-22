@@ -38,6 +38,7 @@ interface StudyTableProps {
 export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([1])); // 첫 번째 단원은 기본 확장
   const [isWrongNoteDialogOpen, setIsWrongNoteDialogOpen] = useState(false);
+  const [isWrongNoteConfirmOpen, setIsWrongNoteConfirmOpen] = useState(false);
   const [selectedProblem, setSelectedProblem] = useState<{
     chapterOrder: number;
     problemNumber: number;
@@ -82,14 +83,14 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
 
     onUpdateStudyData(updatedStudyData);
 
-    // 🔺나 ❌ 선택시 오답노트 작성 다이얼로그 표시
+    // 🔺나 ❌ 선택시 오답노트 생성 여부 확인 다이얼로그 표시
     if (status === '🔺' || status === '❌') {
       setSelectedProblem({
         chapterOrder,
         problemNumber,
         status
       });
-      setIsWrongNoteDialogOpen(true);
+      setIsWrongNoteConfirmOpen(true);
     }
   };
 
@@ -114,6 +115,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
 
     onUpdateStudyData(updatedStudyData);
     setIsWrongNoteDialogOpen(false);
+    setIsWrongNoteConfirmOpen(false);
     setSelectedProblem(null);
   };
 
@@ -540,6 +542,34 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
             )}
           </div>
         ))
+      )}
+
+      {/* 오답노트 생성 여부 확인 다이얼로그 */}
+      {selectedProblem && (
+        <Dialog open={isWrongNoteConfirmOpen} onOpenChange={setIsWrongNoteConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>오답노트 생성</DialogTitle>
+              <DialogDescription>
+                {selectedProblem.chapterOrder}단원 {selectedProblem.problemNumber}번 문제에 대한 오답노트를 생성하시겠습니까?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => {
+                setIsWrongNoteConfirmOpen(false);
+                setSelectedProblem(null);
+              }}>
+                아니요
+              </Button>
+              <Button onClick={() => {
+                setIsWrongNoteConfirmOpen(false);
+                setIsWrongNoteDialogOpen(true);
+              }}>
+                생성하기
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* 오답노트 작성 다이얼로그 */}
