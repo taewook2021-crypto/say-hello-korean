@@ -45,10 +45,6 @@ export default function StudyTracker() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newSubject, setNewSubject] = useState("");
   const [newTextbook, setNewTextbook] = useState("");
-  const [chapterCount, setChapterCount] = useState(1);
-  const [chapters, setChapters] = useState<{ name: string; problemCount: number }[]>([
-    { name: "", problemCount: 1 }
-  ]);
 
   useEffect(() => {
     loadStudyData();
@@ -114,26 +110,12 @@ export default function StudyTracker() {
       return;
     }
 
-    if (chapters.some(ch => !ch.name.trim() || ch.problemCount < 1)) {
-      toast.error("모든 단원명을 입력하고 문제 수는 1개 이상이어야 합니다.");
-      return;
-    }
-
-    const studyChapters: Chapter[] = chapters.map((ch, index) => ({
-      order: index + 1, // 추가된 순서대로 order 부여
-      name: ch.name.trim(),
-      problems: Array.from({ length: ch.problemCount }, (_, i) => ({
-        number: i + 1, // 문제 번호는 1부터 시작
-        status: null,
-        hasNote: false
-      }))
-    }));
-
+    // 빈 회독표 생성 (단원 없음)
     const newStudyData: StudyData = {
       id: Date.now().toString(),
       subject: newSubject.trim(),
       textbook: newTextbook.trim(),
-      chapters: studyChapters,
+      chapters: [], // 빈 배열로 시작
       createdAt: new Date()
     };
 
@@ -167,30 +149,9 @@ export default function StudyTracker() {
     // 폼 초기화
     setNewSubject("");
     setNewTextbook("");
-    setChapters([{ name: "", problemCount: 1 }]);
-    setChapterCount(1);
     setIsCreateDialogOpen(false);
     
-    toast.success("회독표가 생성되었습니다!");
-  };
-
-  const addChapterInput = () => {
-    setChapters([...chapters, { name: "", problemCount: 1 }]);
-    setChapterCount(chapterCount + 1);
-  };
-
-  const updateChapter = (index: number, field: 'name' | 'problemCount', value: string | number) => {
-    const updated = chapters.map((ch, i) => 
-      i === index ? { ...ch, [field]: value } : ch
-    );
-    setChapters(updated);
-  };
-
-  const removeChapter = (index: number) => {
-    if (chapters.length > 1) {
-      setChapters(chapters.filter((_, i) => i !== index));
-      setChapterCount(chapterCount - 1);
-    }
+    toast.success("회독표가 생성되었습니다! 이제 단원을 추가해보세요.");
   };
 
   return (
@@ -261,53 +222,8 @@ export default function StudyTracker() {
                   />
                 </div>
                 
-                {/* 단원 설정 */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <Label>단원 설정</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addChapterInput}
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      단원 추가
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {chapters.map((chapter, index) => (
-                      <div key={index} className="flex gap-2 items-center">
-                        <div className="flex-1">
-                          <Input
-                            placeholder={`${index + 1}단원 이름`}
-                            value={chapter.name}
-                            onChange={(e) => updateChapter(index, 'name', e.target.value)}
-                          />
-                        </div>
-                        <div className="w-24">
-                          <Input
-                            type="number"
-                            min="1"
-                            placeholder="문제수"
-                            value={chapter.problemCount}
-                            onChange={(e) => updateChapter(index, 'problemCount', parseInt(e.target.value) || 1)}
-                          />
-                        </div>
-                        {chapters.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeChapter(index)}
-                          >
-                            삭제
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-md">
+                  💡 회독표 생성 후 단원을 추가할 수 있습니다
                 </div>
                 
                 <div className="flex justify-end gap-2 pt-4">
