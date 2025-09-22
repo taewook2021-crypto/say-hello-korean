@@ -46,7 +46,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   } | null>(null);
   const [isAddChapterDialogOpen, setIsAddChapterDialogOpen] = useState(false);
   const [newChapterName, setNewChapterName] = useState("");
-  const [newChapterProblemCount, setNewChapterProblemCount] = useState(1);
+  const [newChapterProblemCount, setNewChapterProblemCount] = useState("");
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds || 3);
 
@@ -125,8 +125,9 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       return;
     }
 
-    if (newChapterProblemCount < 1) {
-      toast.error("문제 수는 1개 이상이어야 합니다.");
+    const problemCount = parseInt(newChapterProblemCount);
+    if (!newChapterProblemCount.trim() || isNaN(problemCount) || problemCount < 1) {
+      toast.error("문제 수를 올바르게 입력해주세요.");
       return;
     }
 
@@ -135,7 +136,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     const newChapter: Chapter = {
       order: maxOrder + 1,
       name: newChapterName.trim(),
-      problems: Array.from({ length: newChapterProblemCount }, (_, i) => ({
+      problems: Array.from({ length: problemCount }, (_, i) => ({
         number: i + 1,
         rounds: {}, // 빈 객체로 시작
         hasNote: false
@@ -154,7 +155,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     
     // 폼 초기화
     setNewChapterName("");
-    setNewChapterProblemCount(1);
+    setNewChapterProblemCount("");
     setIsAddChapterDialogOpen(false);
     
     toast.success(`${newChapterName.trim()} 단원이 추가되었습니다!`);
@@ -305,11 +306,8 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   <Label htmlFor="problemCount">문제 수</Label>
                   <Input
                     id="problemCount"
-                    value={(newChapterProblemCount || 1).toString()}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 0;
-                      setNewChapterProblemCount(Math.max(1, value));
-                    }}
+                    value={newChapterProblemCount}
+                    onChange={(e) => setNewChapterProblemCount(e.target.value)}
                     placeholder="예: 30"
                   />
                 </div>
