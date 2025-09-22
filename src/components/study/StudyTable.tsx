@@ -67,7 +67,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
           problems: chapter.problems.map(problem => 
             problem.number === problemNumber ? { 
               ...problem, 
-              rounds: { ...problem.rounds, [roundNumber]: status }
+              rounds: { ...(problem.rounds || {}), [roundNumber]: status }
             } : problem
           )
         };
@@ -173,7 +173,8 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     if (newMaxRounds < studyData.maxRounds) {
       const hasDataInRemovedRounds = studyData.chapters.some(chapter =>
         chapter.problems.some(problem => {
-          for (let round = newMaxRounds + 1; round <= studyData.maxRounds; round++) {
+          if (!problem.rounds) return false;
+          for (let round = newMaxRounds + 1; round <= (studyData.maxRounds || 3); round++) {
             if (problem.rounds[round]) return true;
           }
           return false;
@@ -191,9 +192,10 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     const updatedChapters = studyData.chapters.map(chapter => ({
       ...chapter,
       problems: chapter.problems.map(problem => {
-        const newRounds = { ...problem.rounds };
+        const currentRounds = problem.rounds || {};
+        const newRounds = { ...currentRounds };
         // 새로운 최대 회독 수를 초과하는 회독 데이터 삭제
-        for (let round = newMaxRounds + 1; round <= studyData.maxRounds; round++) {
+        for (let round = newMaxRounds + 1; round <= (studyData.maxRounds || 3); round++) {
           delete newRounds[round];
         }
         return { ...problem, rounds: newRounds };
@@ -369,6 +371,11 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   
                   // 모든 회독이 완료된 문제 수 계산
                   chapter.problems.forEach(problem => {
+                    // rounds가 undefined일 경우 빈 객체로 초기화
+                    if (!problem.rounds) {
+                      problem.rounds = {};
+                    }
+                    
                     let allCompleted = true;
                     let hasAny = false;
                     let hasPartial = false;
@@ -432,7 +439,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                         </TableCell>
                         {Array.from({ length: studyData.maxRounds || 3 }, (_, roundIndex) => {
                           const roundNumber = roundIndex + 1;
-                          const status = problem.rounds[roundNumber];
+                          const status = problem.rounds?.[roundNumber] || null;
                           return (
                             <TableCell key={roundNumber} className="text-center">
                               <div className="flex justify-center gap-1">
