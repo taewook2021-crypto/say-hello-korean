@@ -88,7 +88,6 @@ export default function StudyTracker() {
             name: subject.name,
             user_id: null
           }, { 
-            onConflict: 'name,user_id',
             ignoreDuplicates: true 
           });
 
@@ -106,7 +105,6 @@ export default function StudyTracker() {
               subject_name: subject.name,
               user_id: null
             }, { 
-              onConflict: 'name,subject_name,user_id',
               ignoreDuplicates: true 
             });
 
@@ -125,7 +123,6 @@ export default function StudyTracker() {
                 book_name: book.name,
                 user_id: null
               }, { 
-                onConflict: 'name,subject_name,book_name,user_id',
                 ignoreDuplicates: true 
               });
 

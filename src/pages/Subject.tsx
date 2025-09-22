@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useData } from "@/contexts/DataContext";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
 const Subject = () => {
   const { subjectName } = useParams<{ subjectName: string }>();
@@ -22,7 +22,7 @@ const Subject = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteBookName, setDeleteBookName] = useState("");
   const { toast } = useToast();
-  const { addBook, deleteBook } = useData();
+  const { addBook, deleteBook } = useUnifiedData();
 
   useEffect(() => {
     if (subjectName) {

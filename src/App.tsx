@@ -5,7 +5,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { DataProvider } from "@/contexts/DataContext";
 import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import Notes from "./pages/Notes";
@@ -19,7 +18,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
-    <DataProvider>
       <UnifiedDataProvider>
         <SearchProvider>
         <ThemeProvider
@@ -57,7 +55,6 @@ const App = () => (
       </ThemeProvider>
     </SearchProvider>
   </UnifiedDataProvider>
-</DataProvider>
 );
 
 export default App;

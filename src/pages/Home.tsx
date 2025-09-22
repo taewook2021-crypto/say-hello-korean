@@ -12,7 +12,6 @@ import { TodayReviews } from "@/components/TodayReviews";
 import { useToast } from "@/hooks/use-toast";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useData } from "@/contexts/DataContext";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,7 +31,7 @@ const Home = () => {
   const [deleteTargetName, setDeleteTargetName] = useState("");
   
   const { toast } = useToast();
-  const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject } = useUnifiedData();
+  const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames } = useUnifiedData();
   const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
 
   const loadBooksForSubject = async (subjectName: string) => {
