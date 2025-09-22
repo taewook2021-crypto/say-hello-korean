@@ -18,6 +18,8 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  console.log('Auth page loaded, user:', user);
+
   useEffect(() => {
     if (user) {
       navigate('/');
