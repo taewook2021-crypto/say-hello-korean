@@ -185,7 +185,7 @@ export default function StudyTracker() {
         {/* 헤더 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">ARO 회독표</h1>
+            <h1 className="text-3xl font-bold text-foreground">Re:Mind 회독표</h1>
             <p className="text-muted-foreground">과목별 교재를 체계적으로 관리하세요</p>
           </div>
           

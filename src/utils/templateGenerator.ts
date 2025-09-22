@@ -120,7 +120,7 @@ export const generateWordFromTemplate = async (
       </table>
       
       <div class="footer">
-        <p>Designed by ARO</p>
+        <p>Designed by Re:Mind</p>
       </div>
     </body>
     </html>
@@ -287,7 +287,7 @@ export const generatePdfFromTemplate = async (
         </table>
         
         <div class="footer">
-          <p>Designed by ARO</p>
+          <p>Designed by Re:Mind</p>
         </div>
       </body>
       </html>

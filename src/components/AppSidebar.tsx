@@ -60,7 +60,7 @@ export function AppSidebar() {
       <SidebarHeader className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <BookOpen className="w-6 h-6 text-primary" />
-          <h2 className="font-bold text-lg text-foreground">ARO</h2>
+          <h2 className="font-bold text-lg text-foreground">Re:Mind</h2>
         </div>
         <p className="text-sm text-muted-foreground">학습 관리 시스템</p>
       </SidebarHeader>

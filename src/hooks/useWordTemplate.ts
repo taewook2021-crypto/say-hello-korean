@@ -265,7 +265,7 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
         </head>
         <body>
           <div class="header">
-            <h1>CPA _ ARO : Archive Remind Output</h1>
+            <h1>CPA _ Re:Mind : Archive Remind Output</h1>
             <p>생성일: ${new Date().toLocaleDateString('ko-KR')} | 총 ${notes.length}개 문항</p>
           </div>
           
@@ -287,7 +287,7 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
           </table>
           
           <div class="footer">
-            <p>Designed by ARO</p>
+            <p>Designed by Re:Mind</p>
           </div>
         </body>
         </html>
