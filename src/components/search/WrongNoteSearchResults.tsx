@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, Clock, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BookOpen, Clock, CheckCircle, XCircle, FileText, Play } from "lucide-react";
 import { TemplateDocumentGenerator } from "@/components/study/TemplateDocumentGenerator";
+import { StudyModeSelector } from "@/components/study/StudyModeSelector";
+import { FlashCard } from "@/components/study/FlashCard";
+import { Quiz } from "@/components/study/Quiz";
+import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 
 interface WrongNote {
   id: string;
@@ -33,6 +38,54 @@ export const WrongNoteSearchResults: React.FC<WrongNoteSearchResultsProps> = ({
   onLoadMore,
   hasMore = false
 }) => {
+  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
+  const [showStudyModeSelector, setShowStudyModeSelector] = useState(false);
+  const [studyMode, setStudyMode] = useState<string | null>(null);
+
+  const toggleNoteSelection = (noteId: string) => {
+    const newSelection = new Set(selectedNotes);
+    if (newSelection.has(noteId)) {
+      newSelection.delete(noteId);
+    } else {
+      newSelection.add(noteId);
+    }
+    setSelectedNotes(newSelection);
+  };
+
+  const selectAllNotes = () => {
+    setSelectedNotes(new Set(results.map(note => note.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedNotes(new Set());
+  };
+
+  const startStudy = () => {
+    if (selectedNotes.size === 0) return;
+    setShowStudyModeSelector(true);
+  };
+
+  const handleModeSelect = (mode: string) => {
+    setStudyMode(mode);
+    setShowStudyModeSelector(false);
+  };
+
+  const handleStudyComplete = () => {
+    setStudyMode(null);
+    setSelectedNotes(new Set());
+  };
+
+  const handleBackToResults = () => {
+    setStudyMode(null);
+    setShowStudyModeSelector(false);
+  };
+
+  const getSelectedNotes = () => {
+    return results.filter(note => selectedNotes.has(note.id)).map(note => ({
+      ...note,
+      explanation: note.explanation || note.source_text // explanation이 없으면 source_text를 사용
+    }));
+  };
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -59,6 +112,48 @@ export const WrongNoteSearchResults: React.FC<WrongNoteSearchResultsProps> = ({
       </Badge>
     );
   };
+
+  // 스터디 모드 렌더링
+  if (showStudyModeSelector) {
+    return (
+      <StudyModeSelector
+        onModeSelect={handleModeSelect}
+        onBack={handleBackToResults}
+        noteCount={selectedNotes.size}
+      />
+    );
+  }
+
+  if (studyMode && selectedNotes.size > 0) {
+    const selectedNotesData = getSelectedNotes();
+    
+    if (studyMode === 'flashcard') {
+      return (
+        <FlashCard
+          notes={selectedNotesData}
+          onComplete={handleStudyComplete}
+        />
+      );
+    }
+
+    if (studyMode === 'multiple-choice') {
+      return (
+        <Quiz
+          notes={selectedNotesData}
+          onComplete={handleStudyComplete}
+        />
+      );
+    }
+
+    if (studyMode === 'subjective') {
+      return (
+        <SubjectiveQuiz
+          notes={selectedNotesData}
+          onComplete={handleStudyComplete}
+        />
+      );
+    }
+  }
 
   if (isLoading && results.length === 0) {
     return (
@@ -100,21 +195,50 @@ export const WrongNoteSearchResults: React.FC<WrongNoteSearchResultsProps> = ({
               </CardTitle>
               <CardDescription>
                 총 {totalCount}개의 오답노트를 찾았습니다
+                {selectedNotes.size > 0 && (
+                  <span className="ml-2 text-primary">
+                    • {selectedNotes.size}개 선택됨
+                  </span>
+                )}
               </CardDescription>
             </div>
             
-            {results.length > 0 && (
-              <TemplateDocumentGenerator
-                notes={results.map(note => ({
-                  id: note.id,
-                  question: note.question,
-                  sourceText: note.source_text,
-                  explanation: note.explanation,
-                  createdAt: new Date(note.created_at),
-                  isResolved: note.is_resolved
-                }))}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {/* 선택 관련 버튼들 */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectedNotes.size === results.length ? clearSelection : selectAllNotes}
+                >
+                  {selectedNotes.size === results.length ? '전체 해제' : '전체 선택'}
+                </Button>
+                
+                {selectedNotes.size > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={startStudy}
+                    className="flex items-center gap-2"
+                  >
+                    <Play className="h-4 w-4" />
+                    복습하기 ({selectedNotes.size})
+                  </Button>
+                )}
+              </div>
+
+              {results.length > 0 && (
+                <TemplateDocumentGenerator
+                  notes={results.map(note => ({
+                    id: note.id,
+                    question: note.question,
+                    sourceText: note.source_text,
+                    explanation: note.explanation,
+                    createdAt: new Date(note.created_at),
+                    isResolved: note.is_resolved
+                  }))}
+                />
+              )}
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -125,22 +249,32 @@ export const WrongNoteSearchResults: React.FC<WrongNoteSearchResultsProps> = ({
           <Card key={note.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
               <div className="space-y-3">
-                {/* 헤더 정보 */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{note.subject_name}</span>
-                    <span>•</span>
-                    <span>{note.book_name}</span>
-                    <span>•</span>
-                    <span>{note.chapter_name}</span>
-                  </div>
+                {/* 체크박스와 헤더 정보 */}
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={selectedNotes.has(note.id)}
+                    onCheckedChange={() => toggleNoteSelection(note.id)}
+                    className="mt-1"
+                  />
                   
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(note.is_resolved)}
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {formatDate(note.created_at)}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <BookOpen className="h-4 w-4" />
+                        <span>{note.subject_name}</span>
+                        <span>•</span>
+                        <span>{note.book_name}</span>
+                        <span>•</span>
+                        <span>{note.chapter_name}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(note.is_resolved)}
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {formatDate(note.created_at)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

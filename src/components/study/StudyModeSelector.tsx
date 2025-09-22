@@ -1,16 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, HelpCircle, PenTool } from "lucide-react";
+import { BookOpen, HelpCircle, PenTool, ArrowLeft } from "lucide-react";
 
 interface StudyModeSelectorProps {
   noteCount: number;
   onModeSelect: (mode: 'flashcard' | 'multiple-choice' | 'subjective') => void;
+  onBack?: () => void;
 }
 
-export function StudyModeSelector({ noteCount, onModeSelect }: StudyModeSelectorProps) {
+export function StudyModeSelector({ noteCount, onModeSelect, onBack }: StudyModeSelectorProps) {
   return (
     <div className="space-y-6">
+      {onBack && (
+        <Button variant="outline" onClick={onBack} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          뒤로 가기
+        </Button>
+      )}
+      
       <div className="text-center space-y-2">
         <h3 className="text-lg font-semibold">복습 모드를 선택해주세요</h3>
         <Badge variant="outline" className="text-sm">
