@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X } from "lucide-react";
+import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X, Trash2 } from "lucide-react";
 import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +53,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds || 3);
   const [chapterProblemCounts, setChapterProblemCounts] = useState<{[chapterOrder: number]: string}>({});
+  const [isDeleteChapterDialogOpen, setIsDeleteChapterDialogOpen] = useState(false);
 
   const toggleChapterExpansion = (chapterOrder: number) => {
     const newExpanded = new Set(expandedChapters);
@@ -303,6 +304,65 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     toast.success('설정이 변경되었습니다.');
   };
 
+  const handleDeleteChapter = async () => {
+    if (!chapterToDelete) return;
+    
+    try {
+      // 1. 데이터베이스에서 단원과 관련된 모든 오답노트 삭제
+      const { error: notesError } = await supabase
+        .from('wrong_notes')
+        .delete()
+        .eq('subject_name', studyData.subject)
+        .eq('book_name', studyData.textbook)
+        .eq('chapter_name', chapterToDelete.name);
+
+      if (notesError) {
+        console.error('Error deleting wrong notes:', notesError);
+      }
+
+      // 2. 데이터베이스에서 단원 삭제
+      const { error: chapterError } = await supabase
+        .from('chapters')
+        .delete()
+        .eq('subject_name', studyData.subject)
+        .eq('book_name', studyData.textbook)
+        .eq('chapter_name', chapterToDelete.name);
+
+      if (chapterError) {
+        console.error('Error deleting chapter:', chapterError);
+      }
+
+      // 3. 회독표에서 단원 삭제
+      const filteredChapters = studyData.chapters.filter(ch => ch.order !== chapterToDelete.order);
+      
+      // 삭제 후 order 재정렬
+      const reorderedChapters = filteredChapters.map((chapter, index) => ({
+        order: index + 1,
+        name: chapter.name,
+        problems: chapter.problems
+      }));
+
+      const updatedStudyData = {
+        ...studyData,
+        chapters: reorderedChapters
+      };
+
+      onUpdateStudyData(updatedStudyData);
+      setIsDeleteChapterDialogOpen(false);
+      setChapterToDelete(null);
+
+      toast.success(`${chapterToDelete.name} 단원이 삭제되었습니다.`);
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      toast.error('단원 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const openDeleteChapterDialog = (chapter: Chapter) => {
+    setChapterToDelete(chapter);
+    setIsDeleteChapterDialogOpen(true);
+  };
+
   
   const handleViewWrongNote = async (chapterOrder: number, problemNumber: number) => {
     try {
@@ -533,7 +593,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                 </Badge>
               </div>
               
-              {/* 진도율 표시 */}
+              {/* 진도율 표시와 삭제 버튼 */}
               <div className="flex items-center gap-2">
                 {(() => {
                   const totalProblems = chapter.problems.length;

@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, FileText, Plus } from "lucide-react";
+import { ArrowLeft, FileText, Plus, Trash2, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +18,8 @@ const Book = () => {
   const [newChapterName, setNewChapterName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [chapterToDelete, setChapterToDelete] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -224,6 +228,93 @@ const Book = () => {
     }
   };
 
+  const handleDeleteChapter = async () => {
+    if (!chapterToDelete) return;
+    
+    try {
+      // 1. 데이터베이스에서 단원과 관련된 모든 오답노트 삭제
+      await supabase
+        .from('wrong_notes')
+        .delete()
+        .eq('subject_name', decodeURIComponent(subjectName || ''))
+        .eq('book_name', decodeURIComponent(bookName || ''))
+        .eq('chapter_name', chapterToDelete);
+
+      // 2. 데이터베이스에서 단원 삭제
+      await supabase
+        .from('chapters')
+        .delete()
+        .eq('subject_name', decodeURIComponent(subjectName || ''))
+        .eq('book_name', decodeURIComponent(bookName || ''))
+        .eq('chapter_name', chapterToDelete);
+
+      // 3. 회독표에서도 단원 삭제
+      await deleteChapterFromStudyTracker(
+        decodeURIComponent(subjectName || ''), 
+        decodeURIComponent(bookName || ''), 
+        chapterToDelete
+      );
+
+      // 4. UI 업데이트
+      setChapters(chapters.filter(ch => ch !== chapterToDelete));
+      setShowDeleteDialog(false);
+      setChapterToDelete("");
+
+      toast({
+        title: "성공",
+        description: `${chapterToDelete} 단원이 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // 회독표에서 단원 삭제하는 함수
+  const deleteChapterFromStudyTracker = async (subjectName: string, bookName: string, chapterName: string) => {
+    try {
+      const savedData = localStorage.getItem('aro-study-data');
+      if (!savedData) return;
+      
+      const studyData = JSON.parse(savedData);
+      
+      // 해당 과목과 교재의 회독표 찾기
+      const subjectIndex = studyData.findIndex((s: any) => s.name === subjectName);
+      if (subjectIndex === -1) return;
+      
+      const bookIndex = studyData[subjectIndex].books.findIndex((b: any) => b.name === bookName);
+      if (bookIndex === -1) return;
+      
+      // 단원 삭제
+      const chapters = studyData[subjectIndex].books[bookIndex].studyData.chapters;
+      const filteredChapters = chapters.filter((ch: any) => ch.name !== chapterName);
+      
+      // order 재정렬
+      const reorderedChapters = filteredChapters.map((ch: any, index: number) => ({
+        ...ch,
+        order: index + 1
+      }));
+      
+      studyData[subjectIndex].books[bookIndex].studyData.chapters = reorderedChapters;
+      
+      // 로컬 스토리지에 저장
+      localStorage.setItem('aro-study-data', JSON.stringify(studyData));
+      
+      console.log('Chapter deleted from study tracker successfully');
+    } catch (error) {
+      console.error('Error deleting chapter from study tracker:', error);
+    }
+  };
+
+  const openDeleteDialog = (chapterName: string) => {
+    setChapterToDelete(chapterName);
+    setShowDeleteDialog(true);
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="flex justify-between items-center mb-6">
@@ -288,17 +379,36 @@ const Book = () => {
           ))
         ) : (
           chapters.map((chapter, index) => (
-            <Link key={index} to={`/notes/${encodeURIComponent(subjectName || '')}/${encodeURIComponent(bookName || '')}/${encodeURIComponent(chapter)}`}>
-              <Card className="p-4 text-center cursor-pointer hover:bg-accent">
-                <CardContent className="p-0">
-                  <FileText className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <p className="text-sm font-medium mb-2">{chapter}</p>
-                  <div className="text-xs text-muted-foreground">
-                    오답노트: {chapterStats[chapter] || 0}개
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <div key={index} className="relative group">
+              <Link to={`/notes/${encodeURIComponent(subjectName || '')}/${encodeURIComponent(bookName || '')}/${encodeURIComponent(chapter)}`}>
+                <Card className="p-4 text-center cursor-pointer hover:bg-accent">
+                  <CardContent className="p-0">
+                    <FileText className="h-12 w-12 text-primary mx-auto mb-2" />
+                    <p className="text-sm font-medium mb-2">{chapter}</p>
+                    <div className="text-xs text-muted-foreground">
+                      오답노트: {chapterStats[chapter] || 0}개
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+              
+              {/* 삭제 버튼 */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openDeleteDialog(chapter)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      단원 삭제
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           ))
         )}
       </div>
@@ -310,6 +420,28 @@ const Book = () => {
           <p>+ 버튼을 눌러 단원을 추가해보세요.</p>
         </div>
       )}
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <strong>{chapterToDelete}</strong> 단원과 관련된 모든 오답노트가 삭제됩니다. 
+              이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteChapter}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
