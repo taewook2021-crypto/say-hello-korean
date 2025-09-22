@@ -49,7 +49,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [newChapterProblemCount, setNewChapterProblemCount] = useState("");
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds || 3);
-  const [chapterProblemCounts, setChapterProblemCounts] = useState<{[chapterOrder: number]: number}>({});
+  const [chapterProblemCounts, setChapterProblemCounts] = useState<{[chapterOrder: number]: string}>({});
 
   const toggleChapterExpansion = (chapterOrder: number) => {
     const newExpanded = new Set(expandedChapters);
@@ -174,10 +174,11 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     }
 
     // 문제 수 변경 검증
-    for (const [chapterOrder, newProblemCount] of Object.entries(chapterProblemCounts)) {
-      if (newProblemCount < 1) {
+    for (const [chapterOrder, newProblemCountStr] of Object.entries(chapterProblemCounts)) {
+      const newProblemCount = parseInt(newProblemCountStr);
+      if (!newProblemCountStr.trim() || isNaN(newProblemCount) || newProblemCount < 1) {
         const chapter = studyData.chapters.find(ch => ch.order === parseInt(chapterOrder));
-        toast.error(`${chapter?.name || '단원'}의 문제 수는 1개 이상이어야 합니다.`);
+        toast.error(`${chapter?.name || '단원'}의 문제 수를 올바르게 입력해주세요.`);
         return;
       }
     }
@@ -202,15 +203,17 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     }
 
     // 문제 수가 감소하는 경우, 해당 문제의 데이터 삭제 확인
-    const problemCountChanges = Object.entries(chapterProblemCounts).filter(([chapterOrder, newCount]) => {
+    const problemCountChanges = Object.entries(chapterProblemCounts).filter(([chapterOrder, newCountStr]) => {
+      const newCount = parseInt(newCountStr);
       const chapter = studyData.chapters.find(ch => ch.order === parseInt(chapterOrder));
-      return chapter && newCount < chapter.problems.length;
+      return chapter && !isNaN(newCount) && newCount < chapter.problems.length;
     });
 
     if (problemCountChanges.length > 0) {
-      const hasDataInRemovedProblems = problemCountChanges.some(([chapterOrder, newCount]) => {
+      const hasDataInRemovedProblems = problemCountChanges.some(([chapterOrder, newCountStr]) => {
+        const newCount = parseInt(newCountStr);
         const chapter = studyData.chapters.find(ch => ch.order === parseInt(chapterOrder));
-        if (!chapter) return false;
+        if (!chapter || isNaN(newCount)) return false;
         
         return chapter.problems.slice(newCount).some(problem => {
           if (!problem.rounds) return false;
@@ -227,7 +230,8 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
 
     // 회독 수와 문제 수 업데이트
     const updatedChapters = studyData.chapters.map(chapter => {
-      const newProblemCount = chapterProblemCounts[chapter.order] || chapter.problems.length;
+      const newProblemCountStr = chapterProblemCounts[chapter.order];
+      const newProblemCount = newProblemCountStr ? parseInt(newProblemCountStr) : chapter.problems.length;
       let updatedProblems = [...chapter.problems];
 
       // 문제 수 조정
@@ -324,7 +328,8 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   <Label>단원별 문제 수</Label>
                   <div className="space-y-3 mt-2">
                     {sortedChapters.map((chapter) => {
-                      const currentCount = chapterProblemCounts[chapter.order] ?? chapter.problems.length;
+                      const currentCountStr = chapterProblemCounts[chapter.order] ?? chapter.problems.length.toString();
+                      const currentCount = parseInt(currentCountStr) || chapter.problems.length;
                       return (
                         <div key={chapter.order} className="flex items-center gap-3 p-3 border border-border rounded-lg">
                           <div className="flex-1">
@@ -333,16 +338,14 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                           </div>
                           <div className="w-24">
                             <Input
-                              type="number"
-                              min="1"
-                              value={currentCount.toString()}
+                              value={currentCountStr}
                               onChange={(e) => {
-                                const value = parseInt(e.target.value) || 1;
                                 setChapterProblemCounts(prev => ({
                                   ...prev,
-                                  [chapter.order]: Math.max(1, value)
+                                  [chapter.order]: e.target.value
                                 }));
                               }}
+                              placeholder="문제 수"
                               className="text-center"
                             />
                           </div>
