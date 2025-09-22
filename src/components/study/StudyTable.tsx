@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, ChevronDown, ChevronRight, Plus, BookOpen } from "lucide-react";
+import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings } from "lucide-react";
 import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
 
@@ -46,6 +46,8 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [isAddChapterDialogOpen, setIsAddChapterDialogOpen] = useState(false);
   const [newChapterName, setNewChapterName] = useState("");
   const [newChapterProblemCount, setNewChapterProblemCount] = useState(1);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [newMaxRounds, setNewMaxRounds] = useState(studyData.maxRounds);
 
   const toggleChapterExpansion = (chapterOrder: number) => {
     const newExpanded = new Set(expandedChapters);
@@ -156,60 +158,169 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     toast.success(`${newChapterName.trim()} 단원이 추가되었습니다!`);
   };
 
+  const handleUpdateMaxRounds = () => {
+    if (newMaxRounds < 1) {
+      toast.error("회독 수는 1회 이상이어야 합니다.");
+      return;
+    }
+
+    if (newMaxRounds > 10) {
+      toast.error("회독 수는 10회 이하여야 합니다.");
+      return;
+    }
+
+    // 회독 수가 감소하는 경우, 해당 회독의 데이터 삭제 확인
+    if (newMaxRounds < studyData.maxRounds) {
+      const hasDataInRemovedRounds = studyData.chapters.some(chapter =>
+        chapter.problems.some(problem => {
+          for (let round = newMaxRounds + 1; round <= studyData.maxRounds; round++) {
+            if (problem.rounds[round]) return true;
+          }
+          return false;
+        })
+      );
+
+      if (hasDataInRemovedRounds) {
+        if (!confirm(`${newMaxRounds + 1}회독 이후의 데이터가 삭제됩니다. 계속하시겠습니까?`)) {
+          return;
+        }
+      }
+    }
+
+    // 회독 수가 감소하는 경우 해당 회독 데이터 제거
+    const updatedChapters = studyData.chapters.map(chapter => ({
+      ...chapter,
+      problems: chapter.problems.map(problem => {
+        const newRounds = { ...problem.rounds };
+        // 새로운 최대 회독 수를 초과하는 회독 데이터 삭제
+        for (let round = newMaxRounds + 1; round <= studyData.maxRounds; round++) {
+          delete newRounds[round];
+        }
+        return { ...problem, rounds: newRounds };
+      })
+    }));
+
+    const updatedStudyData = {
+      ...studyData,
+      maxRounds: newMaxRounds,
+      chapters: updatedChapters
+    };
+
+    onUpdateStudyData(updatedStudyData);
+    setIsSettingsDialogOpen(false);
+    
+    toast.success(`회독 수가 ${newMaxRounds}회로 변경되었습니다.`);
+  };
+
   // 챕터를 order 순으로 정렬 (순서 유지를 위해 중요!)
   const sortedChapters = [...studyData.chapters].sort((a, b) => a.order - b.order);
 
   return (
     <div className="space-y-4">
-      {/* 단원 추가 버튼 */}
-      <div className="flex justify-end">
-        <Dialog open={isAddChapterDialogOpen} onOpenChange={setIsAddChapterDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              단원 추가
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>새 단원 추가</DialogTitle>
-              <DialogDescription>
-                새로운 단원과 문제 수를 설정하세요
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="chapterName">단원명</Label>
-                <Input
-                  id="chapterName"
-                  value={newChapterName}
-                  onChange={(e) => setNewChapterName(e.target.value)}
-                  placeholder="예: 1단원 수와 연산"
-                />
+      {/* 상단 버튼들 */}
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold text-foreground">
+          {studyData.subject} &gt; {studyData.textbook} (최대 {studyData.maxRounds}회독)
+        </h3>
+        <div className="flex gap-2">
+          <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings className="w-4 h-4 mr-2" />
+                설정
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>회독표 설정</DialogTitle>
+                <DialogDescription>
+                  회독 수를 변경할 수 있습니다
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="maxRounds">최대 회독 수</Label>
+                  <Input
+                    id="maxRounds"
+                    value={newMaxRounds.toString()}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 1;
+                      setNewMaxRounds(Math.max(1, Math.min(10, value)));
+                    }}
+                    placeholder="예: 3"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    현재: {studyData.maxRounds}회 | 최대 10회까지 설정 가능
+                  </p>
+                  {newMaxRounds < studyData.maxRounds && (
+                    <p className="text-xs text-destructive mt-1">
+                      ⚠️ 회독 수를 줄이면 해당 회독의 데이터가 삭제됩니다
+                    </p>
+                  )}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => {
+                    setNewMaxRounds(studyData.maxRounds);
+                    setIsSettingsDialogOpen(false);
+                  }}>
+                    취소
+                  </Button>
+                  <Button onClick={handleUpdateMaxRounds}>
+                    변경하기
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="problemCount">문제 수</Label>
-                <Input
-                  id="problemCount"
-                  value={newChapterProblemCount.toString()}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value) || 0;
-                    setNewChapterProblemCount(Math.max(1, value));
-                  }}
-                  placeholder="예: 30"
-                />
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={isAddChapterDialogOpen} onOpenChange={setIsAddChapterDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                단원 추가
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>새 단원 추가</DialogTitle>
+                <DialogDescription>
+                  새로운 단원과 문제 수를 설정하세요
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="chapterName">단원명</Label>
+                  <Input
+                    id="chapterName"
+                    value={newChapterName}
+                    onChange={(e) => setNewChapterName(e.target.value)}
+                    placeholder="예: 1단원 수와 연산"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="problemCount">문제 수</Label>
+                  <Input
+                    id="problemCount"
+                    value={newChapterProblemCount.toString()}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 0;
+                      setNewChapterProblemCount(Math.max(1, value));
+                    }}
+                    placeholder="예: 30"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsAddChapterDialogOpen(false)}>
+                    취소
+                  </Button>
+                  <Button onClick={handleAddChapter}>
+                    추가하기
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsAddChapterDialogOpen(false)}>
-                  취소
-                </Button>
-                <Button onClick={handleAddChapter}>
-                  추가하기
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* 단원 목록 */}
