@@ -62,6 +62,16 @@ export const generateWordFromTemplate = async (
           font-weight: bold;
           text-align: center;
           font-size: 10pt;
+          padding-top: 4px;
+          margin-top: 0;
+          margin-bottom: 0;
+        }
+        
+        th p, th div {
+          margin: 0;
+          padding: 0;
+          margin-top: 0 !important;
+          margin-bottom: 0 !important;
         }
         
         .col-question {
@@ -203,6 +213,15 @@ export const generatePdfFromTemplate = async (
             font-weight: 500;
             text-align: center;
             font-size: 10px;
+            padding-top: 4px;
+            margin: 0;
+          }
+          
+          th p, th div {
+            margin: 0 !important;
+            padding: 0 !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
           }
           
           .col-question {

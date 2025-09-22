@@ -208,6 +208,15 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
               background-color: #f5f5f5;
               font-weight: 500;
               text-align: center;
+              padding-top: 4px;
+              margin: 0;
+            }
+            
+            th p, th div {
+              margin: 0 !important;
+              padding: 0 !important;
+              margin-top: 0 !important;
+              margin-bottom: 0 !important;
             }
             
             .col-question {
