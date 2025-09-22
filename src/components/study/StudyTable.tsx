@@ -164,8 +164,6 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     } catch (error) {
       console.error('Error adding chapter:', error);
     }
-      // 오류가 발생해도 회독표 생성은 계속 진행
-    }
     
     // 새 단원을 확장 상태로 설정
     setExpandedChapters(prev => new Set([...prev, newChapter.order]));
