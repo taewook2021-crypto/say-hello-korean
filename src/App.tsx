@@ -12,7 +12,6 @@ import Subject from "./pages/Subject";
 import Book from "./pages/Book";
 import Home from "./pages/Home";
 import WrongNoteSubject from "./pages/WrongNoteSubject";
-import StudyPlan from "./pages/StudyPlan";
 import StudyTracker from "./pages/StudyTracker";
 
 import Index from "./pages/Index";
@@ -46,7 +45,6 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     
                     <Route path="/home" element={<Home />} />
-                     <Route path="/study-plan" element={<StudyPlan />} />
                      <Route path="/study-tracker" element={<StudyTracker />} />
                     <Route path="/subject/:subjectName" element={<Subject />} />
                     <Route path="/subject/:subjectName/wrong-notes" element={<WrongNoteSubject />} />
