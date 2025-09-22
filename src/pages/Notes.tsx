@@ -439,7 +439,7 @@ export default function Notes() {
         id: note.id,
         question: note.question,
         source_text: note.sourceText,
-        explanation: null,
+        explanation: note.explanation || note.sourceText, // explanation이 없으면 sourceText 사용
         subject_name: decodedSubject,
         book_name: decodedBook,
         chapter_name: decodedChapter,
