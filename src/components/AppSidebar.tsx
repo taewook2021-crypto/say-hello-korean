@@ -136,10 +136,12 @@ export function AppSidebar() {
               ) : (
                 subjects.map((subject) => (
                   <SidebarMenuItem key={subject}>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted/50">
-                      <Folder className="w-4 h-4 text-primary" />
-                      <span className="flex-1 text-sm">{subject}</span>
-                    </div>
+                    <SidebarMenuButton asChild isActive={isActive(`/subject/${subject}`)}>
+                      <NavLink to={`/subject/${subject}`} className="flex items-center gap-2">
+                        <Folder className="w-4 h-4" />
+                        <span className="flex-1 text-sm">{subject}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))
               )}
