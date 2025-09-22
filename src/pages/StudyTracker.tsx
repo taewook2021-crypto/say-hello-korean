@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { StudyTable } from "@/components/study/StudyTable";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
 interface StudyData {
   id: string;
@@ -52,6 +53,7 @@ export default function StudyTracker() {
   const [selectedSubjectForBook, setSelectedSubjectForBook] = useState("");
   const [newBookName, setNewBookName] = useState("");
   const [newBookMaxRounds, setNewBookMaxRounds] = useState("");
+  const { addBook: addBookToUnifiedData, refreshSubjects } = useUnifiedData();
 
   useEffect(() => {
     loadStudyData();
@@ -379,6 +381,9 @@ export default function StudyTracker() {
 
       saveStudyData(updatedSubjects);
       
+      // UnifiedDataContext에도 추가하여 과목관리 탭과 동기화
+      await addBookToUnifiedData(newSubject.trim(), newTextbook.trim());
+      
       // 폼 초기화
       setNewSubject("");
       setNewTextbook("");
@@ -417,20 +422,27 @@ export default function StudyTracker() {
     }
 
     try {
-      // 데이터베이스에 교재 저장
-      const { error: bookError } = await supabase
+      // Check if book already exists first
+      const { data: existingBook } = await supabase
         .from('books')
-        .upsert({ 
-          name: newBookName.trim(),
-          subject_name: selectedSubjectForBook,
-          user_id: null
-        }, { 
-          onConflict: 'name,subject_name,user_id',
-          ignoreDuplicates: true 
-        });
+        .select('id')
+        .eq('name', newBookName.trim())
+        .eq('subject_name', selectedSubjectForBook)
+        .single();
 
-      if (bookError) {
-        console.error('Book insert error:', bookError);
+      if (!existingBook) {
+        // 데이터베이스에 교재 저장
+        const { error: bookError } = await supabase
+          .from('books')
+          .insert({ 
+            name: newBookName.trim(),
+            subject_name: selectedSubjectForBook,
+            user_id: null
+          });
+
+        if (bookError) {
+          console.error('Book insert error:', bookError);
+        }
       }
 
       // 새 회독표 데이터 생성
@@ -461,6 +473,10 @@ export default function StudyTracker() {
       );
 
       saveStudyData(updatedSubjects);
+      
+      // UnifiedDataContext에도 추가하여 과목관리 탭과 동기화
+      await addBookToUnifiedData(selectedSubjectForBook, newBookName.trim());
+      
       setIsAddBookDialogOpen(false);
       setNewBookName("");
       setNewBookMaxRounds("");
