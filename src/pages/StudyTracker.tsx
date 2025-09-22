@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Folder, FolderOpen, Plus, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Folder, FolderOpen, Plus, BookOpen, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -57,9 +57,23 @@ export default function StudyTracker() {
     loadStudyData();
   }, []);
 
+  // 페이지 포커스 시 데이터 다시 로드 (다른 탭에서 변경사항이 있을 때 반영)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadStudyData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const loadStudyData = async () => {
     try {
-      // 먼저 데이터베이스에서 모든 과목을 불러온다
+      // 먼저 데이터베이스에서 모든 과목을 불러온다 (DB가 진실의 소스)
       const { data: dbSubjects, error: subjectsError } = await supabase
         .from('subjects')
         .select('name')
@@ -69,7 +83,6 @@ export default function StudyTracker() {
         console.error('Error loading subjects:', subjectsError);
       }
 
-      // 각 과목에 대해 책들을 불러온다
       let allSubjects: SubjectFolder[] = [];
 
       if (dbSubjects && dbSubjects.length > 0) {
@@ -91,7 +104,6 @@ export default function StudyTracker() {
           };
 
           if (books && books.length > 0) {
-            // 책이 있는 경우, 각 책에 대해 회독표 데이터를 생성
             for (const book of books) {
               const studyData: StudyData = {
                 id: `${subject.name}-${book.name}`,
@@ -114,7 +126,7 @@ export default function StudyTracker() {
         }
       }
 
-      // 로컬 스토리지에서 기존 데이터도 확인하고 병합
+      // 로컬 스토리지에서 기존 회독표 데이터(챕터 정보, 진행상황 등)를 가져와서 병합
       const savedData = localStorage.getItem('aro-study-data');
       if (savedData) {
         const parsed = JSON.parse(savedData);
@@ -129,37 +141,31 @@ export default function StudyTracker() {
           }))
         }));
 
-        // 로컬 데이터와 DB 데이터를 병합
+        // DB에 존재하는 과목/책에만 로컬 데이터를 병합 (DB 기준으로 필터링)
         for (const localSubject of processedData) {
-          const existingSubject = allSubjects.find(s => s.name === localSubject.name);
-          if (existingSubject) {
-            // 기존 과목에 로컬 데이터의 책들을 병합
+          const dbSubject = allSubjects.find(s => s.name === localSubject.name);
+          if (dbSubject) {
+            // DB에 존재하는 과목만 처리
             for (const localBook of localSubject.books) {
-              const existingBook = existingSubject.books.find(b => b.name === localBook.name);
-              if (existingBook) {
-                // 기존 책의 회독표 데이터를 로컬 데이터로 업데이트
-                existingBook.studyData = localBook.studyData;
-                existingBook.isExpanded = localBook.isExpanded;
-              } else {
-                // 새 책 추가
-                existingSubject.books.push(localBook);
+              const dbBook = dbSubject.books.find(b => b.name === localBook.name);
+              if (dbBook) {
+                // DB에 존재하는 책만 회독표 데이터 업데이트
+                dbBook.studyData = localBook.studyData;
+                dbBook.isExpanded = localBook.isExpanded;
               }
             }
-            existingSubject.isExpanded = localSubject.isExpanded;
-          } else {
-            // 새 과목 추가
-            allSubjects.push(localSubject);
+            dbSubject.isExpanded = localSubject.isExpanded;
           }
         }
 
-        // 데이터베이스로 마이그레이션
-        await migrateToDatabase(processedData);
+        // 정리된 데이터를 다시 로컬스토리지에 저장 (삭제된 과목/책 제거)
+        localStorage.setItem('aro-study-data', JSON.stringify(allSubjects));
       }
 
       setSubjects(allSubjects);
     } catch (error) {
       console.error('Error loading study data:', error);
-      // 오류 발생 시 로컬 스토리지에서만 로드
+      // 오류 발생 시에도 DB 우선으로 처리
       const savedData = localStorage.getItem('aro-study-data');
       if (savedData) {
         const parsed = JSON.parse(savedData);
@@ -468,140 +474,151 @@ export default function StudyTracker() {
             <p className="text-muted-foreground">과목별 교재를 체계적으로 관리하세요</p>
           </div>
           
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="w-4 h-4 mr-2" />
-                새 회독표 만들기
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={loadStudyData}
+              className="mr-2"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              새로고침
+            </Button>
             
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>새 회독표 생성</DialogTitle>
-                <DialogDescription>
-                  과목과 교재를 선택하고 단원별 문제 수를 입력하세요
-                </DialogDescription>
-              </DialogHeader>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  새 회독표 만들기
+                </Button>
+              </DialogTrigger>
               
-              <div className="space-y-4">
-                {/* 과목명 */}
-                <div>
-                  <Label htmlFor="subject">과목명</Label>
-                  <div className="space-y-2">
-                    {/* 기존 과목 추천 */}
-                    {getExistingSubjects().length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {getExistingSubjects().map((existingSubject) => (
-                          <Button
-                            key={existingSubject}
-                            type="button"
-                            variant={newSubject === existingSubject ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setNewSubject(existingSubject)}
-                          >
-                            {existingSubject}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                    {/* 직접 입력 */}
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>새 회독표 생성</DialogTitle>
+                  <DialogDescription>
+                    과목과 교재를 선택하고 단원별 문제 수를 입력하세요
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  {/* 과목명 */}
+                  <div>
+                    <Label htmlFor="subject">과목명</Label>
+                    <div className="space-y-2">
+                      {/* 기존 과목 추천 */}
+                      {getExistingSubjects().length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {getExistingSubjects().map((existingSubject) => (
+                            <Button
+                              key={existingSubject}
+                              type="button"
+                              variant={newSubject === existingSubject ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setNewSubject(existingSubject)}
+                            >
+                              {existingSubject}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      {/* 직접 입력 */}
+                      <Input
+                        id="subject"
+                        value={newSubject}
+                        onChange={(e) => setNewSubject(e.target.value)}
+                        placeholder="새 과목명 입력 또는 위에서 선택"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* 교재명 */}
+                  <div>
+                    <Label htmlFor="textbook">교재명</Label>
                     <Input
-                      id="subject"
-                      value={newSubject}
-                      onChange={(e) => setNewSubject(e.target.value)}
-                      placeholder="새 과목명 입력 또는 위에서 선택"
+                      id="textbook"
+                      value={newTextbook}
+                      onChange={(e) => setNewTextbook(e.target.value)}
+                      placeholder="예: 개념원리"
                     />
                   </div>
+                  
+                  {/* 회독 수 설정 */}
+                  <div>
+                    <Label htmlFor="maxRounds">회독 수</Label>
+                    <Input
+                      id="maxRounds"
+                      value={maxRounds}
+                      onChange={(e) => setMaxRounds(e.target.value)}
+                      placeholder="회독 수를 입력하세요 (예: 3)"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      최대 10회까지 설정 가능합니다
+                    </p>
+                  </div>
+                  
+                  <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-md">
+                    💡 회독표 생성 후 단원을 추가할 수 있습니다
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                      취소
+                    </Button>
+                    <Button onClick={handleCreateStudyPlan}>
+                      생성하기
+                    </Button>
+                  </div>
                 </div>
-                
-                {/* 교재명 */}
-                <div>
-                  <Label htmlFor="textbook">교재명</Label>
-                  <Input
-                    id="textbook"
-                    value={newTextbook}
-                    onChange={(e) => setNewTextbook(e.target.value)}
-                    placeholder="예: 개념원리"
-                  />
-                </div>
-                
-                {/* 회독 수 설정 */}
-                <div>
-                  <Label htmlFor="maxRounds">회독 수</Label>
-                  <Input
-                    id="maxRounds"
-                    value={maxRounds}
-                    onChange={(e) => setMaxRounds(e.target.value)}
-                    placeholder="회독 수를 입력하세요 (예: 3)"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    최대 10회까지 설정 가능합니다
-                  </p>
-                </div>
-                
-                <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-md">
-                  💡 회독표 생성 후 단원을 추가할 수 있습니다
-                </div>
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    취소
-                  </Button>
-                  <Button onClick={handleCreateStudyPlan}>
-                    생성하기
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* 교재 추가 다이얼로그 */}
-          <Dialog open={isAddBookDialogOpen} onOpenChange={setIsAddBookDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{selectedSubjectForBook}에 교재 추가</DialogTitle>
-                <DialogDescription>
-                  새로운 교재를 추가하고 회독표를 생성하세요
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="bookName">교재명</Label>
-                  <Input
-                    id="bookName"
-                    value={newBookName}
-                    onChange={(e) => setNewBookName(e.target.value)}
-                    placeholder="예: 개념원리"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="bookMaxRounds">회독 수</Label>
-                  <Input
-                    id="bookMaxRounds"
-                    value={newBookMaxRounds}
-                    onChange={(e) => setNewBookMaxRounds(e.target.value)}
-                    placeholder="회독 수를 입력하세요 (예: 3)"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    최대 10회까지 설정 가능합니다
-                  </p>
-                </div>
-                
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => setIsAddBookDialogOpen(false)}>
-                    취소
-                  </Button>
-                  <Button onClick={handleCreateBookForSubject}>
-                    추가하기
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+
+        {/* 교재 추가 다이얼로그 */}
+        <Dialog open={isAddBookDialogOpen} onOpenChange={setIsAddBookDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedSubjectForBook}에 교재 추가</DialogTitle>
+              <DialogDescription>
+                새로운 교재를 추가하고 회독표를 생성하세요
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="bookName">교재명</Label>
+                <Input
+                  id="bookName"
+                  value={newBookName}
+                  onChange={(e) => setNewBookName(e.target.value)}
+                  placeholder="예: 개념원리"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="bookMaxRounds">회독 수</Label>
+                <Input
+                  id="bookMaxRounds"
+                  value={newBookMaxRounds}
+                  onChange={(e) => setNewBookMaxRounds(e.target.value)}
+                  placeholder="회독 수를 입력하세요 (예: 3)"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  최대 10회까지 설정 가능합니다
+                </p>
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setIsAddBookDialogOpen(false)}>
+                  취소
+                </Button>
+                <Button onClick={handleCreateBookForSubject}>
+                  추가하기
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* 폴더 구조 */}
         <div className="space-y-4">
@@ -667,43 +684,43 @@ export default function StudyTracker() {
                             </Button>
                           </div>
                           {subject.books.map((book) => (
-                        <div key={book.name} className="border border-border rounded-lg">
-                          <div
-                            className="p-3 cursor-pointer hover:bg-muted/30 transition-colors flex items-center gap-2"
-                            onClick={() => toggleBookExpansion(subject.name, book.name)}
-                          >
-                            <BookOpen className="w-4 h-4 text-accent" />
-                            <span className="font-medium text-foreground">{book.name}</span>
-                            <span className="text-sm text-muted-foreground">
-                              ({book.studyData.chapters.length}개 단원)
-                            </span>
-                            {book.isExpanded ? (
-                              <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground" />
-                            )}
-                          </div>
-                          
-                          {book.isExpanded && (
-                            <div className="border-t border-border p-4">
-                              <StudyTable 
-                                studyData={book.studyData}
-                                onUpdateStudyData={(updatedData) => {
-                                  const updatedSubjects = subjects.map(s => 
-                                    s.name === subject.name ? {
-                                      ...s,
-                                      books: s.books.map(b => 
-                                        b.name === book.name ? { ...b, studyData: updatedData } : b
-                                      )
-                                    } : s
-                                  );
-                                  saveStudyData(updatedSubjects);
-                                }}
-                              />
+                            <div key={book.name} className="border border-border rounded-lg">
+                              <div
+                                className="p-3 cursor-pointer hover:bg-muted/30 transition-colors flex items-center gap-2"
+                                onClick={() => toggleBookExpansion(subject.name, book.name)}
+                              >
+                                <BookOpen className="w-4 h-4 text-accent" />
+                                <span className="font-medium text-foreground">{book.name}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  ({book.studyData.chapters.length}개 단원)
+                                </span>
+                                {book.isExpanded ? (
+                                  <ChevronDown className="w-4 h-4 ml-auto text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4 ml-auto text-muted-foreground" />
+                                )}
+                              </div>
+                              
+                              {book.isExpanded && (
+                                <div className="border-t border-border p-4">
+                                  <StudyTable 
+                                    studyData={book.studyData}
+                                    onUpdateStudyData={(updatedData) => {
+                                      const updatedSubjects = subjects.map(s => 
+                                        s.name === subject.name ? {
+                                          ...s,
+                                          books: s.books.map(b => 
+                                            b.name === book.name ? { ...b, studyData: updatedData } : b
+                                          )
+                                        } : s
+                                      );
+                                      saveStudyData(updatedSubjects);
+                                    }}
+                                  />
+                                </div>
+                              )}
                             </div>
-                            )}
-                          </div>
-                        ))}
+                          ))}
                         </>
                       )}
                     </div>

@@ -219,6 +219,14 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         return newState;
       });
 
+      // 회독표 로컬스토리지에서도 해당 과목 삭제
+      const savedStudyData = localStorage.getItem('aro-study-data');
+      if (savedStudyData) {
+        const parsed = JSON.parse(savedStudyData);
+        const filteredStudyData = parsed.filter((subject: any) => subject.name !== name);
+        localStorage.setItem('aro-study-data', JSON.stringify(filteredStudyData));
+      }
+
       toast({
         title: "과목 삭제됨",
         description: `${name} 과목이 삭제되었습니다.`,
@@ -312,6 +320,22 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         ...prev,
         [subjectName]: prev[subjectName]?.filter(book => book !== bookName) || []
       }));
+
+      // 회독표 로컬스토리지에서도 해당 책 삭제
+      const savedStudyData = localStorage.getItem('aro-study-data');
+      if (savedStudyData) {
+        const parsed = JSON.parse(savedStudyData);
+        const updatedStudyData = parsed.map((subject: any) => {
+          if (subject.name === subjectName) {
+            return {
+              ...subject,
+              books: subject.books.filter((book: any) => book.name !== bookName)
+            };
+          }
+          return subject;
+        });
+        localStorage.setItem('aro-study-data', JSON.stringify(updatedStudyData));
+      }
 
       toast({
         title: "책 삭제됨",
