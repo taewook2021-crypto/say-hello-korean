@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Sparkles } from "lucide-react";
 
 interface StudyData {
   id: string;
@@ -62,9 +64,46 @@ export function CreateWrongNoteDialog({
 }: CreateWrongNoteDialogProps) {
   const [problemText, setProblemText] = useState("");
   const [answer, setAnswer] = useState("");
+  const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
+
+  const generateAnswerWithGPT = async () => {
+    if (!problemText.trim()) {
+      toast.error("문제를 먼저 입력해주세요.");
+      return;
+    }
+
+    setIsGeneratingAnswer(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
+        body: {
+          message: `다음 문제에 대한 해설을 작성해주세요:\n\n${problemText}`,
+          model: 'gpt-4o-mini',
+          currentSubject: studyData.subject
+        }
+      });
+
+      if (error) {
+        console.error('GPT API 오류:', error);
+        toast.error("해설 생성 중 오류가 발생했습니다.");
+        return;
+      }
+
+      if (data?.response) {
+        setAnswer(data.response);
+        toast.success("GPT가 해설을 생성했습니다!");
+      } else {
+        toast.error("해설 생성에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error('GPT 요청 오류:', error);
+      toast.error("해설 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsGeneratingAnswer(false);
+    }
+  };
 
   const handleSave = () => {
     if (!problemText.trim()) {
@@ -141,13 +180,35 @@ export function CreateWrongNoteDialog({
 
           {/* 정답 */}
           <div>
-            <Label htmlFor="answer">정답 *</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="answer">정답 *</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={generateAnswerWithGPT}
+                disabled={isGeneratingAnswer || !problemText.trim()}
+                className="flex items-center gap-2"
+              >
+                {isGeneratingAnswer ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    생성 중...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    GPT 해설 생성
+                  </>
+                )}
+              </Button>
+            </div>
             <Textarea
               id="answer"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="정답과 풀이 과정을 작성해주세요..."
-              className="min-h-24"
+              className="min-h-24 mt-2"
             />
           </div>
 
