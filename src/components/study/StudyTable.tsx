@@ -9,6 +9,7 @@ import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X, Trash
 import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
 interface StudyData {
   id: string;
@@ -38,6 +39,7 @@ interface StudyTableProps {
 
 export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([1])); // 첫 번째 단원은 기본 확장
+  const { addChapter, deleteChapter } = useUnifiedData();
   const [isWrongNoteDialogOpen, setIsWrongNoteDialogOpen] = useState(false);
   const [isWrongNoteConfirmOpen, setIsWrongNoteConfirmOpen] = useState(false);
   const [isWrongNoteViewOpen, setIsWrongNoteViewOpen] = useState(false);
@@ -149,33 +151,19 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       }))
     };
 
-    const updatedStudyData = {
-      ...studyData,
-      chapters: [...studyData.chapters, newChapter]
-    };
-
-    onUpdateStudyData(updatedStudyData);
-    
-    // 데이터베이스에 단원 정보 저장 (오답노트 연동용)
+    // Use UnifiedDataContext to add chapter (handles both DB and local state)
     try {
-      console.log('Saving chapter to database:', newChapterName.trim());
-      const { error } = await supabase
-        .from('chapters')
-        .insert({
-          name: newChapterName.trim(),
-          subject_name: studyData.subject,
-          book_name: studyData.textbook,
-          user_id: null // 현재 인증 없이 사용
-        });
-
-      if (error) {
-        console.error('단원 저장 오류:', error);
-        // 오류가 발생해도 회독표 생성은 계속 진행
-      } else {
-        console.log('단원이 데이터베이스에 저장되었습니다.');
-      }
+      await addChapter(studyData.subject, studyData.textbook, newChapterName.trim());
+      
+      // Update local study data with the new chapter
+      const updatedStudyData = {
+        ...studyData,
+        chapters: [...studyData.chapters, newChapter]
+      };
+      onUpdateStudyData(updatedStudyData);
     } catch (error) {
-      console.error('데이터베이스 연결 오류:', error);
+      console.error('Error adding chapter:', error);
+    }
       // 오류가 발생해도 회독표 생성은 계속 진행
     }
     

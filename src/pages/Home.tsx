@@ -292,31 +292,32 @@ const Home = () => {
                           ))}
                         </div>
                       ) : (
-                        <>
-                          {subject.books?.map((book) => {
-                            const bookLink = `/subject/${encodeURIComponent(subject.name)}/book/${encodeURIComponent(book)}`;
-                            console.log('Book link generated:', bookLink, 'for subject:', subject.name, 'book:', book);
-                            return (
-                            <div key={book} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
+                         <>
+                           {subject.books?.map((book) => {
+                             const bookName = typeof book === 'string' ? book : book.name;
+                             const bookLink = `/subject/${encodeURIComponent(subject.name)}/book/${encodeURIComponent(bookName)}`;
+                             console.log('Book link generated:', bookLink, 'for subject:', subject.name, 'book:', bookName);
+                             return (
+                            <div key={bookName} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
                               <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <Link
-                                to={bookLink}
-                                className="text-sm text-foreground flex-1 hover:underline"
-                              >
-                                {book}
-                              </Link>
+                               <Link
+                                 to={bookLink}
+                                 className="text-sm text-foreground flex-1 hover:underline"
+                               >
+                                 {bookName}
+                               </Link>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover/book:opacity-100 transition-opacity">
                                     <MoreVertical className="h-3 w-3" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openDeleteDialog('book', book, subject.name)}>
-                                    <Trash2 className="h-3 w-3 mr-2" />
-                                    삭제
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
+                                 <DropdownMenuContent align="end">
+                                   <DropdownMenuItem onClick={() => openDeleteDialog('book', bookName, subject.name)}>
+                                     <Trash2 className="h-3 w-3 mr-2" />
+                                     삭제
+                                   </DropdownMenuItem>
+                                 </DropdownMenuContent>
                               </DropdownMenu>
                               <Link to={bookLink}>
                                 <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover/book:opacity-100 transition-opacity" />

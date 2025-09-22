@@ -2,10 +2,38 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface StudyData {
+  id: string;
+  subject: string;
+  textbook: string;
+  maxRounds: number;
+  chapters: Chapter[];
+  createdAt: Date;
+}
+
+interface Chapter {
+  order: number;
+  name: string;
+  problems: Problem[];
+}
+
+interface Problem {
+  number: number;
+  rounds: { [roundNumber: number]: '⭕' | '🔺' | '❌' | null };
+  hasNote: boolean;
+}
+
 interface SubjectData {
   name: string;
-  books: string[];
+  books: BookData[];
   createdAt?: string;
+  isExpanded?: boolean;
+}
+
+interface BookData {
+  name: string;
+  studyData: StudyData;
+  isExpanded?: boolean;
 }
 
 interface UnifiedDataContextType {
@@ -16,10 +44,16 @@ interface UnifiedDataContextType {
   refreshBooksForSubject: (subjectName: string) => Promise<void>;
   addSubject: (name: string) => Promise<void>;
   deleteSubject: (name: string) => Promise<void>;
-  addBook: (subjectName: string, bookName: string) => Promise<void>;
+  addBook: (subjectName: string, bookName: string, maxRounds?: number) => Promise<void>;
   deleteBook: (subjectName: string, bookName: string) => Promise<void>;
+  addChapter: (subjectName: string, bookName: string, chapterName: string) => Promise<void>;
+  deleteChapter: (subjectName: string, bookName: string, chapterName: string) => Promise<void>;
+  updateStudyProgress: (subjectName: string, bookName: string, updatedData: StudyData) => void;
+  toggleSubjectExpansion: (subjectName: string) => void;
+  toggleBookExpansion: (subjectName: string, bookName: string) => void;
   getSubjectNames: () => string[];
   getBooksBySubject: (subjectName: string) => string[];
+  getStudyData: (subjectName: string, bookName: string) => StudyData | null;
 }
 
 const UnifiedDataContext = createContext<UnifiedDataContextType | undefined>(undefined);
@@ -30,19 +64,45 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  // Supabase 실시간 구독 설정
+  useEffect(() => {
+    const channel = supabase
+      .channel('unified-data-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
+        loadSubjects();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'books' }, () => {
+        loadSubjects();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chapters' }, () => {
+        loadSubjects();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wrong_notes' }, () => {
+        loadSubjects();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const loadSubjects = async () => {
     setLoading(true);
     try {
-      // First try to load from Supabase
+      // Load from Supabase (primary source)
       const { data: supabaseSubjects, error: subjectsError } = await supabase
         .from('subjects')
         .select('name')
         .order('name');
 
-      if (!subjectsError && supabaseSubjects && supabaseSubjects.length > 0) {
-        // Load subjects from Supabase
-        const subjectsWithBooks: SubjectData[] = [];
-        
+      if (subjectsError) {
+        console.error('Error loading subjects:', subjectsError);
+      }
+
+      let allSubjects: SubjectData[] = [];
+
+      if (supabaseSubjects && supabaseSubjects.length > 0) {
         for (const subject of supabaseSubjects) {
           const { data: books, error: booksError } = await supabase
             .from('books')
@@ -50,13 +110,39 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
             .eq('subject_name', subject.name)
             .order('name');
 
-          subjectsWithBooks.push({
-            name: subject.name,
-            books: booksError ? [] : books.map(book => book.name),
-            createdAt: new Date().toISOString()
-          });
+          if (booksError) {
+            console.error('Error loading books for subject:', subject.name, booksError);
+          }
 
-          // Also update subjectBooks state
+          const subjectData: SubjectData = {
+            name: subject.name,
+            books: [],
+            createdAt: new Date().toISOString(),
+            isExpanded: false
+          };
+
+          if (books && books.length > 0) {
+            for (const book of books) {
+              const studyData: StudyData = {
+                id: `${subject.name}-${book.name}`,
+                subject: subject.name,
+                textbook: book.name,
+                maxRounds: 3,
+                chapters: [],
+                createdAt: new Date()
+              };
+
+              subjectData.books.push({
+                name: book.name,
+                studyData,
+                isExpanded: false
+              });
+            }
+          }
+
+          allSubjects.push(subjectData);
+
+          // Update subjectBooks state
           if (!booksError && books) {
             setSubjectBooks(prev => ({
               ...prev,
@@ -64,55 +150,46 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
             }));
           }
         }
-        
-        setSubjects(subjectsWithBooks);
-        return;
       }
 
-      // Fallback to localStorage if Supabase is empty
-      const legacyData = localStorage.getItem('legacy-subjects');
+      // Load local study data (aro-study-data) to merge chapter and progress info
       const aroData = localStorage.getItem('aro-study-data');
-      
-      let mergedSubjects: SubjectData[] = [];
-      
-      // Process legacy subjects
-      if (legacyData) {
-        const parsed = JSON.parse(legacyData);
-        mergedSubjects = Array.isArray(parsed) ? parsed : [];
-      }
-      
-      // Process aro-study-data and merge with legacy
       if (aroData) {
         const aroStudyData = JSON.parse(aroData);
         
         if (Array.isArray(aroStudyData)) {
-          aroStudyData.forEach((subjectData: any) => {
-            const existingIndex = mergedSubjects.findIndex(
-              subject => subject.name === subjectData.name
-            );
-            
-            if (existingIndex !== -1) {
-              // Merge books from both sources
-              const existingBooks = mergedSubjects[existingIndex].books || [];
-              const aroBooks = subjectData.books ? subjectData.books.map((book: any) => book.name) : [];
-              mergedSubjects[existingIndex].books = [...new Set([...existingBooks, ...aroBooks])];
-            } else {
-              // Add new subject from aro-study-data
-              mergedSubjects.push({
-                name: subjectData.name,
-                books: subjectData.books ? subjectData.books.map((book: any) => book.name) : [],
-                createdAt: subjectData.createdAt || new Date().toISOString()
-              });
+          // Merge study data from localStorage with DB subjects
+          for (const localSubject of aroStudyData) {
+            const dbSubject = allSubjects.find(s => s.name === localSubject.name);
+            if (dbSubject) {
+              // Update expansion state
+              dbSubject.isExpanded = localSubject.isExpanded;
+              
+              // Merge book study data
+              for (const localBook of localSubject.books || []) {
+                const dbBook = dbSubject.books.find(b => b.name === localBook.name);
+                if (dbBook && localBook.studyData) {
+                  // Merge the complete study data including chapters and progress
+                  dbBook.studyData = {
+                    ...localBook.studyData,
+                    createdAt: new Date(localBook.studyData.createdAt)
+                  };
+                  dbBook.isExpanded = localBook.isExpanded;
+                }
+              }
             }
-          });
+          }
         }
       }
+
+      setSubjects(allSubjects);
       
-      setSubjects(mergedSubjects);
+      // Save unified data back to localStorage
+      localStorage.setItem('aro-study-data', JSON.stringify(allSubjects));
       
-      // Try to migrate local data to Supabase
-      if (mergedSubjects.length > 0) {
-        await migrateLocalDataToSupabase(mergedSubjects);
+      // Try to migrate any remaining local data to Supabase
+      if (allSubjects.length > 0) {
+        await migrateLocalDataToSupabase(allSubjects);
       }
     } catch (error) {
       console.error('Error loading subjects:', error);
@@ -135,17 +212,31 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
             ignoreDuplicates: true 
           });
 
-        // Save books for this subject
-        for (const bookName of subject.books) {
+        // Save books and chapters for this subject
+        for (const book of subject.books) {
           await supabase
             .from('books')
             .upsert({ 
-              name: bookName,
+              name: book.name,
               subject_name: subject.name,
               user_id: null
             }, { 
               ignoreDuplicates: true 
             });
+
+          // Save chapters for this book
+          for (const chapter of book.studyData.chapters) {
+            await supabase
+              .from('chapters')
+              .upsert({
+                name: chapter.name,
+                subject_name: subject.name,
+                book_name: book.name,
+                user_id: null
+              }, { 
+                ignoreDuplicates: true 
+              });
+          }
         }
       }
     } catch (error) {
@@ -202,7 +293,26 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
   const deleteSubject = async (name: string) => {
     try {
-      // Delete from Supabase first
+      // Delete all related data hierarchically
+      // 1. Delete wrong notes
+      await supabase
+        .from('wrong_notes')
+        .delete()
+        .eq('subject_name', name);
+
+      // 2. Delete chapters
+      await supabase
+        .from('chapters')
+        .delete()
+        .eq('subject_name', name);
+
+      // 3. Delete books
+      await supabase
+        .from('books')
+        .delete()
+        .eq('subject_name', name);
+
+      // 4. Delete subject
       const { error } = await supabase
         .from('subjects')
         .delete()
@@ -219,17 +329,12 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         return newState;
       });
 
-      // 회독표 로컬스토리지에서도 해당 과목 삭제
-      const savedStudyData = localStorage.getItem('aro-study-data');
-      if (savedStudyData) {
-        const parsed = JSON.parse(savedStudyData);
-        const filteredStudyData = parsed.filter((subject: any) => subject.name !== name);
-        localStorage.setItem('aro-study-data', JSON.stringify(filteredStudyData));
-      }
+      // Update localStorage
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
       toast({
         title: "과목 삭제됨",
-        description: `${name} 과목이 삭제되었습니다.`,
+        description: `${name} 과목과 관련된 모든 데이터가 삭제되었습니다.`,
       });
     } catch (error) {
       console.error('Error deleting subject:', error);
@@ -241,32 +346,52 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addBook = async (subjectName: string, bookName: string) => {
+  const addBook = async (subjectName: string, bookName: string, maxRounds: number = 3) => {
     const trimmedBookName = bookName.trim();
     if (!trimmedBookName) return;
 
     try {
-      // Save to Supabase first
-      const { error } = await supabase
+      // Check if book already exists
+      const { data: existingBook } = await supabase
         .from('books')
-        .upsert({ 
-          name: trimmedBookName,
-          subject_name: subjectName,
-          user_id: null
-        }, { 
-          ignoreDuplicates: true 
-        });
+        .select('id')
+        .eq('name', trimmedBookName)
+        .eq('subject_name', subjectName)
+        .single();
 
-      if (error) throw error;
+      if (!existingBook) {
+        // Save to Supabase first
+        const { error } = await supabase
+          .from('books')
+          .insert({ 
+            name: trimmedBookName,
+            subject_name: subjectName,
+            user_id: null
+          });
+
+        if (error) throw error;
+      }
+
+      // Create new study data
+      const newStudyData: StudyData = {
+        id: `${subjectName}-${trimmedBookName}`,
+        subject: subjectName,
+        textbook: trimmedBookName,
+        maxRounds,
+        chapters: [],
+        createdAt: new Date()
+      };
 
       // Update local state
       const updatedSubjects = subjects.map(subject => {
         if (subject.name === subjectName) {
           const existingBooks = subject.books || [];
-          if (!existingBooks.includes(trimmedBookName)) {
+          const bookExists = existingBooks.some(book => book.name === trimmedBookName);
+          
+          if (!bookExists) {
             return {
               ...subject,
-              books: [...existingBooks, trimmedBookName]
+              books: [...existingBooks, { name: trimmedBookName, studyData: newStudyData, isExpanded: false }]
             };
           }
         }
@@ -276,8 +401,11 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       setSubjects(updatedSubjects);
       setSubjectBooks(prev => ({
         ...prev,
-        [subjectName]: [...(prev[subjectName] || []), trimmedBookName]
+        [subjectName]: [...new Set([...(prev[subjectName] || []), trimmedBookName])]
       }));
+
+      // Update localStorage
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
       toast({
         title: "성공",
@@ -295,7 +423,22 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
   const deleteBook = async (subjectName: string, bookName: string) => {
     try {
-      // Delete from Supabase first
+      // Delete all related data hierarchically
+      // 1. Delete wrong notes
+      await supabase
+        .from('wrong_notes')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName);
+
+      // 2. Delete chapters
+      await supabase
+        .from('chapters')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName);
+
+      // 3. Delete book
       const { error } = await supabase
         .from('books')
         .delete()
@@ -309,7 +452,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         if (subject.name === subjectName) {
           return {
             ...subject,
-            books: (subject.books || []).filter(book => book !== bookName)
+            books: (subject.books || []).filter(book => book.name !== bookName)
           };
         }
         return subject;
@@ -321,25 +464,12 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         [subjectName]: prev[subjectName]?.filter(book => book !== bookName) || []
       }));
 
-      // 회독표 로컬스토리지에서도 해당 책 삭제
-      const savedStudyData = localStorage.getItem('aro-study-data');
-      if (savedStudyData) {
-        const parsed = JSON.parse(savedStudyData);
-        const updatedStudyData = parsed.map((subject: any) => {
-          if (subject.name === subjectName) {
-            return {
-              ...subject,
-              books: subject.books.filter((book: any) => book.name !== bookName)
-            };
-          }
-          return subject;
-        });
-        localStorage.setItem('aro-study-data', JSON.stringify(updatedStudyData));
-      }
+      // Update localStorage
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
       toast({
         title: "책 삭제됨",
-        description: `${bookName}이(가) 삭제되었습니다.`,
+        description: `${bookName}과(와) 관련된 모든 데이터가 삭제되었습니다.`,
       });
     } catch (error) {
       console.error('Error deleting book:', error);
@@ -374,13 +504,186 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const addChapter = async (subjectName: string, bookName: string, chapterName: string) => {
+    try {
+      // Save to Supabase
+      const { error } = await supabase
+        .from('chapters')
+        .insert({
+          name: chapterName,
+          subject_name: subjectName,
+          book_name: bookName,
+          user_id: null
+        });
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedSubjects = subjects.map(subject => {
+        if (subject.name === subjectName) {
+          return {
+            ...subject,
+            books: subject.books.map(book => {
+              if (book.name === bookName) {
+                const newChapter: Chapter = {
+                  order: book.studyData.chapters.length + 1,
+                  name: chapterName,
+                  problems: []
+                };
+                return {
+                  ...book,
+                  studyData: {
+                    ...book.studyData,
+                    chapters: [...book.studyData.chapters, newChapter]
+                  }
+                };
+              }
+              return book;
+            })
+          };
+        }
+        return subject;
+      });
+
+      setSubjects(updatedSubjects);
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+
+      toast({
+        title: "단원 추가됨",
+        description: `${chapterName} 단원이 추가되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error adding chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원 추가에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteChapter = async (subjectName: string, bookName: string, chapterName: string) => {
+    try {
+      // Delete related wrong notes first
+      await supabase
+        .from('wrong_notes')
+        .delete()
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('chapter_name', chapterName);
+
+      // Delete chapter
+      const { error } = await supabase
+        .from('chapters')
+        .delete()
+        .eq('name', chapterName)
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName);
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedSubjects = subjects.map(subject => {
+        if (subject.name === subjectName) {
+          return {
+            ...subject,
+            books: subject.books.map(book => {
+              if (book.name === bookName) {
+                return {
+                  ...book,
+                  studyData: {
+                    ...book.studyData,
+                    chapters: book.studyData.chapters.filter(chapter => chapter.name !== chapterName)
+                  }
+                };
+              }
+              return book;
+            })
+          };
+        }
+        return subject;
+      });
+
+      setSubjects(updatedSubjects);
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+
+      toast({
+        title: "단원 삭제됨",
+        description: `${chapterName} 단원과 관련된 모든 데이터가 삭제되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원 삭제에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateStudyProgress = (subjectName: string, bookName: string, updatedData: StudyData) => {
+    const updatedSubjects = subjects.map(subject => {
+      if (subject.name === subjectName) {
+        return {
+          ...subject,
+          books: subject.books.map(book => {
+            if (book.name === bookName) {
+              return {
+                ...book,
+                studyData: updatedData
+              };
+            }
+            return book;
+          })
+        };
+      }
+      return subject;
+    });
+
+    setSubjects(updatedSubjects);
+    localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+  };
+
+  const toggleSubjectExpansion = (subjectName: string) => {
+    const updatedSubjects = subjects.map(subject => 
+      subject.name === subjectName 
+        ? { ...subject, isExpanded: !subject.isExpanded }
+        : subject
+    );
+    setSubjects(updatedSubjects);
+    localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+  };
+
+  const toggleBookExpansion = (subjectName: string, bookName: string) => {
+    const updatedSubjects = subjects.map(subject => 
+      subject.name === subjectName 
+        ? {
+            ...subject,
+            books: subject.books.map(book =>
+              book.name === bookName
+                ? { ...book, isExpanded: !book.isExpanded }
+                : book
+            )
+          }
+        : subject
+    );
+    setSubjects(updatedSubjects);
+    localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+  };
+
   const getSubjectNames = (): string[] => {
     return subjects.map(s => s.name);
   };
 
   const getBooksBySubject = (subjectName: string): string[] => {
     const subject = subjects.find(s => s.name === subjectName);
-    return subject?.books || [];
+    return subject?.books.map(book => book.name) || [];
+  };
+
+  const getStudyData = (subjectName: string, bookName: string): StudyData | null => {
+    const subject = subjects.find(s => s.name === subjectName);
+    const book = subject?.books.find(b => b.name === bookName);
+    return book?.studyData || null;
   };
 
   useEffect(() => {
@@ -397,8 +700,14 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     deleteSubject,
     addBook,
     deleteBook,
+    addChapter,
+    deleteChapter,
+    updateStudyProgress,
+    toggleSubjectExpansion,
+    toggleBookExpansion,
     getSubjectNames,
     getBooksBySubject,
+    getStudyData,
   };
 
   return (
