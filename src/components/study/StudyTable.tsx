@@ -315,7 +315,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
         .eq('subject_name', studyData.subject)
         .eq('book_name', studyData.textbook)
         .eq('chapter_name', chapterName)
-        .contains('source_text', `${problemNumber}번`)
+        .ilike('source_text', `%${problemNumber}번%`)
         .maybeSingle();
 
       if (error) {
