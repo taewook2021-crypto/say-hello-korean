@@ -166,21 +166,18 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
             </CardContent>
           </Card>
 
-          {/* 뒷면 - 정답 */}
+          {/* 뒷면 - 해설 */}
           <Card className={`absolute inset-0 backface-hidden rotate-y-180 ${isFlipped ? "opacity-100" : "opacity-0"}`}>
             <CardContent className="p-8 h-full flex flex-col justify-between">
               <div className="space-y-6 flex-1">
                 <div className="text-center">
-                  <h3 className="text-lg font-medium text-blue-600 mb-4">근거 원문</h3>
-                  <p className="text-xl leading-relaxed mb-6 whitespace-pre-wrap">{currentNote.source_text}</p>
+                  <h3 className="text-lg font-medium text-blue-600 mb-4">정답 / 해설</h3>
+                  {currentNote.explanation ? (
+                    <p className="text-xl leading-relaxed whitespace-pre-wrap">{currentNote.explanation}</p>
+                  ) : (
+                    <p className="text-xl leading-relaxed whitespace-pre-wrap">{currentNote.source_text}</p>
+                  )}
                 </div>
-
-                {currentNote.explanation && (
-                  <div className="bg-primary/10 p-4 rounded-lg">
-                    <h4 className="text-sm font-medium text-primary mb-2">설명</h4>
-                    <p className="text-primary/80 whitespace-pre-wrap">{currentNote.explanation}</p>
-                  </div>
-                )}
               </div>
 
               <div className="text-center mt-6">
