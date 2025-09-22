@@ -187,10 +187,11 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                 <Label htmlFor="problemCount">문제 수</Label>
                 <Input
                   id="problemCount"
-                  type="number"
-                  min="1"
-                  value={newChapterProblemCount}
-                  onChange={(e) => setNewChapterProblemCount(parseInt(e.target.value) || 1)}
+                  value={newChapterProblemCount.toString()}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    setNewChapterProblemCount(Math.max(1, value));
+                  }}
                   placeholder="예: 30"
                 />
               </div>
