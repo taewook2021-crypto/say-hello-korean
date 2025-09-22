@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import { Folder, FolderOpen, Plus, BookOpen, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+import { Folder, FolderOpen, Plus, BookOpen, ChevronDown, ChevronRight, RefreshCw, Trash2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +55,10 @@ export default function StudyTracker() {
   const [newBookName, setNewBookName] = useState("");
   const [newBookMaxRounds, setNewBookMaxRounds] = useState("");
   
+  // 단원 삭제 관련 state
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [chapterToDelete, setChapterToDelete] = useState<{subject: string, book: string, chapter: string} | null>(null);
+  
   // Navigation state for hierarchical folder structure
   const [currentView, setCurrentView] = useState<'subjects' | 'books' | 'study'>('subjects');
   const [selectedSubject, setSelectedSubject] = useState<string>("");
@@ -67,7 +73,8 @@ export default function StudyTracker() {
     toggleSubjectExpansion,
     toggleBookExpansion,
     updateStudyProgress,
-    getSubjectNames
+    getSubjectNames,
+    deleteChapter
   } = useUnifiedData();
 
   // No longer need local state management - everything handled by UnifiedDataContext
@@ -149,6 +156,26 @@ export default function StudyTracker() {
     } catch (error) {
       console.error('Error adding book:', error);
       toast.error("교재 추가 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleDeleteChapter = async (subjectName: string, bookName: string, chapterName: string) => {
+    setChapterToDelete({ subject: subjectName, book: bookName, chapter: chapterName });
+    setIsDeleteAlertOpen(true);
+  };
+
+  const confirmDeleteChapter = async () => {
+    if (!chapterToDelete) return;
+    
+    try {
+      await deleteChapter(chapterToDelete.subject, chapterToDelete.book, chapterToDelete.chapter);
+      toast.success("단원이 삭제되었습니다.");
+    } catch (error) {
+      console.error('Error deleting chapter:', error);
+      toast.error("단원 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setIsDeleteAlertOpen(false);
+      setChapterToDelete(null);
     }
   };
 
@@ -428,28 +455,62 @@ export default function StudyTracker() {
                 }
                 
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {subject.books.map((book) => (
-                      <Card 
-                        key={book.name} 
-                        className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105"
-                        onClick={() => {
-                          setSelectedBook(book.name);
-                          setCurrentView('study');
-                        }}
-                      >
-                        <CardContent className="p-6 text-center">
-                          <BookOpen className="w-12 h-12 text-accent mx-auto mb-4" />
-                          <h3 className="text-lg font-semibold text-foreground mb-2">{book.name}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {book.studyData.chapters.length}개 단원
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            최대 {book.studyData.maxRounds}회독
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                     {subject.books.map((book) => (
+                       <Card 
+                         key={book.name} 
+                         className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105"
+                         onClick={() => {
+                           setSelectedBook(book.name);
+                           setCurrentView('study');
+                         }}
+                       >
+                         <CardContent className="p-6 text-center">
+                           <BookOpen className="w-12 h-12 text-accent mx-auto mb-4" />
+                           <h3 className="text-lg font-semibold text-foreground mb-2">{book.name}</h3>
+                           <p className="text-sm text-muted-foreground">
+                             {book.studyData.chapters.length}개 단원
+                           </p>
+                           <p className="text-xs text-muted-foreground mt-1">
+                             최대 {book.studyData.maxRounds}회독
+                           </p>
+                           
+                           {/* 단원 목록 및 삭제 버튼 */}
+                           {book.studyData.chapters.length > 0 && (
+                             <div className="mt-4 border-t pt-3">
+                               <p className="text-xs text-muted-foreground mb-2">단원 목록:</p>
+                               <div className="space-y-1">
+                                 {book.studyData.chapters.map((chapter) => (
+                                   <div key={chapter.name} className="flex items-center justify-between text-xs bg-muted/30 rounded px-2 py-1">
+                                     <span className="truncate">{chapter.name}</span>
+                                     <DropdownMenu>
+                                       <DropdownMenuTrigger 
+                                         className="p-1 hover:bg-muted/50 rounded"
+                                         onClick={(e) => e.stopPropagation()}
+                                       >
+                                         <MoreVertical className="w-3 h-3" />
+                                       </DropdownMenuTrigger>
+                                       <DropdownMenuContent>
+                                         <DropdownMenuItem 
+                                           className="text-destructive"
+                                           onClick={(e) => {
+                                             e.stopPropagation();
+                                             handleDeleteChapter(selectedSubject, book.name, chapter.name);
+                                           }}
+                                         >
+                                           <Trash2 className="w-4 h-4 mr-2" />
+                                           단원 삭제
+                                         </DropdownMenuItem>
+                                       </DropdownMenuContent>
+                                     </DropdownMenu>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </CardContent>
+                       </Card>
+                     ))}
                   </div>
                 );
               })()}
@@ -499,6 +560,31 @@ export default function StudyTracker() {
             </>
           )}
         </div>
+        
+        {/* 단원 삭제 확인 다이얼로그 */}
+        <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>단원 삭제</AlertDialogTitle>
+              <AlertDialogDescription>
+                "{chapterToDelete?.chapter}" 단원을 삭제하시겠습니까?
+                <br />
+                <span className="text-destructive font-medium">
+                  이 작업은 되돌릴 수 없으며, 해당 단원의 모든 데이터가 삭제됩니다.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmDeleteChapter}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
