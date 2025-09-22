@@ -46,7 +46,7 @@ export default function StudyTracker() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newSubject, setNewSubject] = useState("");
   const [newTextbook, setNewTextbook] = useState("");
-  const [maxRounds, setMaxRounds] = useState(3);
+  const [maxRounds, setMaxRounds] = useState("");
 
   useEffect(() => {
     loadStudyData();
@@ -112,8 +112,14 @@ export default function StudyTracker() {
       return;
     }
 
-    if (maxRounds < 1) {
-      toast.error("회독 수는 1회 이상이어야 합니다.");
+    if (!maxRounds || parseInt(maxRounds) < 1) {
+      toast.error("회독 수를 입력해주세요. (1회 이상)");
+      return;
+    }
+
+    const maxRoundsNumber = parseInt(maxRounds);
+    if (maxRoundsNumber > 10) {
+      toast.error("회독 수는 10회 이하여야 합니다.");
       return;
     }
 
@@ -122,7 +128,7 @@ export default function StudyTracker() {
       id: Date.now().toString(),
       subject: newSubject.trim(),
       textbook: newTextbook.trim(),
-      maxRounds: maxRounds,
+      maxRounds: maxRoundsNumber,
       chapters: [], // 빈 배열로 시작
       createdAt: new Date()
     };
@@ -157,7 +163,7 @@ export default function StudyTracker() {
     // 폼 초기화
     setNewSubject("");
     setNewTextbook("");
-    setMaxRounds(3);
+    setMaxRounds("");
     setIsCreateDialogOpen(false);
     
     toast.success("회독표가 생성되었습니다! 이제 단원을 추가해보세요.");
@@ -236,12 +242,9 @@ export default function StudyTracker() {
                   <Label htmlFor="maxRounds">회독 수</Label>
                   <Input
                     id="maxRounds"
-                    value={maxRounds.toString()}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value) || 1;
-                      setMaxRounds(Math.max(1, Math.min(10, value)));
-                    }}
-                    placeholder="예: 3"
+                    value={maxRounds}
+                    onChange={(e) => setMaxRounds(e.target.value)}
+                    placeholder="회독 수를 입력하세요 (예: 3)"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     최대 10회까지 설정 가능합니다
