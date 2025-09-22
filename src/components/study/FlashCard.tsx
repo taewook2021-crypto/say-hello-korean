@@ -28,7 +28,9 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
   const [confidence, setConfidence] = useState<number | null>(null);
   const { toast } = useToast();
 
+  console.log('FlashCard received notes:', notes);
   const currentNote = notes[currentIndex];
+  console.log('Current note:', currentNote);
 
   const nextCard = () => {
     if (currentIndex < notes.length - 1) {

@@ -172,6 +172,7 @@ export function TodayReviews() {
       
       if (error) throw error;
       
+      console.log('Review notes from TodayReviews:', notes);
       setReviewNotes(notes || []);
       setShowStudyModeSelector(true);
     } catch (error) {
