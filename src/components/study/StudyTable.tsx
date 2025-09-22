@@ -40,6 +40,8 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([1])); // 첫 번째 단원은 기본 확장
   const [isWrongNoteDialogOpen, setIsWrongNoteDialogOpen] = useState(false);
   const [isWrongNoteConfirmOpen, setIsWrongNoteConfirmOpen] = useState(false);
+  const [isWrongNoteViewOpen, setIsWrongNoteViewOpen] = useState(false);
+  const [selectedWrongNote, setSelectedWrongNote] = useState<any>(null);
   const [selectedProblem, setSelectedProblem] = useState<{
     chapterOrder: number;
     problemNumber: number;
@@ -298,6 +300,55 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     setChapterProblemCounts({});
     
     toast.success('설정이 변경되었습니다.');
+  };
+
+  
+  const handleViewWrongNote = async (chapterOrder: number, problemNumber: number) => {
+    try {
+      const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
+      const chapterName = chapter?.name || "";
+
+      // 데이터베이스에서 오답노트 찾기
+      const { data, error } = await supabase
+        .from('wrong_notes')
+        .select('*')
+        .eq('subject_name', studyData.subject)
+        .eq('book_name', studyData.textbook)
+        .eq('chapter_name', chapterName)
+        .contains('source_text', `${problemNumber}번`)
+        .maybeSingle();
+
+      if (error) {
+        console.error('오답노트 조회 오류:', error);
+        toast.error("오답노트를 불러올 수 없습니다.");
+        return;
+      }
+
+      if (data) {
+        setSelectedWrongNote(data);
+        setIsWrongNoteViewOpen(true);
+      } else {
+        // 데이터베이스에 없으면 로컬 스토리지에서 찾기
+        const existingNotes = localStorage.getItem('aro-wrong-notes');
+        const notes = existingNotes ? JSON.parse(existingNotes) : [];
+        const foundNote = notes.find((note: any) => 
+          note.subject === studyData.subject &&
+          note.textbook === studyData.textbook &&
+          note.chapter === chapterName &&
+          note.problemNumber === problemNumber
+        );
+
+        if (foundNote) {
+          setSelectedWrongNote(foundNote);
+          setIsWrongNoteViewOpen(true);
+        } else {
+          toast.error("해당 문제의 오답노트를 찾을 수 없습니다.");
+        }
+      }
+    } catch (error) {
+      console.error('오답노트 보기 오류:', error);
+      toast.error("오답노트를 불러올 수 없습니다.");
+    }
   };
 
   // 챕터를 order 순으로 정렬 (순서 유지를 위해 중요!)
@@ -645,6 +696,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                               variant="outline"
                               size="sm"
                               className="text-xs"
+                              onClick={() => handleViewWrongNote(chapter.order, problem.number)}
                             >
                               <FileText className="w-3 h-3 mr-1" />
                               보기
@@ -686,6 +738,49 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
               }}>
                 생성하기
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 오답노트 보기 다이얼로그 */}
+      {selectedWrongNote && (
+        <Dialog open={isWrongNoteViewOpen} onOpenChange={setIsWrongNoteViewOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                오답노트 보기
+              </DialogTitle>
+              <DialogDescription>
+                {selectedWrongNote.subject_name || selectedWrongNote.subject} &gt; {selectedWrongNote.book_name || selectedWrongNote.textbook} &gt; {selectedWrongNote.chapter_name || selectedWrongNote.chapter}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">문제</Label>
+                <div className="mt-1 p-3 bg-muted rounded-md">
+                  <p className="whitespace-pre-wrap">
+                    {selectedWrongNote.question || selectedWrongNote.content?.problemText}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">정답 / 해설</Label>
+                <div className="mt-1 p-3 bg-muted rounded-md">
+                  <p className="whitespace-pre-wrap">
+                    {selectedWrongNote.explanation || selectedWrongNote.content?.answer}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setIsWrongNoteViewOpen(false)}>
+                  닫기
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
