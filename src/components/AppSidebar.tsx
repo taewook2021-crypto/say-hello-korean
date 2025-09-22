@@ -129,6 +129,7 @@ export function AppSidebar() {
   const mainItems = [
     { title: "홈", url: "/", icon: Home },
     { title: "회독표", url: "/study-plan", icon: BarChart3 },
+    { title: "ARO 회독표", url: "/study-tracker", icon: BookOpen },
   ];
 
   const isActive = (path: string) => currentPath === path;
