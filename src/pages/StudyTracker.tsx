@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StudyTable } from "@/components/study/StudyTable";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudyData {
   id: string;
@@ -106,7 +107,7 @@ export default function StudyTracker() {
     saveStudyData(updated);
   };
 
-  const handleCreateStudyPlan = () => {
+  const handleCreateStudyPlan = async () => {
     if (!newSubject.trim() || !newTextbook.trim()) {
       toast.error("과목명과 교재명을 입력해주세요.");
       return;
@@ -123,50 +124,87 @@ export default function StudyTracker() {
       return;
     }
 
-    // 빈 회독표 생성 (단원 없음)
-    const newStudyData: StudyData = {
-      id: Date.now().toString(),
-      subject: newSubject.trim(),
-      textbook: newTextbook.trim(),
-      maxRounds: maxRoundsNumber,
-      chapters: [], // 빈 배열로 시작
-      createdAt: new Date()
-    };
+    try {
+      // 데이터베이스에 과목과 교재 저장
+      console.log('Saving subject:', newSubject.trim());
+      const { error: subjectError } = await supabase
+        .from('subjects')
+        .upsert({ 
+          name: newSubject.trim(),
+          user_id: null // 현재 인증 없이 사용
+        }, { 
+          onConflict: 'name,user_id',
+          ignoreDuplicates: true 
+        });
 
-    let updatedSubjects = [...subjects];
-    
-    // 기존 과목이 있는지 확인
-    const existingSubjectIndex = updatedSubjects.findIndex(s => s.name === newSubject.trim());
-    
-    if (existingSubjectIndex >= 0) {
-      // 기존 과목에 새 교재 추가
-      updatedSubjects[existingSubjectIndex].books.push({
-        name: newTextbook.trim(),
-        studyData: newStudyData,
-        isExpanded: false
-      });
-    } else {
-      // 새 과목 생성
-      updatedSubjects.push({
-        name: newSubject.trim(),
-        books: [{
+      if (subjectError) {
+        console.error('Subject insert error:', subjectError);
+      }
+
+      console.log('Saving book:', newTextbook.trim());
+      const { error: bookError } = await supabase
+        .from('books')
+        .upsert({ 
+          name: newTextbook.trim(),
+          subject_name: newSubject.trim(),
+          user_id: null // 현재 인증 없이 사용
+        }, { 
+          onConflict: 'name,subject_name,user_id',
+          ignoreDuplicates: true 
+        });
+
+      if (bookError) {
+        console.error('Book insert error:', bookError);
+      }
+
+      // 빈 회독표 생성 (단원 없음)
+      const newStudyData: StudyData = {
+        id: Date.now().toString(),
+        subject: newSubject.trim(),
+        textbook: newTextbook.trim(),
+        maxRounds: maxRoundsNumber,
+        chapters: [], // 빈 배열로 시작
+        createdAt: new Date()
+      };
+
+      let updatedSubjects = [...subjects];
+      
+      // 기존 과목이 있는지 확인
+      const existingSubjectIndex = updatedSubjects.findIndex(s => s.name === newSubject.trim());
+      
+      if (existingSubjectIndex >= 0) {
+        // 기존 과목에 새 교재 추가
+        updatedSubjects[existingSubjectIndex].books.push({
           name: newTextbook.trim(),
           studyData: newStudyData,
           isExpanded: false
-        }],
-        isExpanded: true
-      });
-    }
+        });
+      } else {
+        // 새 과목 생성
+        updatedSubjects.push({
+          name: newSubject.trim(),
+          books: [{
+            name: newTextbook.trim(),
+            studyData: newStudyData,
+            isExpanded: false
+          }],
+          isExpanded: true
+        });
+      }
 
-    saveStudyData(updatedSubjects);
-    
-    // 폼 초기화
-    setNewSubject("");
-    setNewTextbook("");
-    setMaxRounds("");
-    setIsCreateDialogOpen(false);
-    
-    toast.success("회독표가 생성되었습니다! 이제 단원을 추가해보세요.");
+      saveStudyData(updatedSubjects);
+      
+      // 폼 초기화
+      setNewSubject("");
+      setNewTextbook("");
+      setMaxRounds("");
+      setIsCreateDialogOpen(false);
+      
+      toast.success("회독표가 생성되었습니다! 이제 단원을 추가해보세요.");
+    } catch (error) {
+      console.error('Error creating study plan:', error);
+      toast.error("회독표 생성 중 오류가 발생했습니다.");
+    }
   };
 
   return (

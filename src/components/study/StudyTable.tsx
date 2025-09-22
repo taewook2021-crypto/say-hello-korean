@@ -156,13 +156,14 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     
     // 데이터베이스에 단원 정보 저장 (오답노트 연동용)
     try {
+      console.log('Saving chapter to database:', newChapterName.trim());
       const { error } = await supabase
         .from('chapters')
         .insert({
           name: newChapterName.trim(),
           subject_name: studyData.subject,
           book_name: studyData.textbook,
-          user_id: (await supabase.auth.getUser()).data.user?.id
+          user_id: null // 현재 인증 없이 사용
         });
 
       if (error) {
