@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 const Book = () => {
   const { subjectName, bookName } = useParams<{ subjectName: string; bookName: string }>();
   const [chapters, setChapters] = useState<string[]>([]);
+  const [chapterStats, setChapterStats] = useState<{ [key: string]: number }>({});
   const [newChapterName, setNewChapterName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -39,7 +40,21 @@ const Book = () => {
       }
       
       console.log('Chapters loaded:', data);
-      setChapters(data?.map((chapter: any) => chapter.name) || []);
+      const chapterNames = data?.map((chapter: any) => chapter.name) || [];
+      setChapters(chapterNames);
+      
+      // Load wrong note counts for each chapter
+      const stats: { [key: string]: number } = {};
+      for (const chapterName of chapterNames) {
+        const { data: wrongNotesData } = await (supabase as any)
+          .from('wrong_notes')
+          .select('id')
+          .eq('subject_name', decodeURIComponent(subjectName || ''))
+          .eq('book_name', decodeURIComponent(bookName || ''))
+          .eq('chapter_name', chapterName);
+        stats[chapterName] = wrongNotesData?.length || 0;
+      }
+      setChapterStats(stats);
     } catch (error) {
       console.error('Error loading chapters:', error);
       // If database tables don't exist yet, start with empty array
@@ -160,7 +175,10 @@ const Book = () => {
               <Card className="p-4 text-center cursor-pointer hover:bg-accent">
                 <CardContent className="p-0">
                   <FileText className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <p className="text-sm font-medium">{chapter}</p>
+                  <p className="text-sm font-medium mb-2">{chapter}</p>
+                  <div className="text-xs text-muted-foreground">
+                    오답노트: {chapterStats[chapter] || 0}개
+                  </div>
                 </CardContent>
               </Card>
             </Link>

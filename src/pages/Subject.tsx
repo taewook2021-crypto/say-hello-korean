@@ -15,6 +15,7 @@ import { useData } from "@/contexts/DataContext";
 const Subject = () => {
   const { subjectName } = useParams<{ subjectName: string }>();
   const [books, setBooks] = useState<string[]>([]);
+  const [bookStats, setBookStats] = useState<{ [key: string]: { chapters: number; wrongNotes: number } }>({});
   const [newBookName, setNewBookName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,15 @@ const Subject = () => {
       }
       
       console.log('Books loaded:', data);
-      setBooks(data?.map((book: any) => book.name) || []);
+      const bookNames = data?.map((book: any) => book.name) || [];
+      setBooks(bookNames);
+      
+      // Load stats for each book
+      const stats: { [key: string]: { chapters: number; wrongNotes: number } } = {};
+      for (const bookName of bookNames) {
+        stats[bookName] = await getBookStats(bookName);
+      }
+      setBookStats(stats);
     } catch (error) {
       console.error('Error loading books:', error);
       // If database tables don't exist yet, start with empty array
@@ -56,6 +65,32 @@ const Subject = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getBookStats = async (bookName: string) => {
+    try {
+      // 단원 수 조회
+      const { data: chaptersData } = await (supabase as any)
+        .from('chapters')
+        .select('id')
+        .eq('subject_name', decodeURIComponent(subjectName || ''))
+        .eq('book_name', bookName);
+      
+      // 오답노트 수 조회
+      const { data: wrongNotesData } = await (supabase as any)
+        .from('wrong_notes')
+        .select('id')
+        .eq('subject_name', decodeURIComponent(subjectName || ''))
+        .eq('book_name', bookName);
+
+      return {
+        chapters: chaptersData?.length || 0,
+        wrongNotes: wrongNotesData?.length || 0
+      };
+    } catch (error) {
+      console.error('Error loading book stats:', error);
+      return { chapters: 0, wrongNotes: 0 };
     }
   };
 
@@ -161,7 +196,11 @@ const Subject = () => {
                 <Card className="p-4 text-center cursor-pointer hover:bg-accent">
                   <CardContent className="p-0">
                     <BookOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                    <p className="text-sm font-medium">{book}</p>
+                    <p className="text-sm font-medium mb-2">{book}</p>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div>단원: {bookStats[book]?.chapters || 0}개</div>
+                      <div>오답노트: {bookStats[book]?.wrongNotes || 0}개</div>
+                    </div>
                   </CardContent>
                 </Card>
               </Link>
