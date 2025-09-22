@@ -440,45 +440,79 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                         {Array.from({ length: studyData.maxRounds || 3 }, (_, roundIndex) => {
                           const roundNumber = roundIndex + 1;
                           const status = problem.rounds?.[roundNumber] || null;
+                          
+                          const handleStatusClick = (e: React.MouseEvent) => {
+                            e.preventDefault();
+                            updateProblemStatus(chapter.order, problem.number, roundNumber, '⭕');
+                          };
+                          
+                          const handleStatusDoubleClick = (e: React.MouseEvent) => {
+                            e.preventDefault();
+                            updateProblemStatus(chapter.order, problem.number, roundNumber, '❌');
+                          };
+                          
+                          const handleStatusLongPress = (e: React.MouseEvent) => {
+                            e.preventDefault();
+                            updateProblemStatus(chapter.order, problem.number, roundNumber, '🔺');
+                          };
+                          
+                          // Long press 구현을 위한 상태
+                          let pressTimer: NodeJS.Timeout | null = null;
+                          let isLongPress = false;
+                          
+                          const handleMouseDown = (e: React.MouseEvent) => {
+                            e.preventDefault();
+                            isLongPress = false;
+                            pressTimer = setTimeout(() => {
+                              isLongPress = true;
+                              handleStatusLongPress(e);
+                            }, 500); // 500ms 후 long press로 인식
+                          };
+                          
+                          const handleMouseUp = (e: React.MouseEvent) => {
+                            e.preventDefault();
+                            if (pressTimer) {
+                              clearTimeout(pressTimer);
+                              pressTimer = null;
+                            }
+                            
+                            // Long press가 아닌 경우에만 click 이벤트 처리
+                            if (!isLongPress) {
+                              // 더블클릭 감지는 onDoubleClick에서 처리됨
+                            }
+                          };
+                          
+                          const getStatusStyle = () => {
+                            switch (status) {
+                              case '⭕':
+                                return 'border-green-500 bg-green-50 text-green-700';
+                              case '🔺':
+                                return 'border-yellow-500 bg-yellow-50 text-yellow-700';
+                              case '❌':
+                                return 'border-red-500 bg-red-50 text-red-700';
+                              default:
+                                return 'border-border hover:border-primary';
+                            }
+                          };
+                          
                           return (
                             <TableCell key={roundNumber} className="text-center">
-                              <div className="flex justify-center gap-1">
+                              <div className="flex justify-center">
                                 <button
-                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, '⭕')}
-                                  className={`w-6 h-6 rounded border flex items-center justify-center text-sm transition-all ${
-                                    status === '⭕' 
-                                      ? 'border-green-500 bg-green-50 text-green-700' 
-                                      : 'border-border hover:border-green-300'
-                                  }`}
+                                  onClick={handleStatusClick}
+                                  onDoubleClick={handleStatusDoubleClick}
+                                  onMouseDown={handleMouseDown}
+                                  onMouseUp={handleMouseUp}
+                                  onMouseLeave={() => {
+                                    if (pressTimer) {
+                                      clearTimeout(pressTimer);
+                                      pressTimer = null;
+                                    }
+                                  }}
+                                  className={`w-8 h-8 rounded border flex items-center justify-center text-sm transition-all select-none ${getStatusStyle()}`}
+                                  title="클릭: ⭕, 길게누르기: 🔺, 더블클릭: ❌"
                                 >
-                                  {status === '⭕' ? '⭕' : ''}
-                                </button>
-                                <button
-                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, '🔺')}
-                                  className={`w-6 h-6 rounded border flex items-center justify-center text-sm transition-all ${
-                                    status === '🔺' 
-                                      ? 'border-yellow-500 bg-yellow-50 text-yellow-700' 
-                                      : 'border-border hover:border-yellow-300'
-                                  }`}
-                                >
-                                  {status === '🔺' ? '🔺' : ''}
-                                </button>
-                                <button
-                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, '❌')}
-                                  className={`w-6 h-6 rounded border flex items-center justify-center text-sm transition-all ${
-                                    status === '❌' 
-                                      ? 'border-red-500 bg-red-50 text-red-700' 
-                                      : 'border-border hover:border-red-300'
-                                  }`}
-                                >
-                                  {status === '❌' ? '❌' : ''}
-                                </button>
-                                <button
-                                  onClick={() => updateProblemStatus(chapter.order, problem.number, roundNumber, null)}
-                                  className="w-6 h-6 rounded border border-border hover:border-muted-foreground flex items-center justify-center text-xs text-muted-foreground"
-                                  title="지우기"
-                                >
-                                  ×
+                                  {status || ''}
                                 </button>
                               </div>
                             </TableCell>
