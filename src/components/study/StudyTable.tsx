@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings } from "lucide-react";
 import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudyData {
   id: string;
@@ -120,7 +121,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     setSelectedProblem(null);
   };
 
-  const handleAddChapter = () => {
+  const handleAddChapter = async () => {
     if (!newChapterName.trim()) {
       toast.error("단원명을 입력해주세요.");
       return;
@@ -150,6 +151,28 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     };
 
     onUpdateStudyData(updatedStudyData);
+    
+    // 데이터베이스에 단원 정보 저장 (오답노트 연동용)
+    try {
+      const { error } = await supabase
+        .from('chapters')
+        .insert({
+          name: newChapterName.trim(),
+          subject_name: studyData.subject,
+          book_name: studyData.textbook,
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        });
+
+      if (error) {
+        console.error('단원 저장 오류:', error);
+        // 오류가 발생해도 회독표 생성은 계속 진행
+      } else {
+        console.log('단원이 데이터베이스에 저장되었습니다.');
+      }
+    } catch (error) {
+      console.error('데이터베이스 연결 오류:', error);
+      // 오류가 발생해도 회독표 생성은 계속 진행
+    }
     
     // 새 단원을 확장 상태로 설정
     setExpandedChapters(prev => new Set([...prev, newChapter.order]));

@@ -106,7 +106,7 @@ export function CreateWrongNoteDialog({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!problemText.trim()) {
       toast.error("문제 내용을 입력해주세요.");
       return;
@@ -117,33 +117,60 @@ export function CreateWrongNoteDialog({
       return;
     }
 
-    const wrongNote: WrongNote = {
-      id: Date.now().toString(),
-      subject: studyData.subject,
-      textbook: studyData.textbook,
-      chapter: chapterName,
-      problemNumber,
-      status,
-      content: {
-        problemText: problemText.trim(),
-        answer: answer.trim()
-      },
-      createdAt: new Date()
-    };
+    try {
+      // 현재 사용자 정보 가져오기
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // 데이터베이스에 오답노트 저장
+      const { error: dbError } = await supabase
+        .from('wrong_notes')
+        .insert({
+          question: problemText.trim(),
+          explanation: answer.trim(),
+          subject_name: studyData.subject,
+          book_name: studyData.textbook,
+          chapter_name: chapterName,
+          source_text: `${chapterName} ${problemNumber}번`,
+          user_id: user?.id
+        });
 
-    // 로컬 스토리지에 오답노트 저장
-    const existingNotes = localStorage.getItem('aro-wrong-notes');
-    const notes = existingNotes ? JSON.parse(existingNotes) : [];
-    notes.push(wrongNote);
-    localStorage.setItem('aro-wrong-notes', JSON.stringify(notes));
+      if (dbError) {
+        console.error('데이터베이스 저장 오류:', dbError);
+        toast.error("오답노트 저장 중 오류가 발생했습니다.");
+        return;
+      }
 
-    toast.success("오답노트가 저장되었습니다!");
-    
-    // 폼 초기화
-    setProblemText("");
-    setAnswer("");
-    
-    onNoteCreated();
+      // 로컬 스토리지에도 저장 (기존 기능 유지)
+      const wrongNote: WrongNote = {
+        id: Date.now().toString(),
+        subject: studyData.subject,
+        textbook: studyData.textbook,
+        chapter: chapterName,
+        problemNumber,
+        status,
+        content: {
+          problemText: problemText.trim(),
+          answer: answer.trim()
+        },
+        createdAt: new Date()
+      };
+
+      const existingNotes = localStorage.getItem('aro-wrong-notes');
+      const notes = existingNotes ? JSON.parse(existingNotes) : [];
+      notes.push(wrongNote);
+      localStorage.setItem('aro-wrong-notes', JSON.stringify(notes));
+
+      toast.success("오답노트가 저장되었습니다!");
+      
+      // 폼 초기화
+      setProblemText("");
+      setAnswer("");
+      
+      onNoteCreated();
+    } catch (error) {
+      console.error('오답노트 저장 오류:', error);
+      toast.error("오답노트 저장 중 오류가 발생했습니다.");
+    }
   };
 
   const handleCancel = () => {
