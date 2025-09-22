@@ -18,6 +18,7 @@ import {
   Plus,
   Folder,
   User,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ export function AppSidebar() {
   const mainItems = [
     { title: "홈", url: "/", icon: Home },
     { title: "ARO 회독표", url: "/study-tracker", icon: BookOpen },
+    { title: "오답노트 검색", url: "/search", icon: Search },
   ];
 
   const isActive = (path: string) => currentPath === path;
