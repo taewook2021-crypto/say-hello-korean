@@ -268,20 +268,6 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   const addSubject = async (name: string) => {
     console.log('🟡 addSubject called with:', name);
     
-    // 1) 로그인 사용자 직접 가져오기
-    const { data: { user: currentUser }, error: userErr } = await supabase.auth.getUser();
-    console.log('🔍 Direct user check:', currentUser ? { id: currentUser.id, email: currentUser.email } : 'Not authenticated');
-    
-    if (userErr || !currentUser) {
-      console.error('❌ User not authenticated:', userErr);
-      toast({
-        title: "로그인 필요",
-        description: "과목을 추가하려면 로그인해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const trimmedName = name.trim();
     if (!trimmedName) {
       console.error('❌ Subject name is empty');
@@ -289,33 +275,48 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log('➕ Inserting subject to Supabase...');
+      // 1) 로그인 사용자 직접 가져오기
+      const { data: { user: currentUser }, error: userErr } = await supabase.auth.getUser();
+      console.log('🔍 Auth check result:', { 
+        user: currentUser ? { id: currentUser.id, email: currentUser.email } : null, 
+        error: userErr 
+      });
       
-      // 2) INSERT 시 user_id를 반드시 포함
-      const insertData = {
-        name: trimmedName,
-        user_id: currentUser.id  // ★ 여기 필수
+      if (userErr || !currentUser) {
+        console.error('❌ User authentication failed:', userErr);
+        toast({
+          title: "로그인 필요",
+          description: "과목을 추가하려면 로그인해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 2) INSERT payload 준비
+      const payload = { 
+        name: trimmedName, 
+        user_id: currentUser.id 
       };
+      console.log('📝 Insert payload:', payload);
       
-      console.log('📝 Data to insert:', insertData);
-      
-      // Save to Supabase with user_id
+      // 3) Supabase INSERT
       const { data, error } = await supabase
         .from('subjects')
-        .insert(insertData)
-        .select();
+        .insert(payload)
+        .select()
+        .single();
 
       if (error) {
-        console.error('❌ Error inserting subject - Details:', {
-          error: error,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
+        console.error('❌ Supabase insert error details:');
+        console.error('Message:', error.message);
+        console.error('Details:', error.details);
+        console.error('Hint:', error.hint);
+        console.error('Code:', error.code);
+        console.error('Full error:', error);
         throw error;
       }
-      console.log('✅ Subject inserted successfully', data);
+      
+      console.log('✅ Subject inserted successfully:', data);
 
       // Update local state
       const newSubject: SubjectData = {
