@@ -1,7 +1,10 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
 const googleVisionApiKey = Deno.env.get('GOOGLE_VISION_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +25,94 @@ serve(async (req) => {
       throw new Error('Google Vision API key not configured');
     }
 
-    console.log('API key found, parsing request body...');
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Supabase configuration missing');
+      throw new Error('Supabase configuration missing');
+    }
+
+    // Create Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get user from authorization header
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      throw new Error('Authorization header missing');
+    }
+
+    const jwt = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    
+    if (userError || !user) {
+      console.error('User authentication failed:', userError);
+      throw new Error('User authentication failed');
+    }
+
+    console.log('User authenticated:', user.id);
+
+    // Get user profile and subscription tier
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError);
+      throw new Error('Error fetching user profile');
+    }
+
+    const subscriptionTier = profile?.subscription_tier || 'free';
+    console.log('User subscription tier:', subscriptionTier);
+
+    // Check if user has premium subscription (basic or pro)
+    if (subscriptionTier === 'free') {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Google Vision OCR is available for premium users only. Please upgrade to use this feature.',
+          requiresUpgrade: true
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    // Check daily usage limit (50 images per day for premium users)
+    const today = new Date().toISOString().split('T')[0];
+    
+    const { data: usageData, error: usageError } = await supabase
+      .from('google_vision_usage')
+      .select('usage_count')
+      .eq('user_id', user.id)
+      .eq('usage_date', today)
+      .single();
+
+    let currentUsage = 0;
+    if (usageData) {
+      currentUsage = usageData.usage_count;
+    }
+
+    console.log(`Current usage for ${today}: ${currentUsage}/50`);
+
+    if (currentUsage >= 50) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Daily Google Vision limit reached (50 images per day). Please try again tomorrow.',
+          dailyLimitReached: true,
+          currentUsage,
+          dailyLimit: 50
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    console.log('Usage check passed, parsing request body...');
     const { imageBase64 } = await req.json();
 
     if (!imageBase64) {
@@ -56,6 +146,9 @@ serve(async (req) => {
                   maxResults: 10,
                 },
               ],
+              imageContext: {
+                languageHints: ['ko', 'en'], // Korean and English
+              },
             },
           ],
         }),
@@ -79,6 +172,22 @@ serve(async (req) => {
       throw new Error(data.responses[0].error.message);
     }
 
+    // Update usage count
+    const { error: updateError } = await supabase
+      .from('google_vision_usage')
+      .upsert({
+        user_id: user.id,
+        usage_date: today,
+        usage_count: currentUsage + 1
+      }, {
+        onConflict: 'user_id,usage_date'
+      });
+
+    if (updateError) {
+      console.error('Error updating usage count:', updateError);
+      // Don't fail the request for usage tracking errors
+    }
+
     const textAnnotations = data.responses?.[0]?.textAnnotations || [];
     
     // Extract text blocks with bounding boxes
@@ -96,13 +205,18 @@ serve(async (req) => {
     // Full detected text
     const fullText = textAnnotations[0]?.description || '';
 
-    console.log(`Google Vision OCR processed successfully. Found ${textBlocks.length} text blocks.`);
+    console.log(`Google Vision OCR processed successfully. Found ${textBlocks.length} text blocks. Usage: ${currentUsage + 1}/50`);
 
     return new Response(
       JSON.stringify({
         success: true,
         fullText,
         textBlocks,
+        usage: {
+          current: currentUsage + 1,
+          limit: 50,
+          remaining: 49 - currentUsage
+        }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

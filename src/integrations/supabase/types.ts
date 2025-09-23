@@ -169,6 +169,33 @@ export type Database = {
           },
         ]
       }
+      google_vision_usage: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          usage_count: number
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          usage_count?: number
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          usage_count?: number
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       items: {
         Row: {
           created_at: string

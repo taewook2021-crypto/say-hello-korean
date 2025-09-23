@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Crown, Calendar, CreditCard, Zap } from 'lucide-react';
+import { Crown, Calendar, CreditCard, Zap, CheckCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export function UserAccount() {
@@ -18,7 +18,7 @@ export function UserAccount() {
   };
 
   const subscriptionTier = profile?.subscription_tier || 'free';
-  const isPremium = subscriptionTier === 'premium';
+  const isPremium = subscriptionTier === 'basic' || subscriptionTier === 'pro';
 
   return (
     <div className="space-y-6 p-6">
@@ -80,58 +80,64 @@ export function UserAccount() {
                 {isPremium ? (
                   <>
                     <Crown className="h-4 w-4 mr-1" />
-                    프리미엄
+                    {subscriptionTier === 'basic' ? '베이직' : '프로'}
                   </>
                 ) : (
                   '무료'
                 )}
               </Badge>
               {isPremium && (
-                <span className="text-sm text-muted-foreground">월 2,900원</span>
+                <span className="text-sm text-muted-foreground">
+                  월 {subscriptionTier === 'basic' ? '4,900원' : '9,900원'}
+                </span>
               )}
             </div>
             {!isPremium && (
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
                     <Crown className="h-4 w-4 mr-2" />
-                    프리미엄 업그레이드
+                    베이직 업그레이드
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <Crown className="h-5 w-5 text-yellow-500" />
-                      프리미엄 구독
+                      베이직 구독
                     </DialogTitle>
                     <DialogDescription>
-                      더 정확하고 무제한적인 학습 경험을 제공합니다
+                      Google Vision AI로 더 정확한 텍스트 인식을 경험하세요
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6 py-4">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-foreground mb-2">월 2,900원</div>
+                      <div className="text-3xl font-bold text-foreground mb-2">월 4,900원</div>
                       <p className="text-sm text-muted-foreground">부가세 포함</p>
                     </div>
 
                     <div className="space-y-3">
-                      <h4 className="font-semibold text-foreground">프리미엄 혜택</h4>
+                      <h4 className="font-semibold text-foreground">베이직 혜택</h4>
                       <ul className="space-y-2 text-sm">
                         <li className="flex items-center gap-2">
                           <Zap className="h-4 w-4 text-primary" />
-                          <span>OCR 정확도 대폭 향상</span>
+                          <span>Google Vision AI 텍스트 인식 (하루 50장)</span>
                         </li>
                         <li className="flex items-center gap-2">
                           <Zap className="h-4 w-4 text-primary" />
-                          <span>과목 및 오답노트 생성 무제한</span>
+                          <span>한국어 인식 정확도 대폭 향상</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-primary" />
+                          <span>무료 사용자 대비 5배 정확한 OCR</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-primary" />
+                          <span>더 많은 GPT 사용량</span>
                         </li>
                         <li className="flex items-center gap-2">
                           <Zap className="h-4 w-4 text-primary" />
                           <span>우선 지원 서비스</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-primary" />
-                          <span>새로운 기능 우선 체험</span>
                         </li>
                       </ul>
                     </div>
@@ -154,20 +160,33 @@ export function UserAccount() {
           {/* 현재 플랜 혜택 */}
           <div className="p-4 rounded-lg bg-muted/30">
             <h4 className="font-medium text-foreground mb-2">
-              {isPremium ? '프리미엄' : '무료'} 플랜 혜택
+              {isPremium ? (subscriptionTier === 'basic' ? '베이직' : '프로') : '무료'} 플랜 혜택
             </h4>
             <ul className="text-sm space-y-1 text-muted-foreground">
               {isPremium ? (
                 <>
-                  <li>• 무제한 과목 및 오답노트 생성</li>
-                  <li>• 고정밀 OCR 인식</li>
-                  <li>• 우선 지원 서비스</li>
-                  <li>• 모든 기능 이용 가능</li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Google Vision AI 텍스트 인식 (하루 50장)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>한국어 인식 정확도 대폭 향상</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>더 많은 GPT 사용량</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>우선 지원 서비스</span>
+                  </li>
                 </>
               ) : (
                 <>
-                  <li>• 기본 OCR 인식</li>
-                  <li>• 제한된 과목 및 오답노트 생성</li>
+                  <li>• 기본 Tesseract OCR 인식만 가능</li>
+                  <li>• Google Vision AI 사용 불가</li>
+                  <li>• 제한된 GPT 사용량</li>
                   <li>• 기본 지원 서비스</li>
                 </>
               )}
