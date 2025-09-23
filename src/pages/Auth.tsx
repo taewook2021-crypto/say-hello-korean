@@ -45,19 +45,13 @@ export default function Auth() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
       {/* Logo Section */}
       <div className="mb-12 text-center">
-        <div className="relative mb-6">
+        <div className="relative mb-8">
           <img 
             src={remindLogo} 
             alt="Re:Mind" 
-            className="h-20 w-auto mx-auto drop-shadow-sm"
+            className="h-32 w-auto mx-auto drop-shadow-lg"
           />
         </div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">
-          Re:Mind
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-md mx-auto">
-          AI 기반 학습 관리 플랫폼
-        </p>
         <p className="text-sm text-muted-foreground mt-2 max-w-lg mx-auto">
           똑똑한 학습 관리로 더 효율적인 공부를 시작하세요
         </p>
@@ -118,18 +112,18 @@ export default function Auth() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h3 className="font-semibold mb-2">스마트 진도 관리</h3>
+          <h3 className="font-semibold mb-2">스마트 진도관리</h3>
           <p className="text-sm text-muted-foreground">과목별 학습 진도를 체계적으로 관리하세요</p>
         </div>
         
         <div className="text-center p-6 rounded-lg bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm">
           <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-4">
             <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <h3 className="font-semibold mb-2">AI 오답노트</h3>
-          <p className="text-sm text-muted-foreground">AI가 분석하는 맞춤형 오답 관리 시스템</p>
+          <h3 className="font-semibold mb-2">단권화</h3>
+          <p className="text-sm text-muted-foreground">핵심 내용을 한 권으로 정리하는 효율적인 학습법</p>
         </div>
         
         <div className="text-center p-6 rounded-lg bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm">
@@ -138,7 +132,7 @@ export default function Auth() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
           </div>
-          <h3 className="font-semibold mb-2">학습 성취 추적</h3>
+          <h3 className="font-semibold mb-2">학습성취 추적</h3>
           <p className="text-sm text-muted-foreground">목표 달성도와 학습 패턴을 한눈에 확인</p>
         </div>
       </div>
