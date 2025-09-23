@@ -267,9 +267,19 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
   const addSubject = async (name: string) => {
     console.log('🟡 addSubject called with:', name);
+    console.log('🟡 Auth loading state:', authLoading);
     console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
-    console.log('🟡 Auth loading:', authLoading);
-    console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
+    
+    // authLoading이 false가 되고 user가 있을 때까지 기다림
+    if (authLoading) {
+      console.error('❌ Still loading authentication');
+      toast({
+        title: "잠시만 기다려주세요",
+        description: "사용자 정보를 불러오는 중입니다.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (!user) {
       console.error('❌ User not authenticated');
