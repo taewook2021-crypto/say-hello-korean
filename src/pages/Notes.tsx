@@ -91,7 +91,16 @@ export default function Notes() {
 
   const loadNotes = async () => {
     try {
-      const { data, error } = await (supabase as any)
+      // Get current user for RLS
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('User not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
         .from('wrong_notes')
         .select('*')
         .eq('subject_name', decodedSubject)
@@ -141,7 +150,19 @@ export default function Notes() {
     }
 
     try {
-      const { data, error } = await (supabase as any)
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "인증 필요",
+          description: "로그인이 필요합니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
         .from('wrong_notes')
         .insert({
           question: newNote.question.trim(),
@@ -151,7 +172,7 @@ export default function Notes() {
           book_name: decodedBook,
           chapter_name: decodedChapter,
           is_resolved: false,
-          user_id: null // 개발 모드에서는 null로 설정
+          user_id: user.id
         })
         .select()
         .single();
@@ -159,15 +180,15 @@ export default function Notes() {
       if (error) throw error;
 
       // 복습 스케줄 생성
-      const { error: scheduleError } = await (supabase as any)
+      const { error: scheduleError } = await supabase
         .from('review_schedule')
         .insert({
           wrong_note_id: data.id,
-          next_review_date: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1일 후
+          next_review_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 1일 후
           interval_days: 1,
           review_count: 0,
           is_completed: false,
-          user_id: null // 개발 모드에서는 null로 설정
+          user_id: user.id
         });
 
       if (scheduleError) {
