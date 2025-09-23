@@ -19,6 +19,7 @@ import {
   Folder,
   User,
   Search,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,11 +27,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const { getSubjectNames, addSubject } = useUnifiedData();
+  const { user, profile, signOut } = useAuth();
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
 
@@ -43,6 +46,14 @@ export function AppSidebar() {
       setIsAddSubjectDialogOpen(false);
     } catch (error) {
       // Error already handled in context
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
     }
   };
 
@@ -154,10 +165,30 @@ export function AppSidebar() {
 
       {/* 푸터 */}
       <SidebarFooter className="p-4 border-t border-border">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30">
-          <User className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">사용자</span>
-        </div>
+        {user && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30">
+              <User className="w-4 h-4 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {profile?.full_name || user.email}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user.email}
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start gap-2"
+              onClick={handleSignOut}
+            >
+              <LogOut className="w-4 h-4" />
+              로그아웃
+            </Button>
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

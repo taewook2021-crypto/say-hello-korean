@@ -126,6 +126,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
             .from('books')
             .select('name')
             .eq('subject_name', subject.name)
+            .eq('user_id', user.id)
             .order('name');
 
           if (booksError) {
@@ -218,14 +219,16 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const migrateLocalDataToSupabase = async (localSubjects: SubjectData[]) => {
+    if (!user) return;
+    
     try {
       for (const subject of localSubjects) {
-        // Save subject to Supabase
+        // Save subject to Supabase with user_id
         await supabase
           .from('subjects')
           .upsert({ 
             name: subject.name,
-            user_id: null
+            user_id: user.id
           }, { 
             ignoreDuplicates: true 
           });
@@ -237,7 +240,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
             .upsert({ 
               name: book.name,
               subject_name: subject.name,
-              user_id: null
+              user_id: user.id
             }, { 
               ignoreDuplicates: true 
             });
@@ -250,7 +253,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
                 name: chapter.name,
                 subject_name: subject.name,
                 book_name: book.name,
-                user_id: null
+                user_id: user.id
               }, { 
                 ignoreDuplicates: true 
               });
@@ -472,28 +475,40 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteBook = async (subjectName: string, bookName: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "교재를 삭제하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Delete all related data hierarchically
+      // Delete all related data hierarchically (only user's data)
       // 1. Delete wrong notes
       await supabase
         .from('wrong_notes')
         .delete()
         .eq('subject_name', subjectName)
-        .eq('book_name', bookName);
+        .eq('book_name', bookName)
+        .eq('user_id', user.id);
 
       // 2. Delete chapters
       await supabase
         .from('chapters')
         .delete()
         .eq('subject_name', subjectName)
-        .eq('book_name', bookName);
+        .eq('book_name', bookName)
+        .eq('user_id', user.id);
 
       // 3. Delete book
       const { error } = await supabase
         .from('books')
         .delete()
         .eq('name', bookName)
-        .eq('subject_name', subjectName);
+        .eq('subject_name', subjectName)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -536,11 +551,14 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshBooksForSubject = async (subjectName: string) => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('books')
         .select('name')
         .eq('subject_name', subjectName)
+        .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
@@ -555,15 +573,24 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addChapter = async (subjectName: string, bookName: string, chapterName: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "단원을 추가하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Save to Supabase
+      // Save to Supabase with user_id
       const { error } = await supabase
         .from('chapters')
         .insert({
           name: chapterName,
           subject_name: subjectName,
           book_name: bookName,
-          user_id: null
+          user_id: user.id
         });
 
       if (error) throw error;
@@ -613,22 +640,33 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteChapter = async (subjectName: string, bookName: string, chapterName: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "단원을 삭제하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Delete related wrong notes first
+      // Delete related wrong notes first (only user's data)
       await supabase
         .from('wrong_notes')
         .delete()
         .eq('subject_name', subjectName)
         .eq('book_name', bookName)
-        .eq('chapter_name', chapterName);
+        .eq('chapter_name', chapterName)
+        .eq('user_id', user.id);
 
-      // Delete chapter
+      // Delete chapter (only user's data)
       const { error } = await supabase
         .from('chapters')
         .delete()
         .eq('name', chapterName)
         .eq('subject_name', subjectName)
-        .eq('book_name', bookName);
+        .eq('book_name', bookName)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 

@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
 import { SearchProvider } from "@/contexts/SearchContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
@@ -36,24 +37,71 @@ const App = () => (
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <AppSidebar />
-
-                <main className="flex-1">
-                  <Routes>
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/" element={<Index />} />
-                    
-                    <Route path="/home" element={<Home />} />
-                     <Route path="/study-tracker" element={<StudyTracker />} />
-                    <Route path="/search" element={<WrongNoteSearch />} />
-                    <Route path="/subject/:subjectName" element={<Subject />} />
-                    <Route path="/subject/:subjectName/wrong-notes" element={<WrongNoteSubject />} />
-                    <Route path="/subject/:subjectName/book/:bookName" element={<Book />} />
-                    <Route path="/notes/:subjectName/:bookName/:chapterName" element={<Notes />} />
-                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/" element={<Index />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/home" element={
+                    <ProtectedRoute>
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <Home />
+                      </main>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/study-tracker" element={
+                    <ProtectedRoute>
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <StudyTracker />
+                      </main>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/search" element={
+                    <ProtectedRoute>
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <WrongNoteSearch />
+                      </main>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/subject/:subjectName" element={
+                    <ProtectedRoute>
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <Subject />
+                      </main>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/subject/:subjectName/wrong-notes" element={
+                    <ProtectedRoute>
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <WrongNoteSubject />
+                      </main>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/subject/:subjectName/book/:bookName" element={
+                    <ProtectedRoute>
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <Book />
+                      </main>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/notes/:subjectName/:bookName/:chapterName" element={
+                    <ProtectedRoute>
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <Notes />
+                      </main>
+                    </ProtectedRoute>
+                  } />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
               </BrowserRouter>
             </div>
           </SidebarProvider>
