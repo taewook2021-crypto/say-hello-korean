@@ -42,7 +42,7 @@ export default function Auth() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
+    <div className="fixed inset-0 w-screen h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 overflow-hidden">
       {/* Main Content - Takes full height */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
         {/* Logo Section */}
