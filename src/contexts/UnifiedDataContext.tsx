@@ -260,6 +260,8 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
           }
         }
       }
+    } catch (error) {
+      console.error('Error migrating to Supabase:', error);
     }
   };
 
