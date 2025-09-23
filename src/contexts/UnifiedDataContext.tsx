@@ -287,15 +287,20 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
     try {
       console.log('➕ Inserting subject to Supabase...');
+      
+      const insertData = {
+        name: trimmedName,
+        user_id: user.id
+      };
+      
+      console.log('📝 Data to insert:', insertData);
+      console.log('🔑 User info:', { id: user.id, email: user.email });
+      
       // Save to Supabase with user_id
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('subjects')
-        .upsert({ 
-          name: trimmedName,
-          user_id: user.id
-        }, { 
-          ignoreDuplicates: true 
-        });
+        .insert(insertData)
+        .select();
 
       if (error) {
         console.error('❌ Error inserting subject - Details:', {
@@ -307,7 +312,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         });
         throw error;
       }
-      console.log('✅ Subject inserted successfully');
+      console.log('✅ Subject inserted successfully', data);
 
       // Update local state
       const newSubject: SubjectData = {
