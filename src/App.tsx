@@ -32,79 +32,103 @@ const App = () => (
           disableTransitionOnChange
         >
         <TooltipProvider>
-          <SidebarProvider defaultOpen={true}>
-            <div className="min-h-screen flex w-full">
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/" element={<Index />} />
-                  
-                  {/* Protected routes */}
-                  <Route path="/home" element={
-                    <ProtectedRoute>
+          <BrowserRouter>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              {/* Public routes - Full screen without sidebar */}
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<Index />} />
+              
+              {/* Protected routes - With sidebar */}
+              <Route path="/home" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
                         <Home />
                       </main>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/study-tracker" element={
-                    <ProtectedRoute>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              <Route path="/study-tracker" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
                         <StudyTracker />
                       </main>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/search" element={
-                    <ProtectedRoute>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              <Route path="/search" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
                         <WrongNoteSearch />
                       </main>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/subject/:subjectName" element={
-                    <ProtectedRoute>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              <Route path="/subject/:subjectName" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
                         <Subject />
                       </main>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/subject/:subjectName/wrong-notes" element={
-                    <ProtectedRoute>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              <Route path="/subject/:subjectName/wrong-notes" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
                         <WrongNoteSubject />
                       </main>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/subject/:subjectName/book/:bookName" element={
-                    <ProtectedRoute>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              <Route path="/subject/:subjectName/book/:bookName" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
                         <Book />
                       </main>
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/notes/:subjectName/:bookName/:chapterName" element={
-                    <ProtectedRoute>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              <Route path="/notes/:subjectName/:bookName/:chapterName" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
                         <Notes />
                       </main>
-                    </ProtectedRoute>
-                  } />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </div>
-          </SidebarProvider>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
       </SearchProvider>
