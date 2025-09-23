@@ -298,7 +298,13 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         });
 
       if (error) {
-        console.error('❌ Error inserting subject:', error);
+        console.error('❌ Error inserting subject - Details:', {
+          error: error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
       console.log('✅ Subject inserted successfully');
