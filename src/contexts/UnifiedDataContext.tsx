@@ -390,7 +390,11 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addBook = async (subjectName: string, bookName: string, maxRounds: number = 3) => {
+    console.log('🟡 addBook called with:', { subjectName, bookName, maxRounds });
+    console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
+    
     if (!user) {
+      console.error('❌ User not authenticated');
       toast({
         title: "로그인 필요",
         description: "교재를 추가하려면 로그인해주세요.",
@@ -400,11 +404,15 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
 
     const trimmedBookName = bookName.trim();
-    if (!trimmedBookName) return;
+    if (!trimmedBookName) {
+      console.error('❌ Book name is empty');
+      return;
+    }
 
     try {
+      console.log('🔍 Checking if book already exists...');
       // Check if book already exists for this user
-      const { data: existingBook } = await supabase
+      const { data: existingBook, error: checkError } = await supabase
         .from('books')
         .select('id')
         .eq('name', trimmedBookName)
@@ -412,7 +420,15 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .maybeSingle();
 
+      if (checkError) {
+        console.error('❌ Error checking existing book:', checkError);
+        throw checkError;
+      }
+
+      console.log('🔍 Existing book check result:', existingBook);
+
       if (!existingBook) {
+        console.log('➕ Inserting new book to Supabase...');
         // Save to Supabase with user_id
         const { error } = await supabase
           .from('books')
@@ -422,7 +438,13 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
             user_id: user.id
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Error inserting book:', error);
+          throw error;
+        }
+        console.log('✅ Book inserted successfully');
+      } else {
+        console.log('ℹ️ Book already exists');
       }
 
       // Create new study data

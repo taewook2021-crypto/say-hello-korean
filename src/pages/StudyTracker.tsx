@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StudyTable } from "@/components/study/StudyTable";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
 interface StudyData {
@@ -46,6 +46,7 @@ interface BookFolder {
 }
 
 export default function StudyTracker() {
+  const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newSubject, setNewSubject] = useState("");
   const [newTextbook, setNewTextbook] = useState("");
@@ -81,18 +82,30 @@ export default function StudyTracker() {
 
   const handleCreateStudyPlan = async () => {
     if (!newSubject.trim() || !newTextbook.trim()) {
-      toast.error("과목명과 교재명을 입력해주세요.");
+      toast({
+        title: "오류",
+        description: "과목명과 교재명을 입력해주세요.",
+        variant: "destructive"
+      });
       return;
     }
 
     if (!maxRounds || parseInt(maxRounds) < 1) {
-      toast.error("회독 수를 입력해주세요. (1회 이상)");
+      toast({
+        title: "오류",
+        description: "회독 수를 입력해주세요. (1회 이상)",
+        variant: "destructive"
+      });
       return;
     }
 
     const maxRoundsNumber = parseInt(maxRounds);
     if (maxRoundsNumber > 10) {
-      toast.error("회독 수는 10회 이하여야 합니다.");
+      toast({
+        title: "오류",
+        description: "회독 수는 10회 이하여야 합니다.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -112,10 +125,17 @@ export default function StudyTracker() {
       setMaxRounds("");
       setIsCreateDialogOpen(false);
       
-      toast.success("회독표가 생성되었습니다! 이제 단원을 추가해보세요.");
+      toast({
+        title: "성공",
+        description: "회독표가 생성되었습니다! 이제 단원을 추가해보세요."
+      });
     } catch (error) {
       console.error('Error creating study plan:', error);
-      toast.error("회독표 생성 중 오류가 발생했습니다.");
+      toast({
+        title: "오류",
+        description: "회독표 생성 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -128,18 +148,30 @@ export default function StudyTracker() {
 
   const handleCreateBookForSubject = async () => {
     if (!newBookName.trim()) {
-      toast.error("교재명을 입력해주세요.");
+      toast({
+        title: "오류",
+        description: "교재명을 입력해주세요.",
+        variant: "destructive"
+      });
       return;
     }
 
     if (!newBookMaxRounds || parseInt(newBookMaxRounds) < 1) {
-      toast.error("회독 수를 입력해주세요. (1회 이상)");
+      toast({
+        title: "오류",
+        description: "회독 수를 입력해주세요. (1회 이상)",
+        variant: "destructive"
+      });
       return;
     }
 
     const maxRoundsNumber = parseInt(newBookMaxRounds);
     if (maxRoundsNumber > 10) {
-      toast.error("회독 수는 10회 이하여야 합니다.");
+      toast({
+        title: "오류",
+        description: "회독 수는 10회 이하여야 합니다.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -152,10 +184,17 @@ export default function StudyTracker() {
       setNewBookMaxRounds("");
       setSelectedSubjectForBook("");
       
-      toast.success("교재가 추가되었습니다!");
+      toast({
+        title: "성공",
+        description: "교재가 추가되었습니다!"
+      });
     } catch (error) {
       console.error('Error adding book:', error);
-      toast.error("교재 추가 중 오류가 발생했습니다.");
+      toast({
+        title: "오류",
+        description: "교재 추가 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -169,10 +208,17 @@ export default function StudyTracker() {
     
     try {
       await deleteChapter(chapterToDelete.subject, chapterToDelete.book, chapterToDelete.chapter);
-      toast.success("단원이 삭제되었습니다.");
+      toast({
+        title: "성공",
+        description: "단원이 삭제되었습니다."
+      });
     } catch (error) {
       console.error('Error deleting chapter:', error);
-      toast.error("단원 삭제 중 오류가 발생했습니다.");
+      toast({
+        title: "오류",
+        description: "단원 삭제 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
     } finally {
       setIsDeleteAlertOpen(false);
       setChapterToDelete(null);
