@@ -410,7 +410,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         .eq('name', trimmedBookName)
         .eq('subject_name', subjectName)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!existingBook) {
         // Save to Supabase with user_id
