@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from './AuthContext';
 
 interface StudyData {
   id: string;
@@ -59,13 +60,27 @@ interface UnifiedDataContextType {
 const UnifiedDataContext = createContext<UnifiedDataContextType | undefined>(undefined);
 
 export function UnifiedDataProvider({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [subjects, setSubjects] = useState<SubjectData[]>([]);
   const [subjectBooks, setSubjectBooks] = useState<{ [key: string]: string[] }>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Supabase 실시간 구독 설정
+  // Load data when user is authenticated
   useEffect(() => {
+    if (!authLoading && user) {
+      loadSubjects();
+    } else if (!authLoading && !user) {
+      // Clear data when user is not authenticated
+      setSubjects([]);
+      setSubjectBooks({});
+      setLoading(false);
+    }
+  }, [user, authLoading]);
+  // Supabase real-time subscription
+  useEffect(() => {
+    if (!user) return;
+
     const channel = supabase
       .channel('unified-data-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'subjects' }, () => {
@@ -85,15 +100,18 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   const loadSubjects = async () => {
+    if (!user) return;
+    
     setLoading(true);
     try {
-      // Load from Supabase (primary source)
+      // Load user's subjects from Supabase
       const { data: supabaseSubjects, error: subjectsError } = await supabase
         .from('subjects')
         .select('name')
+        .eq('user_id', user.id)
         .order('name');
 
       if (subjectsError) {
@@ -245,16 +263,25 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addSubject = async (name: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "과목을 추가하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const trimmedName = name.trim();
     if (!trimmedName) return;
 
     try {
-      // Save to Supabase first
+      // Save to Supabase with user_id
       const { error } = await supabase
         .from('subjects')
         .upsert({ 
           name: trimmedName,
-          user_id: null
+          user_id: user.id
         }, { 
           ignoreDuplicates: true 
         });
@@ -292,31 +319,44 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteSubject = async (name: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "과목을 삭제하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Delete all related data hierarchically
+      // Delete all related data hierarchically (only user's data)
       // 1. Delete wrong notes
       await supabase
         .from('wrong_notes')
         .delete()
-        .eq('subject_name', name);
+        .eq('subject_name', name)
+        .eq('user_id', user.id);
 
       // 2. Delete chapters
       await supabase
         .from('chapters')
         .delete()
-        .eq('subject_name', name);
+        .eq('subject_name', name)
+        .eq('user_id', user.id);
 
       // 3. Delete books
       await supabase
         .from('books')
         .delete()
-        .eq('subject_name', name);
+        .eq('subject_name', name)
+        .eq('user_id', user.id);
 
       // 4. Delete subject
       const { error } = await supabase
         .from('subjects')
         .delete()
-        .eq('name', name);
+        .eq('name', name)
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -347,26 +387,36 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addBook = async (subjectName: string, bookName: string, maxRounds: number = 3) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "교재를 추가하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const trimmedBookName = bookName.trim();
     if (!trimmedBookName) return;
 
     try {
-      // Check if book already exists
+      // Check if book already exists for this user
       const { data: existingBook } = await supabase
         .from('books')
         .select('id')
         .eq('name', trimmedBookName)
         .eq('subject_name', subjectName)
+        .eq('user_id', user.id)
         .single();
 
       if (!existingBook) {
-        // Save to Supabase first
+        // Save to Supabase with user_id
         const { error } = await supabase
           .from('books')
           .insert({ 
             name: trimmedBookName,
             subject_name: subjectName,
-            user_id: null
+            user_id: user.id
           });
 
         if (error) throw error;
