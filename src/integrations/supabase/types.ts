@@ -871,6 +871,84 @@ export type Database = {
         }
         Relationships: []
       }
+      wrong_notes_backup: {
+        Row: {
+          backup_timestamp: string
+          book_name: string
+          chapter_name: string
+          created_at: string
+          explanation: string | null
+          id: string
+          is_resolved: boolean
+          operation_type: string
+          original_note_id: string
+          question: string
+          round_number: number | null
+          source_text: string
+          subject_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backup_timestamp?: string
+          book_name: string
+          chapter_name: string
+          created_at: string
+          explanation?: string | null
+          id?: string
+          is_resolved?: boolean
+          operation_type: string
+          original_note_id: string
+          question: string
+          round_number?: number | null
+          source_text: string
+          subject_name: string
+          updated_at: string
+          user_id: string
+        }
+        Update: {
+          backup_timestamp?: string
+          book_name?: string
+          chapter_name?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          is_resolved?: boolean
+          operation_type?: string
+          original_note_id?: string
+          question?: string
+          round_number?: number | null
+          source_text?: string
+          subject_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wrong_notes_daily_backup: {
+        Row: {
+          backup_data: Json
+          backup_date: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          backup_data: Json
+          backup_date?: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          backup_data?: Json
+          backup_date?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

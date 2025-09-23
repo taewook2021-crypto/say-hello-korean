@@ -36,54 +36,6 @@ const Home = () => {
   const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
   const { user, profile, loading: authLoading, signOut } = useAuth();
 
-  // Export user data as JSON
-  const exportUserData = async () => {
-    if (!user) return;
-    
-    try {
-      const [subjectsData, booksData, chaptersData, wrongNotesData, studyProgressData] = await Promise.all([
-        supabase.from('subjects').select('*').eq('user_id', user.id),
-        supabase.from('books').select('*').eq('user_id', user.id),
-        supabase.from('chapters').select('*').eq('user_id', user.id),
-        supabase.from('wrong_notes').select('*').eq('user_id', user.id),
-        supabase.from('study_progress').select('*').eq('user_id', user.id)
-      ]);
-
-      const exportData = {
-        exportDate: new Date().toISOString(),
-        userInfo: { email: profile?.email, fullName: profile?.full_name },
-        subjects: subjectsData.data || [],
-        books: booksData.data || [],
-        chapters: chaptersData.data || [],
-        wrongNotes: wrongNotesData.data || [],
-        studyProgress: studyProgressData.data || []
-      };
-
-      const dataStr = JSON.stringify(exportData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `aro-study-backup-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "백업 완료",
-        description: "학습 데이터가 성공적으로 내보내졌습니다."
-      });
-    } catch (error) {
-      console.error('Export error:', error);
-      toast({
-        variant: "destructive",
-        title: "백업 실패",
-        description: "데이터 내보내기 중 오류가 발생했습니다."
-      });
-    }
-  };
 
   // Redirect to auth if not authenticated
   useEffect(() => {
@@ -188,9 +140,6 @@ const Home = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={exportUserData}>
-              📦 백업
-            </Button>
             <Button variant="outline" size="sm">
               <Search className="h-4 w-4 mr-2" />
               검색
