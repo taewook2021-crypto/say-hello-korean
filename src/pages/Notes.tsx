@@ -860,6 +860,12 @@ export default function Notes() {
         )}
       </div>
 
+      {/* OCR Camera */}
+      <OCRCamera
+        isOpen={showOCR}
+        onClose={() => setShowOCR(false)}
+        onTextExtracted={handleOCRResult}
+      />
     </div>
   );
 }
