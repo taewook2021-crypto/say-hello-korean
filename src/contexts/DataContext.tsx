@@ -62,21 +62,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addSubject = async (name: string) => {
-    if (!user) {
-      toast({
-        title: "로그인 필요",
-        description: "과목을 추가하려면 로그인해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
+      // 직접 supabase에서 user 정보 가져오기
+      const { data: { user: currentUser }, error: userErr } = await supabase.auth.getUser();
+      
+      if (userErr || !currentUser) {
+        console.error('❌ DataContext - User not authenticated:', userErr);
+        toast({
+          title: "로그인 필요",
+          description: "과목을 추가하려면 로그인해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('📍 DataContext addSubject - User ID:', currentUser.id);
+      
       const { error } = await supabase
         .from('subjects')
         .insert({ 
           name: name.trim(),
-          user_id: user.id
+          user_id: currentUser.id
         });
 
       if (error) throw error;
