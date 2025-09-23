@@ -266,8 +266,9 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addSubject = async (name: string) => {
-    alert('addSubject 함수 호출됨: ' + name);
     console.log('🟡 addSubject called with:', name);
+    console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
+    console.log('🟡 Auth loading:', authLoading);
     console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
     
     if (!user) {
