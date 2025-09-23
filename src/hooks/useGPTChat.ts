@@ -13,6 +13,8 @@ export function useGPTChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>('gpt-4o-mini');
+  
+  // GPT 기능 일시 비활성화
 
   const addMessage = useCallback((role: 'user' | 'assistant', content: string) => {
     const newMessage: Message = {
@@ -28,6 +30,12 @@ export function useGPTChat() {
   const sendMessage = useCallback(async (userMessage: string, pdfContent?: string, modelName?: string, currentSubject?: string) => {
     if (!userMessage.trim()) return;
 
+    // GPT 기능 일시 비활성화 - 에러 메시지 반환
+    addMessage('user', userMessage);
+    addMessage('assistant', 'GPT 기능이 일시적으로 비활성화되었습니다. 잠시 후 다시 이용해주세요.');
+    return { response: 'GPT 기능이 일시적으로 비활성화되었습니다.' };
+
+    /* 원래 코드 - 나중에 활성화할 때 주석 해제
     const modelToUse = modelName || selectedModel;
 
     // 사용자 메시지 추가
@@ -72,6 +80,7 @@ export function useGPTChat() {
     } finally {
       setIsLoading(false);
     }
+    */
   }, [messages, addMessage, selectedModel]);
 
   const clearMessages = useCallback(() => {

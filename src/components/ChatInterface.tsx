@@ -177,8 +177,9 @@ export default function ChatInterface({
       </Card>
       </div>
 
-      {/* 사이드바: 모델 선택 및 사용량 */}
+      {/* 사이드바: 모델 선택 및 사용량 - GPT 기능 일시 비활성화 */}
       <div className="w-80 space-y-4">
+        {/* GPT 기능 일시 비활성화
         <Card>
           <CardContent className="p-4">
             <ModelSelector
@@ -191,6 +192,7 @@ export default function ChatInterface({
             />
           </CardContent>
         </Card>
+        */}
 
         <UsageIndicator
           usageData={usageData}

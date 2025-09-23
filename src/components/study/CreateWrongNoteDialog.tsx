@@ -231,6 +231,7 @@ export function CreateWrongNoteDialog({
             <div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="answer">정답 *</Label>
+                {/* GPT 기능 일시 비활성화
                 <Button
                   type="button"
                   variant="outline"
@@ -251,6 +252,7 @@ export function CreateWrongNoteDialog({
                     </>
                   )}
                 </Button>
+                */}
               </div>
               <Textarea
                 id="answer"
