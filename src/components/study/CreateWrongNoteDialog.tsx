@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Camera } from "lucide-react";
+import OCRCamera from "@/components/OCRCamera";
 
 interface StudyData {
   id: string;
@@ -65,9 +66,15 @@ export function CreateWrongNoteDialog({
   const [problemText, setProblemText] = useState("");
   const [answer, setAnswer] = useState("");
   const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
+  const [showOCR, setShowOCR] = useState(false);
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
+
+  const handleOCRResult = (text: string) => {
+    setProblemText(prev => prev + text);
+    setShowOCR(false);
+  };
 
   const generateAnswerWithGPT = async () => {
     if (!problemText.trim()) {
@@ -177,80 +184,102 @@ export function CreateWrongNoteDialog({
     // 폼 초기화
     setProblemText("");
     setAnswer("");
+    setShowOCR(false);
     onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="text-lg">{status}</span>
-            오답노트 작성
-          </DialogTitle>
-          <DialogDescription>
-            {studyData.subject} &gt; {studyData.textbook} &gt; {chapterName} &gt; {problemNumber}번 문제
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-lg">{status}</span>
+              오답노트 작성
+            </DialogTitle>
+            <DialogDescription>
+              {studyData.subject} &gt; {studyData.textbook} &gt; {chapterName} &gt; {problemNumber}번 문제
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {/* 문제 내용 */}
-          <div>
-            <Label htmlFor="problemText">문제 *</Label>
-            <Textarea
-              id="problemText"
-              value={problemText}
-              onChange={(e) => setProblemText(e.target.value)}
-              placeholder="문제를 입력하거나 설명을 작성해주세요..."
-              className="min-h-24"
-            />
-          </div>
+          <div className="space-y-4">
+            {/* 문제 내용 */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="problemText">문제 *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowOCR(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  카메라로 입력
+                </Button>
+              </div>
+              <Textarea
+                id="problemText"
+                value={problemText}
+                onChange={(e) => setProblemText(e.target.value)}
+                placeholder="문제를 입력하거나 설명을 작성해주세요..."
+                className="min-h-24 mt-2"
+              />
+            </div>
 
-          {/* 정답 */}
-          <div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="answer">정답 *</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={generateAnswerWithGPT}
-                disabled={isGeneratingAnswer || !problemText.trim()}
-                className="flex items-center gap-2"
-              >
-                {isGeneratingAnswer ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    생성 중...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    GPT 해설 생성
-                  </>
-                )}
+            {/* 정답 */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="answer">정답 *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={generateAnswerWithGPT}
+                  disabled={isGeneratingAnswer || !problemText.trim()}
+                  className="flex items-center gap-2"
+                >
+                  {isGeneratingAnswer ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      생성 중...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      GPT 해설 생성
+                    </>
+                  )}
+                </Button>
+              </div>
+              <Textarea
+                id="answer"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                placeholder="정답과 풀이 과정을 작성해주세요..."
+                className="min-h-24 mt-2"
+              />
+            </div>
+
+            {/* 버튼 */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={handleCancel}>
+                취소
+              </Button>
+              <Button onClick={handleSave}>
+                저장하기
               </Button>
             </div>
-            <Textarea
-              id="answer"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="정답과 풀이 과정을 작성해주세요..."
-              className="min-h-24 mt-2"
-            />
           </div>
+        </DialogContent>
+      </Dialog>
 
-          {/* 버튼 */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={handleCancel}>
-              취소
-            </Button>
-            <Button onClick={handleSave}>
-              저장하기
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* OCR Camera Modal */}
+      <OCRCamera
+        isOpen={showOCR}
+        onClose={() => setShowOCR(false)}
+        onTextExtracted={handleOCRResult}
+      />
+    </>
   );
 }

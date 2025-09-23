@@ -21,7 +21,7 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
-  const isPremiumUser = false; // 인증 기능 제거됨
+  const isPremiumUser = true; // Google Vision 활성화
 
   const takePicture = async () => {
     try {
