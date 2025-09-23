@@ -9,7 +9,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
-import { UserInfo } from "@/components/UserInfo";
 import { useToast } from "@/hooks/use-toast";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -207,8 +206,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 사용자 정보 (디버깅용) */}
-      {user && <UserInfo />}
 
       {/* Search Results or Today's Reviews */}
       <div className="mb-12">

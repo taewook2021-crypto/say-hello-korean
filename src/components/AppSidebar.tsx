@@ -20,6 +20,7 @@ import {
   User,
   Search,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { UserAccount } from "@/components/UserAccount";
 
 export function AppSidebar() {
   const location = useLocation();
@@ -36,6 +38,7 @@ export function AppSidebar() {
   const { user, profile, signOut } = useAuth();
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
+  const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
 
   const subjects = getSubjectNames();
 
@@ -178,15 +181,32 @@ export function AppSidebar() {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full justify-start gap-2"
-              onClick={handleSignOut}
-            >
-              <LogOut className="w-4 h-4" />
-              로그아웃
-            </Button>
+            <div className="space-y-1">
+              <Dialog open={isAccountDialogOpen} onOpenChange={setIsAccountDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start gap-2"
+                  >
+                    <Settings className="w-4 h-4" />
+                    계정 관리
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <UserAccount />
+                </DialogContent>
+              </Dialog>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start gap-2"
+                onClick={handleSignOut}
+              >
+                <LogOut className="w-4 h-4" />
+                로그아웃
+              </Button>
+            </div>
           </div>
         )}
       </SidebarFooter>
