@@ -287,22 +287,27 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // 세션/유저 확인
-      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      // "과목 추가" 버튼 클릭 전에 세션 확인
+      const { data: { user } } = await supabase.auth.getUser();
       console.log('🔍 User check:', user ? { id: user.id, email: user.email } : 'No user');
       
-      if (userErr || !user) {
-        console.error("No user:", userErr);
-        toast({
-          title: "로그인 필요",
-          description: "과목을 추가하려면 로그인해주세요.",
-          variant: "destructive",
+      if (!user) {
+        console.log('❌ No user - redirecting to Google OAuth');
+        // 로그인 유도 (구글 OAuth)
+        await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { 
+            redirectTo: `${window.location.origin}/` 
+          }
         });
-        return;
+        return; // 콜백에서 세션 교환 후 다시 들어오게
       }
 
-      // INSERT (user_id 포함, representation으로 응답받기)
-      const payload = { name: trimmedName, user_id: user.id };
+      // 실제 INSERT 시 user_id: user.id 포함(지금 에러의 핵심)
+      const payload = { 
+        name: trimmedName, 
+        user_id: user.id 
+      };
       console.log('📝 Insert payload:', payload);
       
       const { data, error } = await supabase
