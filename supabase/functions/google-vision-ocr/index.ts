@@ -100,10 +100,11 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Daily Google Vision limit reached (50 images per day). Please try again tomorrow.',
+          error: 'Daily Google Vision limit reached (50 images per day). Falling back to Tesseract OCR.',
           dailyLimitReached: true,
           currentUsage,
-          dailyLimit: 50
+          dailyLimit: 50,
+          canFallbackToTesseract: true
         }),
         {
           status: 429,

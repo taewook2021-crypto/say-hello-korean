@@ -26,6 +26,7 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
   const [dragStart, setDragStart] = useState<{x: number, y: number} | null>(null);
   const [selectedText, setSelectedText] = useState<string>("");
   const [dailyUsage, setDailyUsage] = useState<{current: number, limit: number} | null>(null);
+  const [isUsingTesseractFallback, setIsUsingTesseractFallback] = useState(false);
   
   const subscriptionTier = profile?.subscription_tier || 'free';
   const isPremiumUser = subscriptionTier === 'basic' || subscriptionTier === 'pro';
@@ -195,8 +196,12 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
       });
 
       if (error) {
-        if (error.message?.includes('Daily Google Vision limit reached')) {
-          toast.error('일일 Google Vision 사용 한도에 도달했습니다 (50장/일). 내일 다시 시도해주세요.');
+        // Check if it's a daily limit error - fallback to Tesseract
+        if (error.message?.includes('Daily Google Vision limit reached') || error.message?.includes('daily limit')) {
+          console.log('Google Vision daily limit reached, falling back to Tesseract OCR');
+          setIsUsingTesseractFallback(true);
+          toast.info('Google Vision 일일 한도 초과! Tesseract OCR로 자동 전환됩니다.');
+          await processOCRWithTesseract(imageDataUrl);
           return;
         }
         throw new Error(`Supabase function error: ${error.message}`);
@@ -208,7 +213,10 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
           return;
         }
         if (data?.dailyLimitReached) {
-          toast.error(`일일 사용 한도에 도달했습니다 (${data.currentUsage}/${data.dailyLimit}). 내일 다시 시도해주세요.`);
+          console.log('Google Vision daily limit reached, falling back to Tesseract OCR');
+          setIsUsingTesseractFallback(true);
+          toast.info('Google Vision 일일 한도 초과! Tesseract OCR로 자동 전환됩니다.');
+          await processOCRWithTesseract(imageDataUrl);
           return;
         }
         throw new Error(data?.error || 'Google Vision OCR failed');
@@ -216,19 +224,24 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
 
       if (data.fullText) {
         setSelectedText(data.fullText.trim());
+        setIsUsingTesseractFallback(false);
         
         // Update daily usage display
         if (data.usage) {
           setDailyUsage({ current: data.usage.current, limit: data.usage.limit });
         }
         
-        toast.success(`텍스트 추출 완료! (${data.usage?.current || '?'}/${data.usage?.limit || 50} 사용)`);
+        toast.success(`텍스트 추출 완료! (Google Vision ${data.usage?.current || '?'}/${data.usage?.limit || 50} 사용)`);
       } else {
         throw new Error('텍스트를 추출할 수 없습니다.');
       }
     } catch (error) {
       console.error('Google Vision OCR error:', error);
-      throw error;
+      // Final fallback to Tesseract for any other errors
+      console.log('Google Vision failed, falling back to Tesseract OCR');
+      setIsUsingTesseractFallback(true);
+      toast.info('Google Vision 오류 발생! Tesseract OCR로 자동 전환됩니다.');
+      await processOCRWithTesseract(imageDataUrl);
     }
   };
 
@@ -241,6 +254,13 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
       setSelectedText(recognizedText);
       
       await worker.terminate();
+      
+      // Show success message with appropriate context
+      if (isUsingTesseractFallback) {
+        toast.success('텍스트 추출 완료! (Tesseract OCR 사용)');
+      } else {
+        toast.success('텍스트 추출 완료! (Tesseract OCR)');
+      }
     } catch (error) {
       console.error('Tesseract OCR error:', error);
       throw error;
@@ -261,6 +281,7 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
     setIsDragging(false);
     setDragStart(null);
     setDailyUsage(null);
+    setIsUsingTesseractFallback(false);
   };
 
   const handleClose = () => {
@@ -309,13 +330,13 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
             텍스트 추출 
             {isPremiumUser ? (
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="bg-gradient-to-r from-blue-500 to-purple-600">
+                <Badge variant="default" className={isUsingTesseractFallback ? "bg-amber-500" : "bg-gradient-to-r from-blue-500 to-purple-600"}>
                   <Crown className="h-3 w-3 mr-1" />
-                  Premium (Google Vision)
+                  {isUsingTesseractFallback ? "Premium (Tesseract 사용 중)" : "Premium (Google Vision)"}
                 </Badge>
                 {dailyUsage && (
                   <Badge variant="outline" className="text-xs">
-                    {dailyUsage.current}/{dailyUsage.limit} 사용
+                    {dailyUsage.current >= dailyUsage.limit ? "한도 초과 - Tesseract 사용" : `${dailyUsage.current}/${dailyUsage.limit} 사용`}
                   </Badge>
                 )}
               </div>
@@ -333,7 +354,9 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               {isPremiumUser 
-                ? "카메라로 촬영하거나 갤러리에서 이미지를 선택하세요. Google Vision AI로 정확한 텍스트 인식을 제공합니다."
+                ? (dailyUsage && dailyUsage.current >= dailyUsage.limit 
+                   ? "Google Vision 일일 한도에 도달했습니다. Tesseract OCR을 사용합니다." 
+                   : "카메라로 촬영하거나 갤러리에서 이미지를 선택하세요. Google Vision AI로 정확한 텍스트 인식을 제공합니다.")
                 : "카메라로 촬영하거나 갤러리에서 이미지를 선택하세요. 기본 Tesseract OCR을 사용합니다."
               }
             </p>
@@ -360,7 +383,9 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
                 💡 {isPremiumUser 
-                  ? "사진에서 추출하고 싶은 텍스트 영역을 드래그하여 선택하세요. Google Vision AI가 정확하게 인식합니다."
+                  ? (isUsingTesseractFallback || (dailyUsage && dailyUsage.current >= dailyUsage.limit)
+                     ? "사진에서 추출하고 싶은 텍스트 영역을 드래그하여 선택하세요. Tesseract OCR로 처리됩니다."
+                     : "사진에서 추출하고 싶은 텍스트 영역을 드래그하여 선택하세요. Google Vision AI가 정확하게 인식합니다.")
                   : "사진에서 추출하고 싶은 텍스트 영역을 드래그하여 선택하세요. 기본 OCR로 처리됩니다."
                 }
               </p>
@@ -397,7 +422,9 @@ const OCRCamera: React.FC<OCRCameraProps> = ({ onTextExtracted, isOpen, onClose 
                 <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {isPremiumUser 
-                    ? "Google Vision AI로 텍스트를 인식하고 있습니다..."
+                    ? (isUsingTesseractFallback || (dailyUsage && dailyUsage.current >= dailyUsage.limit)
+                       ? "Tesseract OCR로 텍스트를 인식하고 있습니다..."
+                       : "Google Vision AI로 텍스트를 인식하고 있습니다...")
                     : "Tesseract OCR로 텍스트를 인식하고 있습니다..."
                   }
                 </p>
