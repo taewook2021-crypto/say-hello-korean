@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useSearch } from "@/contexts/SearchContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const Home = () => {
@@ -33,6 +34,29 @@ const Home = () => {
   const { toast } = useToast();
   const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames } = useUnifiedData();
   const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
+  const { user, profile, loading: authLoading, signOut } = useAuth();
+
+  // Redirect to auth if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   const loadBooksForSubject = async (subjectName: string) => {
     // UnifiedData에서는 이미 책 정보가 있으므로 별도 로딩 불필요
@@ -119,6 +143,12 @@ const Home = () => {
               <Search className="h-4 w-4 mr-2" />
               검색
             </Button>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="font-medium">{profile?.full_name || profile?.email}</span>
+              <Button variant="outline" size="sm" onClick={signOut}>
+                로그아웃
+              </Button>
+            </div>
             <ThemeToggle />
           </div>
         </div>

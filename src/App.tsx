@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { UnifiedDataProvider } from "@/contexts/UnifiedDataContext";
 import { SearchProvider } from "@/contexts/SearchContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Notes from "./pages/Notes";
 import Subject from "./pages/Subject";
 import Book from "./pages/Book";
@@ -16,11 +17,13 @@ import StudyTracker from "./pages/StudyTracker";
 import WrongNoteSearch from "./pages/WrongNoteSearch";
 
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
-      <UnifiedDataProvider>
-        <SearchProvider>
+  <AuthProvider>
+    <UnifiedDataProvider>
+      <SearchProvider>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -37,6 +40,7 @@ const App = () => (
 
                 <main className="flex-1">
                   <Routes>
+                    <Route path="/auth" element={<Auth />} />
                     <Route path="/" element={<Index />} />
                     
                     <Route path="/home" element={<Home />} />
@@ -55,8 +59,9 @@ const App = () => (
           </SidebarProvider>
         </TooltipProvider>
       </ThemeProvider>
-    </SearchProvider>
-  </UnifiedDataProvider>
+      </SearchProvider>
+    </UnifiedDataProvider>
+  </AuthProvider>
 );
 
 export default App;
