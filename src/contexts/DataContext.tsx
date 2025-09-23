@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from './AuthContext';
 
 interface DataContextType {
   subjects: string[];
@@ -17,13 +18,11 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [subjects, setSubjects] = useState<string[]>([]);
   const [subjectBooks, setSubjectBooks] = useState<{ [key: string]: string[] }>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  
-  // 임시 더미 사용자 ID (인증 제거)
-  const dummyUserId = 'dummy-user-id';
 
   const refreshSubjects = async () => {
     try {
@@ -63,12 +62,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addSubject = async (name: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "과목을 추가하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('subjects')
         .insert({ 
           name: name.trim(),
-          user_id: dummyUserId
+          user_id: user.id
         });
 
       if (error) throw error;
@@ -122,13 +130,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const addBook = async (subjectName: string, bookName: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "교재를 추가하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('books')
         .insert({ 
           name: bookName.trim(),
           subject_name: subjectName,
-          user_id: dummyUserId
+          user_id: user.id
         });
 
       if (error) throw error;
