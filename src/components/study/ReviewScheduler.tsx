@@ -182,25 +182,44 @@ export function ReviewScheduler({ subject, book, chapter }: ReviewSchedulerProps
   };
 
   const calculateNextInterval = (currentInterval: number, easeFactor: number, performance: number): number => {
-    // 새로운 에빙하우스 망각곡선: 20분 → 당일 자정 → 1일 → 2일 → 3일...
+    // 에빙하우스 망각곡선에 따른 최적 복습 간격
+    // 20분 → 1일 → 3일 → 7일 → 14일 → 30일
+    const ebbinghausIntervals = [0, 1, 3, 7, 14, 30];
+    
     if (performance < 3) {
-      // 성과가 낮으면 20분으로 리셋
+      // 성과가 낮으면 20분 후 다시 복습 (처음부터 시작)
       return 0; // 0은 20분을 의미
     }
     
-    if (currentInterval === 0) { // 20분 후
-      return -1; // -1은 당일 자정을 의미
+    // 현재 단계 찾기
+    let currentStage = 0;
+    if (currentInterval === 0) {
+      currentStage = 0; // 20분 단계
+    } else {
+      // 현재 간격에 맞는 단계 찾기
+      for (let i = 1; i < ebbinghausIntervals.length; i++) {
+        if (currentInterval <= ebbinghausIntervals[i]) {
+          currentStage = i;
+          break;
+        }
+      }
+      // 최대 단계를 넘어선 경우
+      if (currentStage === 0) {
+        currentStage = ebbinghausIntervals.length - 1;
+      }
     }
     
-    if (currentInterval === -1) { // 당일 자정 후
-      return 1; // 1일 후
+    // 다음 단계로 진행
+    if (currentStage === 0) {
+      // 20분 → 1일
+      return ebbinghausIntervals[1];
+    } else if (currentStage < ebbinghausIntervals.length - 1) {
+      // 다음 에빙하우스 단계로
+      return ebbinghausIntervals[currentStage + 1];
+    } else {
+      // 마지막 단계에서는 30일씩 계속 연장
+      return currentInterval + 30;
     }
-    
-    // 1일부터는 매일 1일씩 증가
-    return currentInterval + 1;
-    
-    // 성과가 좋으면 에빙하우스 곡선에 따라 간격 증가
-    return Math.floor(currentInterval * easeFactor);
   };
 
   const calculateNewEaseFactor = (currentEF: number, performance: number): number => {
