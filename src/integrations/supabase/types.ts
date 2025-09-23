@@ -867,6 +867,10 @@ export type Database = {
           monthly_used: number
         }[]
       }
+      debug_auth_info: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       update_usage_tracking: {
         Args: {
           p_input_tokens: number
