@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Brain, AlertCircle, Plus } from "lucide-react";
+import { Calendar, Clock, Brain, AlertCircle, FileDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,14 +32,11 @@ export function ReviewScheduler({ subject, book, chapter }: ReviewSchedulerProps
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([]);
   const [todayReviews, setTodayReviews] = useState<ReviewItem[]>([]);
   const [upcomingReviews, setUpcomingReviews] = useState<ReviewItem[]>([]);
-  const [availableNotes, setAvailableNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     loadReviewSchedule();
-    loadAvailableNotes();
   }, [subject, book, chapter]);
 
   const loadReviewSchedule = async () => {
@@ -108,90 +105,43 @@ export function ReviewScheduler({ subject, book, chapter }: ReviewSchedulerProps
     }
   };
 
-  const loadAvailableNotes = async () => {
-    try {
-      // 복습 스케줄에 없는 오답노트들을 찾기
-      let query = supabase
-        .from("wrong_notes")
-        .select("*")
-        .eq("is_resolved", false);
-
-      // 필터링 적용
-      if (subject) query = query.eq("subject_name", subject);
-      if (book) query = query.eq("book_name", book);
-      if (chapter) query = query.eq("chapter_name", chapter);
-
-      const { data: wrongNotes, error: wrongNotesError } = await query;
-      if (wrongNotesError) throw wrongNotesError;
-
-      // 이미 복습 스케줄에 있는 항목들 제외
-      const { data: scheduledItems, error: scheduleError } = await supabase
-        .from("review_schedule")
-        .select("wrong_note_id")
-        .eq("is_completed", false);
-
-      if (scheduleError) throw scheduleError;
-
-      const scheduledIds = new Set(scheduledItems?.map(item => item.wrong_note_id) || []);
-      const available = wrongNotes?.filter(note => !scheduledIds.has(note.id)) || [];
-      
-      setAvailableNotes(available);
-    } catch (error) {
-      console.error("Error loading available notes:", error);
-    }
-  };
-
-  const createReviewItems = async () => {
-    if (availableNotes.length === 0) {
+  const generateTodayReviewDocument = async () => {
+    if (todayReviews.length === 0) {
       toast({
         title: "안내",
-        description: "복습할 수 있는 새로운 문제가 없습니다.",
+        description: "오늘 복습할 문제가 없습니다.",
         variant: "default"
       });
       return;
     }
 
     try {
-      setCreating(true);
-
-      // 최대 10개의 문제를 복습 스케줄에 추가
-      const notesToAdd = availableNotes.slice(0, 10);
-      const today = new Date();
-
-      const reviewItems = notesToAdd.map(note => ({
-        wrong_note_id: note.id,
-        next_review_date: today.toISOString(),
-        review_count: 0,
-        interval_days: 0, // 20분부터 시작
-        ease_factor: 2.5,
-        is_completed: false,
-        user_id: null // RLS가 자동으로 처리
+      // WrongNote 형태로 변환
+      const wrongNotes = todayReviews.map(item => ({
+        id: item.wrong_note_id,
+        question: item.wrong_note?.question || "",
+        sourceText: `${item.wrong_note?.subject_name} > ${item.wrong_note?.book_name} > ${item.wrong_note?.chapter_name}`,
+        explanation: "복습용 문제",
+        createdAt: new Date(),
+        isResolved: false
       }));
 
-      const { error } = await supabase
-        .from("review_schedule")
-        .insert(reviewItems);
-
-      if (error) throw error;
+      // 동적 import로 템플릿 생성 함수 가져오기
+      const { generateWordFromTemplate } = await import("@/utils/templateGenerator");
+      await generateWordFromTemplate(wrongNotes);
 
       toast({
-        title: "복습 문제 추가됨",
-        description: `${notesToAdd.length}개의 문제가 오늘 복습 목록에 추가되었습니다.`,
+        title: "문서 생성 완료",
+        description: `오늘 복습할 ${todayReviews.length}개 문제의 Word 문서가 다운로드되었습니다.`,
       });
-
-      // 데이터 다시 로드
-      await loadReviewSchedule();
-      await loadAvailableNotes();
 
     } catch (error) {
-      console.error("Error creating review items:", error);
+      console.error("Error generating document:", error);
       toast({
         title: "오류",
-        description: "복습 문제 추가에 실패했습니다.",
+        description: "문서 생성에 실패했습니다.",
         variant: "destructive"
       });
-    } finally {
-      setCreating(false);
     }
   };
 
@@ -343,18 +293,13 @@ export function ReviewScheduler({ subject, book, chapter }: ReviewSchedulerProps
               <Badge variant="destructive">{todayReviews.length}</Badge>
             </CardTitle>
             <Button
-              onClick={createReviewItems}
-              disabled={creating || availableNotes.length === 0}
+              onClick={generateTodayReviewDocument}
+              disabled={todayReviews.length === 0}
               size="sm"
               className="flex items-center gap-2"
             >
-              <Plus className="h-4 w-4" />
-              {creating ? "추가 중..." : "문제 추가"}
-              {availableNotes.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {Math.min(availableNotes.length, 10)}
-                </Badge>
-              )}
+              <FileDown className="h-4 w-4" />
+              복습 문서 생성
             </Button>
           </div>
         </CardHeader>
