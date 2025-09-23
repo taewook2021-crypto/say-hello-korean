@@ -266,7 +266,11 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addSubject = async (name: string) => {
+    console.log('🟡 addSubject called with:', name);
+    console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
+    
     if (!user) {
+      console.error('❌ User not authenticated');
       toast({
         title: "로그인 필요",
         description: "과목을 추가하려면 로그인해주세요.",
@@ -276,9 +280,13 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
 
     const trimmedName = name.trim();
-    if (!trimmedName) return;
+    if (!trimmedName) {
+      console.error('❌ Subject name is empty');
+      return;
+    }
 
     try {
+      console.log('➕ Inserting subject to Supabase...');
       // Save to Supabase with user_id
       const { error } = await supabase
         .from('subjects')
@@ -289,7 +297,11 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
           ignoreDuplicates: true 
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error inserting subject:', error);
+        throw error;
+      }
+      console.log('✅ Subject inserted successfully');
 
       // Update local state
       const newSubject: SubjectData = {
