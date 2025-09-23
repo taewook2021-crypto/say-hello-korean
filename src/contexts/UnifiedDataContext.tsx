@@ -267,22 +267,13 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
   const addSubject = async (name: string) => {
     console.log('🟡 addSubject called with:', name);
-    console.log('🟡 Auth loading state:', authLoading);
-    console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
     
-    // authLoading이 false가 되고 user가 있을 때까지 기다림
-    if (authLoading) {
-      console.error('❌ Still loading authentication');
-      toast({
-        title: "잠시만 기다려주세요",
-        description: "사용자 정보를 불러오는 중입니다.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // 1) 로그인 사용자 직접 가져오기
+    const { data: { user: currentUser }, error: userErr } = await supabase.auth.getUser();
+    console.log('🔍 Direct user check:', currentUser ? { id: currentUser.id, email: currentUser.email } : 'Not authenticated');
     
-    if (!user) {
-      console.error('❌ User not authenticated');
+    if (userErr || !currentUser) {
+      console.error('❌ User not authenticated:', userErr);
       toast({
         title: "로그인 필요",
         description: "과목을 추가하려면 로그인해주세요.",
@@ -300,13 +291,13 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     try {
       console.log('➕ Inserting subject to Supabase...');
       
+      // 2) INSERT 시 user_id를 반드시 포함
       const insertData = {
         name: trimmedName,
-        user_id: user.id
+        user_id: currentUser.id  // ★ 여기 필수
       };
       
       console.log('📝 Data to insert:', insertData);
-      console.log('🔑 User info:', { id: user.id, email: user.email });
       
       // Save to Supabase with user_id
       const { data, error } = await supabase
