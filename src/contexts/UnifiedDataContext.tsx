@@ -260,9 +260,19 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
           }
         }
       }
-    } catch (error) {
-      console.error('Error migrating to Supabase:', error);
     }
+  };
+
+  // 에러를 보기 좋게 찍는 함수
+  const logSbError = (tag: string, error: any) => {
+    const safe = {
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      code: error?.code
+    };
+    console.error(tag, safe);
+    console.error('Full error object:', error);
   };
 
   const addSubject = async (name: string) => {
@@ -275,15 +285,12 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // 1) 로그인 사용자 직접 가져오기
-      const { data: { user: currentUser }, error: userErr } = await supabase.auth.getUser();
-      console.log('🔍 Auth check result:', { 
-        user: currentUser ? { id: currentUser.id, email: currentUser.email } : null, 
-        error: userErr 
-      });
+      // 세션/유저 확인
+      const { data: { user }, error: userErr } = await supabase.auth.getUser();
+      console.log('🔍 User check:', user ? { id: user.id, email: user.email } : 'No user');
       
-      if (userErr || !currentUser) {
-        console.error('❌ User authentication failed:', userErr);
+      if (userErr || !user) {
+        console.error("No user:", userErr);
         toast({
           title: "로그인 필요",
           description: "과목을 추가하려면 로그인해주세요.",
@@ -292,27 +299,18 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // 2) INSERT payload 준비
-      const payload = { 
-        name: trimmedName, 
-        user_id: currentUser.id 
-      };
+      // INSERT (user_id 포함, representation으로 응답받기)
+      const payload = { name: trimmedName, user_id: user.id };
       console.log('📝 Insert payload:', payload);
       
-      // 3) Supabase INSERT
       const { data, error } = await supabase
-        .from('subjects')
+        .from("subjects")
         .insert(payload)
         .select()
         .single();
 
       if (error) {
-        console.error('❌ Supabase insert error details:');
-        console.error('Message:', error.message);
-        console.error('Details:', error.details);
-        console.error('Hint:', error.hint);
-        console.error('Code:', error.code);
-        console.error('Full error:', error);
+        logSbError("❌ Error adding subject:", error);
         throw error;
       }
       
