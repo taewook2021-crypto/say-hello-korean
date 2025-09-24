@@ -28,9 +28,7 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
   const [confidence, setConfidence] = useState<number | null>(null);
   const { toast } = useToast();
 
-  console.log('FlashCard received notes:', notes);
   const currentNote = notes[currentIndex];
-  console.log('Current note:', currentNote);
 
   const nextCard = () => {
     if (currentIndex < notes.length - 1) {
@@ -174,11 +172,9 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
               <div className="space-y-6 flex-1">
                 <div className="text-center">
                   <h3 className="text-lg font-medium text-blue-600 mb-4">정답 / 해설</h3>
-                  {currentNote.explanation ? (
-                    <p className="text-xl leading-relaxed whitespace-pre-wrap">{currentNote.explanation}</p>
-                  ) : (
-                    <p className="text-xl leading-relaxed whitespace-pre-wrap">{currentNote.source_text}</p>
-                  )}
+                  <p className="text-xl leading-relaxed whitespace-pre-wrap">
+                    {currentNote.explanation || currentNote.source_text || "해설이 없습니다."}
+                  </p>
                 </div>
               </div>
 
