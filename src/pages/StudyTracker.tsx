@@ -131,11 +131,7 @@ export default function StudyTracker() {
       });
     } catch (error) {
       console.error('Error creating study plan:', error);
-      toast({
-        title: "오류",
-        description: "회독표 생성 중 오류가 발생했습니다.",
-        variant: "destructive"
-      });
+      // addSubject나 addBook에서 이미 오류 토스트를 표시하므로 여기서는 제거
     }
   };
 
