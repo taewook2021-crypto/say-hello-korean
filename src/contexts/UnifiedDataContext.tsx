@@ -51,6 +51,7 @@ interface UnifiedDataContextType {
   updateBook: (subjectName: string, oldBookName: string, newBookName: string) => Promise<void>;
   addChapter: (subjectName: string, bookName: string, chapterName: string) => Promise<void>;
   deleteChapter: (subjectName: string, bookName: string, chapterName: string) => Promise<void>;
+  updateChapter: (subjectName: string, bookName: string, oldChapterName: string, newChapterName: string) => Promise<void>;
   updateStudyProgress: (subjectName: string, bookName: string, updatedData: StudyData) => void;
   toggleSubjectExpansion: (subjectName: string) => void;
   toggleBookExpansion: (subjectName: string, bookName: string) => void;
@@ -1133,6 +1134,86 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     loadSubjects();
   }, []);
 
+  const updateChapter = async (subjectName: string, bookName: string, oldChapterName: string, newChapterName: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Update chapter name in database
+      const { error: chapterError } = await supabase
+        .from('chapters')
+        .update({ name: newChapterName })
+        .eq('user_id', user.id)
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('name', oldChapterName);
+
+      if (chapterError) throw chapterError;
+
+      // Update related wrong_notes
+      const { error: wrongNotesError } = await supabase
+        .from('wrong_notes')
+        .update({ chapter_name: newChapterName })
+        .eq('user_id', user.id)
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('chapter_name', oldChapterName);
+
+      if (wrongNotesError) throw wrongNotesError;
+
+      // Update related study_progress
+      const { error: progressError } = await supabase
+        .from('study_progress')
+        .update({ chapter_name: newChapterName })
+        .eq('user_id', user.id)
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('chapter_name', oldChapterName);
+
+      if (progressError) throw progressError;
+
+      // Update local state
+      const updatedSubjects = subjects.map(subject => 
+        subject.name === subjectName 
+          ? {
+              ...subject,
+              books: subject.books.map(book =>
+                book.name === bookName && book.studyData
+                  ? {
+                      ...book,
+                      studyData: {
+                        ...book.studyData,
+                        chapters: book.studyData.chapters.map(chapter =>
+                          chapter.name === oldChapterName
+                            ? { ...chapter, name: newChapterName }
+                            : chapter
+                        )
+                      }
+                    }
+                  : book
+              )
+            }
+          : subject
+      );
+
+      setSubjects(updatedSubjects);
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+
+      toast({
+        title: "성공",
+        description: `단원명이 "${newChapterName}"로 변경되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error updating chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원명 변경 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+  };
+
   const value: UnifiedDataContextType = {
     subjects,
     subjectBooks,
@@ -1150,6 +1231,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     updateBook,
     addChapter,
     deleteChapter,
+    updateChapter,
     updateStudyProgress,
     toggleSubjectExpansion,
     toggleBookExpansion,

@@ -11,6 +11,7 @@ import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
+import { EditableText } from "@/components/EditableText";
 
 interface StudyData {
   id: string;
@@ -40,7 +41,7 @@ interface StudyTableProps {
 
 export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([1])); // 첫 번째 단원은 기본 확장
-  const { addChapter, deleteChapter } = useUnifiedData();
+  const { addChapter, deleteChapter, updateChapter } = useUnifiedData();
   const [isWrongNoteDialogOpen, setIsWrongNoteDialogOpen] = useState(false);
   const [isWrongNoteConfirmOpen, setIsWrongNoteConfirmOpen] = useState(false);
   const [isWrongNoteViewOpen, setIsWrongNoteViewOpen] = useState(false);
@@ -677,9 +678,27 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                 ) : (
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 )}
-                <span className="font-medium text-foreground">
-                  {chapter.order}. {chapter.name}
-                </span>
+                <div className="flex items-center gap-2 font-medium text-foreground">
+                  <span>{chapter.order}.</span>
+                  <EditableText
+                    text={chapter.name}
+                    onSave={async (newName) => {
+                      await updateChapter(studyData.subject, studyData.textbook, chapter.name, newName);
+                      
+                      // Update local study data
+                      const updatedChapters = studyData.chapters.map(ch =>
+                        ch.order === chapter.order ? { ...ch, name: newName } : ch
+                      );
+                      onUpdateStudyData({
+                        ...studyData,
+                        chapters: updatedChapters
+                      });
+                    }}
+                    placeholder="단원명을 입력하세요"
+                    className="flex-1"
+                    showEditIcon={true}
+                  />
+                </div>
                 <Badge variant="secondary" className="text-xs">
                   {chapter.problems.length}문제
                 </Badge>
