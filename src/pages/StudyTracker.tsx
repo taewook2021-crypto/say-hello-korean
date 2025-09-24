@@ -181,7 +181,7 @@ export default function StudyTracker() {
       setSelectedSubjectForBook("");
     } catch (error) {
       console.error('Error adding book:', error);
-      // UnifiedDataContext에서 이미 토스트를 표시하므로 여기서는 제거
+      // UnifiedDataContext에서 이미 성공/실패 토스트를 표시하므로 여기서는 중복 토스트 방지
     }
   };
 
