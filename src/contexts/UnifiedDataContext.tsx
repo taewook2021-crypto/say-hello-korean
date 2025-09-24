@@ -485,50 +485,45 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       }
 
       // 성공 시에만 상태 업데이트와 토스트 표시
-      try {
-        // Create new study data
-        const newStudyData: StudyData = {
-          id: `${subjectName}-${trimmedBookName}`,
-          subject: subjectName,
-          textbook: trimmedBookName,
-          maxRounds,
-          chapters: [],
-          createdAt: new Date()
-        };
+      // Create new study data
+      const newStudyData: StudyData = {
+        id: `${subjectName}-${trimmedBookName}`,
+        subject: subjectName,
+        textbook: trimmedBookName,
+        maxRounds,
+        chapters: [],
+        createdAt: new Date()
+      };
 
-        // Update local state
-        const updatedSubjects = subjects.map(subject => {
-          if (subject.name === subjectName) {
-            const existingBooks = subject.books || [];
-            const bookExists = existingBooks.some(book => book.name === trimmedBookName);
-            
-            if (!bookExists) {
-              return {
-                ...subject,
-                books: [...existingBooks, { name: trimmedBookName, studyData: newStudyData, isExpanded: false }]
-              };
-            }
+      // Update local state
+      const updatedSubjects = subjects.map(subject => {
+        if (subject.name === subjectName) {
+          const existingBooks = subject.books || [];
+          const bookExists = existingBooks.some(book => book.name === trimmedBookName);
+          
+          if (!bookExists) {
+            return {
+              ...subject,
+              books: [...existingBooks, { name: trimmedBookName, studyData: newStudyData, isExpanded: false }]
+            };
           }
-          return subject;
-        });
+        }
+        return subject;
+      });
 
-        setSubjects(updatedSubjects);
-        setSubjectBooks(prev => ({
-          ...prev,
-          [subjectName]: [...new Set([...(prev[subjectName] || []), trimmedBookName])]
-        }));
+      setSubjects(updatedSubjects);
+      setSubjectBooks(prev => ({
+        ...prev,
+        [subjectName]: [...new Set([...(prev[subjectName] || []), trimmedBookName])]
+      }));
 
-        // Update localStorage
-        localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+      // Update localStorage
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
-        toast({
-          title: "성공", 
-          description: `${trimmedBookName} 교재가 추가되었습니다.`,
-        });
-      } catch (stateError) {
-        // 상태 업데이트 오류는 로그만 남기고 토스트는 표시하지 않음
-        console.error('State update error (non-critical):', stateError);
-      }
+      toast({
+        title: "성공", 
+        description: `${trimmedBookName} 교재가 추가되었습니다.`,
+      });
     } catch (error) {
       console.error('Database error adding book:', error);
       toast({
