@@ -104,14 +104,10 @@ const Subject = () => {
       setIsDialogOpen(false);
     } catch (error) {
       console.error('Error adding book:', error);
-      // If database doesn't exist, still add locally
+      // addBook에서 이미 오류 토스트를 표시하므로 여기서는 로컬 상태만 업데이트
       setBooks([...books, newBookName.trim()]);
       setNewBookName("");
       setIsDialogOpen(false);
-      toast({
-        title: "임시 저장",
-        description: "교재가 임시로 추가되었습니다. 데이터베이스 설정 후 영구 저장됩니다.",
-      });
     }
   };
 
