@@ -327,20 +327,26 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Update local state
-      const newSubject: SubjectData = {
-        name: trimmedName,
-        books: [],
-        createdAt: new Date().toISOString()
-      };
+      // 성공 시에만 상태 업데이트와 토스트 표시
+      try {
+        // Update local state
+        const newSubject: SubjectData = {
+          name: trimmedName,
+          books: [],
+          createdAt: new Date().toISOString()
+        };
 
-      setSubjects(prev => [...prev, newSubject]);
-      setSubjectBooks(prev => ({ ...prev, [trimmedName]: [] }));
+        setSubjects(prev => [...prev, newSubject]);
+        setSubjectBooks(prev => ({ ...prev, [trimmedName]: [] }));
 
-      toast({ title: "성공", description: `${trimmedName} 과목이 추가되었습니다.` });
+        toast({ title: "성공", description: `${trimmedName} 과목이 추가되었습니다.` });
+      } catch (stateError) {
+        // 상태 업데이트 오류는 로그만 남기고 토스트는 표시하지 않음
+        console.error('State update error (non-critical):', stateError);
+      }
     } catch (error) {
-      console.error('Unexpected error adding subject:', error);
-      toast({ title: "오류", description: "과목 추가 중 예상치 못한 오류가 발생했습니다.", variant: "destructive" });
+      console.error('Database error adding subject:', error);
+      toast({ title: "오류", description: "과목 추가 중 오류가 발생했습니다.", variant: "destructive" });
     }
   };
 
