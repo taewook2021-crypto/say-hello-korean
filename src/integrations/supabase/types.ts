@@ -36,15 +36,7 @@ export type Database = {
           subject_name?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "books_subject_name_fkey"
-            columns: ["subject_name"]
-            isOneToOne: false
-            referencedRelation: "subjects"
-            referencedColumns: ["name"]
-          },
-        ]
+        Relationships: []
       }
       cards: {
         Row: {
@@ -115,25 +107,11 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "chapters_book_subject_fkey"
-            columns: ["book_name", "subject_name"]
-            isOneToOne: false
-            referencedRelation: "books"
-            referencedColumns: ["name", "subject_name"]
-          },
-          {
             foreignKeyName: "chapters_major_chapter_id_fkey"
             columns: ["major_chapter_id"]
             isOneToOne: false
             referencedRelation: "major_chapters"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chapters_subject_name_fkey"
-            columns: ["subject_name"]
-            isOneToOne: false
-            referencedRelation: "subjects"
-            referencedColumns: ["name"]
           },
         ]
       }
@@ -286,22 +264,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "major_chapters_book_subject_fkey"
-            columns: ["book_name", "subject_name"]
-            isOneToOne: false
-            referencedRelation: "books"
-            referencedColumns: ["name", "subject_name"]
-          },
-          {
-            foreignKeyName: "major_chapters_subject_name_fkey"
-            columns: ["subject_name"]
-            isOneToOne: false
-            referencedRelation: "subjects"
-            referencedColumns: ["name"]
-          },
-        ]
+        Relationships: []
       }
       memorization_checklist: {
         Row: {
