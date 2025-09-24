@@ -438,32 +438,43 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
     try {
       // Check if book already exists for this user
+      console.log('🔍 Checking for duplicate book:', {
+        name: trimmedBookName,
+        subject: subjectName,
+        userId: user.id
+      });
+
       const { data: existingBook, error: checkError } = await supabase
         .from('books')
-        .select('id')
+        .select('id, name, subject_name')
         .eq('name', trimmedBookName)
         .eq('subject_name', subjectName)
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (checkError) {
-        console.error('Error checking existing book:', checkError);
+        console.error('❌ Database error checking existing book:', checkError);
         toast({
-          title: "오류",
-          description: "교재 확인 중 오류가 발생했습니다.",
+          title: "데이터베이스 오류",
+          description: "교재 확인 중 데이터베이스 오류가 발생했습니다.",
           variant: "destructive",
         });
         return;
       }
 
+      console.log('🔍 Duplicate check result:', existingBook);
+
       if (existingBook) {
+        console.warn('⚠️ Duplicate book found:', existingBook);
         toast({
           title: "중복 오류",
-          description: "이미 존재하는 교재명입니다.",
+          description: `"${trimmedBookName}" 교재가 이미 "${subjectName}" 과목에 존재합니다.`,
           variant: "destructive",
         });
         return;
       }
+
+      console.log('✅ No duplicate found, proceeding with insert');
 
       // Save to Supabase with user_id
       const { error } = await supabase
@@ -475,14 +486,26 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         });
 
       if (error) {
-        console.error('Error inserting book:', error);
-        toast({
-          title: "오류",
-          description: "교재 추가에 실패했습니다. 다시 시도해주세요.",
-          variant: "destructive",
-        });
+        console.error('❌ Database error inserting book:', error);
+        
+        // 중복 키 오류인 경우 별도 처리
+        if (error.code === '23505') {
+          toast({
+            title: "중복 오류",
+            description: `"${trimmedBookName}" 교재가 이미 존재합니다.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "데이터베이스 오류",
+            description: "교재 추가 중 데이터베이스 오류가 발생했습니다. 다시 시도해주세요.",
+            variant: "destructive",
+          });
+        }
         return;
       }
+
+      console.log('✅ Book inserted successfully');
 
       // 성공 시에만 상태 업데이트와 토스트 표시
       // Create new study data
@@ -520,15 +543,17 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       // Update localStorage
       localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
+      console.log('✅ Book added successfully:', trimmedBookName);
       toast({
         title: "성공", 
-        description: `${trimmedBookName} 교재가 추가되었습니다.`,
+        description: `"${trimmedBookName}" 교재가 성공적으로 추가되었습니다.`,
       });
     } catch (error) {
-      console.error('Database error adding book:', error);
+      console.error('❌ Unexpected error adding book:', error);
+      // 예상치 못한 오류만 토스트로 표시
       toast({
-        title: "오류",
-        description: "교재 추가 중 오류가 발생했습니다.",
+        title: "예상치 못한 오류",
+        description: "교재 추가 중 예상치 못한 오류가 발생했습니다.",
         variant: "destructive",
       });
     }
