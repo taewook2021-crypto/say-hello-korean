@@ -43,7 +43,9 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [isWrongNoteDialogOpen, setIsWrongNoteDialogOpen] = useState(false);
   const [isWrongNoteConfirmOpen, setIsWrongNoteConfirmOpen] = useState(false);
   const [isWrongNoteViewOpen, setIsWrongNoteViewOpen] = useState(false);
+  const [isWrongNoteSelectOpen, setIsWrongNoteSelectOpen] = useState(false);
   const [selectedWrongNote, setSelectedWrongNote] = useState<any>(null);
+  const [availableWrongNotes, setAvailableWrongNotes] = useState<any[]>([]);
   const [selectedProblem, setSelectedProblem] = useState<{
     chapterOrder: number;
     problemNumber: number;
@@ -356,7 +358,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
       const chapterName = chapter?.name || "";
 
-      // 데이터베이스에서 오답노트 찾기
+      // 데이터베이스에서 오답노트 찾기 - 모든 회독 고려
       const { data, error } = await supabase
         .from('wrong_notes')
         .select('*')
@@ -364,7 +366,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
         .eq('book_name', studyData.textbook)
         .eq('chapter_name', chapterName)
         .ilike('source_text', `%${problemNumber}번%`)
-        .maybeSingle();
+        .order('round_number', { ascending: false }); // 최신 회독 우선
 
       if (error) {
         console.error('오답노트 조회 오류:', error);
@@ -372,9 +374,16 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
         return;
       }
 
-      if (data) {
-        setSelectedWrongNote(data);
-        setIsWrongNoteViewOpen(true);
+      if (data && data.length > 0) {
+        if (data.length === 1) {
+          // 하나만 있으면 바로 열기
+          setSelectedWrongNote(data[0]);
+          setIsWrongNoteViewOpen(true);
+        } else {
+          // 여러개 있으면 선택 다이얼로그 열기
+          setAvailableWrongNotes(data);
+          setIsWrongNoteSelectOpen(true);
+        }
       } else {
         // 데이터베이스에 없으면 로컬 스토리지에서 찾기
         const existingNotes = localStorage.getItem('aro-wrong-notes');
@@ -397,6 +406,12 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       console.error('오답노트 보기 오류:', error);
       toast.error("오답노트를 불러올 수 없습니다.");
     }
+  };
+
+  const handleSelectWrongNote = (wrongNote: any) => {
+    setSelectedWrongNote(wrongNote);
+    setIsWrongNoteSelectOpen(false);
+    setIsWrongNoteViewOpen(true);
   };
 
   // 챕터를 order 순으로 정렬 (순서 유지를 위해 중요!)
@@ -845,6 +860,43 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* 오답노트 선택 다이얼로그 */}
+      <Dialog open={isWrongNoteSelectOpen} onOpenChange={setIsWrongNoteSelectOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>오답노트 선택</DialogTitle>
+            <DialogDescription>
+              해당 문제에 여러 회독의 오답노트가 있습니다. 보고 싶은 오답노트를 선택하세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {availableWrongNotes.map((note, index) => (
+              <Button
+                key={note.id}
+                variant="outline"
+                className="w-full justify-between h-auto p-4"
+                onClick={() => handleSelectWrongNote(note)}
+              >
+                <div className="text-left">
+                  <div className="font-medium">
+                    {note.round_number}회독 오답노트
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {new Date(note.created_at).toLocaleDateString('ko-KR')} 생성
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setIsWrongNoteSelectOpen(false)}>
+              취소
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 오답노트 작성 다이얼로그 */}
       {selectedProblem && (
