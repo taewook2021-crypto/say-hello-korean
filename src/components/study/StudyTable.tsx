@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X, Trash2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X, Trash2, Info } from "lucide-react";
 import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -500,6 +501,14 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
 
   return (
     <div className="space-y-4">
+      {/* 사용법 안내 */}
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          <strong>사용법:</strong> 한 번 클릭 = ⭕ (완료), 길게 누르기 = 🔺 (부분완료), 더블 클릭 = ❌ (틀림)
+        </AlertDescription>
+      </Alert>
+
       {/* 상단 버튼들 */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-foreground">
