@@ -905,10 +905,17 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // 중복 체크 (사용자별)
+      // 중복 체크 (사용자별, 같은 교재 내에서만)
+      console.log('🔍 Checking for duplicate chapter:', {
+        name: trimmedChapterName,
+        subject: subjectName,
+        book: bookName,
+        userId: user.id
+      });
+
       const { data: existingChapter, error: checkError } = await supabase
         .from('chapters')
-        .select('id')
+        .select('id, name, subject_name, book_name')
         .eq('name', trimmedChapterName)
         .eq('subject_name', subjectName)
         .eq('book_name', bookName)
@@ -920,10 +927,13 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         throw checkError;
       }
 
+      console.log('🔍 Duplicate check result:', existingChapter);
+
       if (existingChapter) {
+        console.warn('⚠️ Duplicate chapter found:', existingChapter);
         toast({
           title: "중복 오류",
-          description: "이미 존재하는 단원명입니다.",
+          description: `"${trimmedChapterName}" 단원이 이미 "${bookName}" 교재에 존재합니다.`,
           variant: "destructive",
         });
         return;
