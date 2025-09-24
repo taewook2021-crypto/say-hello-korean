@@ -278,11 +278,21 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addSubject = async (name: string) => {
-    console.log('🟡 addSubject called with:', name);
+    console.log('🟡 addSubject called with:', name, 'length:', name.length);
     
+    // 한글 입력 시 IME 완성 여부 체크
     const trimmedName = name.trim();
     if (!trimmedName) {
       console.error('❌ Subject name is empty');
+      toast({ title: "입력 오류", description: "과목명을 입력해주세요.", variant: "destructive" });
+      return;
+    }
+
+    // 한글 완성 문자 체크 (자음/모음만 있는 경우 방지)
+    const koreanCompleteCheck = /^[가-힣\s]+$|^[a-zA-Z0-9\s]+$/;
+    if (!koreanCompleteCheck.test(trimmedName)) {
+      console.error('❌ Invalid characters in subject name:', trimmedName);
+      toast({ title: "입력 오류", description: "완성된 한글 또는 영문/숫자로 입력해주세요.", variant: "destructive" });
       return;
     }
 
@@ -293,6 +303,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       
       if (!user) {
         console.log('❌ No user - redirecting to Google OAuth');
+        toast({ title: "로그인 필요", description: "로그인이 필요합니다.", variant: "destructive" });
         // 로그인 유도 (구글 OAuth)
         await supabase.auth.signInWithOAuth({
           provider: "google",
@@ -301,6 +312,14 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
           }
         });
         return; // 콜백에서 세션 교환 후 다시 들어오게
+      }
+
+      // 중복 체크 (사용자별)
+      const existingSubject = subjects.find(s => s.name === trimmedName);
+      if (existingSubject) {
+        console.log('❌ Subject already exists:', trimmedName);
+        toast({ title: "중복 오류", description: "이미 존재하는 과목명입니다.", variant: "destructive" });
+        return;
       }
 
       // 실제 INSERT 시 user_id: user.id 포함(지금 에러의 핵심)
@@ -331,25 +350,14 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       };
 
       const existingSubjects = [...subjects];
-      const existingIndex = existingSubjects.findIndex(s => s.name === trimmedName);
-      
-      if (existingIndex === -1) {
-        existingSubjects.push(newSubject);
-        setSubjects(existingSubjects);
-        setSubjectBooks(prev => ({ ...prev, [trimmedName]: [] }));
-      }
+      existingSubjects.push(newSubject);
+      setSubjects(existingSubjects);
+      setSubjectBooks(prev => ({ ...prev, [trimmedName]: [] }));
 
-      toast({
-        title: "과목 추가됨",
-        description: `${trimmedName} 과목이 추가되었습니다.`,
-      });
+      toast({ title: "성공", description: `${trimmedName} 과목이 추가되었습니다.` });
     } catch (error) {
       console.error('Error adding subject:', error);
-      toast({
-        title: "오류",
-        description: "과목 추가에 실패했습니다.",
-        variant: "destructive",
-      });
+      toast({ title: "오류", description: "과목 추가에 실패했습니다. 다시 시도해주세요.", variant: "destructive" });
     }
   };
 
