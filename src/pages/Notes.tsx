@@ -378,6 +378,8 @@ function Notes() {
       variant: "destructive",
     });
     return;
+  };
+
   const toggleAnswerVisibility = (noteId: string) => {
     setShowAnswers(prev => ({
       ...prev,
