@@ -125,10 +125,7 @@ export default function StudyTracker() {
       setMaxRounds("");
       setIsCreateDialogOpen(false);
       
-      toast({
-        title: "성공",
-        description: "회독표가 생성되었습니다! 이제 단원을 추가해보세요."
-      });
+      // addSubject와 addBook에서 이미 성공/실패 토스트를 표시하므로 여기서는 제거
     } catch (error) {
       console.error('Error creating study plan:', error);
       // addSubject나 addBook에서 이미 오류 토스트를 표시하므로 여기서는 제거
