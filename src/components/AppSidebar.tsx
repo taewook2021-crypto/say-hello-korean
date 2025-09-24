@@ -67,6 +67,8 @@ export function AppSidebar() {
       await signOut();
     } catch (error) {
       console.error('Sign out error:', error);
+      // Force redirect even on error
+      window.location.href = '/auth';
     }
   };
 

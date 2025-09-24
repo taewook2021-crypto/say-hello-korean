@@ -113,10 +113,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-      throw error;
+    try {
+      // Clear local state first to prevent multiple logout attempts
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+        // Don't throw error for session_not_found as it means user is already logged out
+        if (error.message !== 'Session not found') {
+          throw error;
+        }
+      }
+      
+      // Clear any local storage data
+      localStorage.removeItem('aro-study-data');
+      
+      // Force redirect to auth page
+      window.location.href = '/auth';
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Even if there's an error, clear local state and redirect
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      window.location.href = '/auth';
     }
   };
 
