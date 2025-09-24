@@ -45,8 +45,10 @@ interface UnifiedDataContextType {
   refreshBooksForSubject: (subjectName: string) => Promise<void>;
   addSubject: (name: string) => Promise<void>;
   deleteSubject: (name: string) => Promise<void>;
+  updateSubject: (oldName: string, newName: string) => Promise<void>;
   addBook: (subjectName: string, bookName: string, maxRounds?: number) => Promise<void>;
   deleteBook: (subjectName: string, bookName: string) => Promise<void>;
+  updateBook: (subjectName: string, oldBookName: string, newBookName: string) => Promise<void>;
   addChapter: (subjectName: string, bookName: string, chapterName: string) => Promise<void>;
   deleteChapter: (subjectName: string, bookName: string, chapterName: string) => Promise<void>;
   updateStudyProgress: (subjectName: string, bookName: string, updatedData: StudyData) => void;
@@ -634,6 +636,256 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateSubject = async (oldName: string, newName: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "과목명을 수정하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const trimmedNewName = newName.trim();
+    if (!trimmedNewName) {
+      toast({ title: "입력 오류", description: "과목명을 입력해주세요.", variant: "destructive" });
+      return;
+    }
+
+    if (oldName === trimmedNewName) return;
+
+    try {
+      // Check if new name already exists
+      const { data: existingSubject, error: checkError } = await supabase
+        .from('subjects')
+        .select('id')
+        .eq('name', trimmedNewName)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing subject:', checkError);
+        toast({
+          title: "오류",
+          description: "과목명 확인 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (existingSubject) {
+        toast({
+          title: "중복 오류",
+          description: "이미 존재하는 과목명입니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update subjects table
+      const { error: subjectError } = await supabase
+        .from('subjects')
+        .update({ name: trimmedNewName })
+        .eq('name', oldName)
+        .eq('user_id', user.id);
+
+      if (subjectError) throw subjectError;
+
+      // Update books table
+      const { error: booksError } = await supabase
+        .from('books')
+        .update({ subject_name: trimmedNewName })
+        .eq('subject_name', oldName)
+        .eq('user_id', user.id);
+
+      if (booksError) throw booksError;
+
+      // Update chapters table
+      const { error: chaptersError } = await supabase
+        .from('chapters')
+        .update({ subject_name: trimmedNewName })
+        .eq('subject_name', oldName)
+        .eq('user_id', user.id);
+
+      if (chaptersError) throw chaptersError;
+
+      // Update wrong_notes table
+      const { error: wrongNotesError } = await supabase
+        .from('wrong_notes')
+        .update({ subject_name: trimmedNewName })
+        .eq('subject_name', oldName)
+        .eq('user_id', user.id);
+
+      if (wrongNotesError) throw wrongNotesError;
+
+      // Update study_progress table
+      const { error: studyProgressError } = await supabase
+        .from('study_progress')
+        .update({ subject_name: trimmedNewName })
+        .eq('subject_name', oldName)
+        .eq('user_id', user.id);
+
+      if (studyProgressError) throw studyProgressError;
+
+      // Update local state
+      const updatedSubjects = subjects.map(subject => 
+        subject.name === oldName ? { ...subject, name: trimmedNewName } : subject
+      );
+      setSubjects(updatedSubjects);
+
+      // Update subjectBooks state
+      const updatedSubjectBooks = { ...subjectBooks };
+      if (updatedSubjectBooks[oldName]) {
+        updatedSubjectBooks[trimmedNewName] = updatedSubjectBooks[oldName];
+        delete updatedSubjectBooks[oldName];
+      }
+      setSubjectBooks(updatedSubjectBooks);
+
+      // Update localStorage
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+
+      toast({
+        title: "성공",
+        description: `과목명이 "${oldName}"에서 "${trimmedNewName}"로 변경되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error updating subject name:', error);
+      toast({
+        title: "오류",
+        description: "과목명 수정 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateBook = async (subjectName: string, oldBookName: string, newBookName: string) => {
+    if (!user) {
+      toast({
+        title: "로그인 필요",
+        description: "교재명을 수정하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const trimmedNewName = newBookName.trim();
+    if (!trimmedNewName) {
+      toast({ title: "입력 오류", description: "교재명을 입력해주세요.", variant: "destructive" });
+      return;
+    }
+
+    if (oldBookName === trimmedNewName) return;
+
+    try {
+      // Check if new name already exists in the subject
+      const { data: existingBook, error: checkError } = await supabase
+        .from('books')
+        .select('id')
+        .eq('name', trimmedNewName)
+        .eq('subject_name', subjectName)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing book:', checkError);
+        toast({
+          title: "오류",
+          description: "교재명 확인 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (existingBook) {
+        toast({
+          title: "중복 오류",
+          description: "이미 존재하는 교재명입니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update books table
+      const { error: booksError } = await supabase
+        .from('books')
+        .update({ name: trimmedNewName })
+        .eq('name', oldBookName)
+        .eq('subject_name', subjectName)
+        .eq('user_id', user.id);
+
+      if (booksError) throw booksError;
+
+      // Update chapters table
+      const { error: chaptersError } = await supabase
+        .from('chapters')
+        .update({ book_name: trimmedNewName })
+        .eq('book_name', oldBookName)
+        .eq('subject_name', subjectName)
+        .eq('user_id', user.id);
+
+      if (chaptersError) throw chaptersError;
+
+      // Update wrong_notes table
+      const { error: wrongNotesError } = await supabase
+        .from('wrong_notes')
+        .update({ book_name: trimmedNewName })
+        .eq('book_name', oldBookName)
+        .eq('subject_name', subjectName)
+        .eq('user_id', user.id);
+
+      if (wrongNotesError) throw wrongNotesError;
+
+      // Update study_progress table
+      const { error: studyProgressError } = await supabase
+        .from('study_progress')
+        .update({ book_name: trimmedNewName })
+        .eq('book_name', oldBookName)
+        .eq('subject_name', subjectName)
+        .eq('user_id', user.id);
+
+      if (studyProgressError) throw studyProgressError;
+
+      // Update local state
+      const updatedSubjects = subjects.map(subject => {
+        if (subject.name === subjectName) {
+          return {
+            ...subject,
+            books: subject.books.map(book => 
+              book.name === oldBookName 
+                ? { ...book, name: trimmedNewName, studyData: { ...book.studyData, textbook: trimmedNewName } }
+                : book
+            )
+          };
+        }
+        return subject;
+      });
+      setSubjects(updatedSubjects);
+
+      // Update subjectBooks state
+      setSubjectBooks(prev => ({
+        ...prev,
+        [subjectName]: prev[subjectName]?.map(book => 
+          book === oldBookName ? trimmedNewName : book
+        ) || []
+      }));
+
+      // Update localStorage
+      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+
+      toast({
+        title: "성공",
+        description: `교재명이 "${oldBookName}"에서 "${trimmedNewName}"로 변경되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error updating book name:', error);
+      toast({
+        title: "오류",
+        description: "교재명 수정 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const addChapter = async (subjectName: string, bookName: string, chapterName: string) => {
     console.log('🟡 addChapter called with:', { subjectName, bookName, chapterName });
     
@@ -885,12 +1137,17 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     subjects,
     subjectBooks,
     loading,
-    refreshSubjects,
-    refreshBooksForSubject,
+    refreshSubjects: loadSubjects,
+    refreshBooksForSubject: (subjectName: string) => {
+      loadSubjects();
+      return Promise.resolve();
+    },
     addSubject,
     deleteSubject,
+    updateSubject,
     addBook,
     deleteBook,
+    updateBook,
     addChapter,
     deleteChapter,
     updateStudyProgress,

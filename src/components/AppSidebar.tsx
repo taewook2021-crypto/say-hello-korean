@@ -30,11 +30,12 @@ import { toast } from "sonner";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserAccount } from "@/components/UserAccount";
+import { EditableText } from "@/components/EditableText";
 
 export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
-  const { getSubjectNames, addSubject } = useUnifiedData();
+  const { getSubjectNames, addSubject, updateSubject } = useUnifiedData();
   const { user, profile, signOut } = useAuth();
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
@@ -159,16 +160,27 @@ export function AppSidebar() {
                   추가된 과목이 없습니다
                 </div>
               ) : (
-                subjects.map((subject) => (
-                  <SidebarMenuItem key={subject}>
-                    <SidebarMenuButton asChild isActive={isActive(`/subject/${subject}`)}>
-                      <NavLink to={`/subject/${subject}`} className="flex items-center gap-2">
-                        <Folder className="w-4 h-4" />
-                        <span className="flex-1 text-sm">{subject}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))
+                 subjects.map((subject) => (
+                   <SidebarMenuItem key={subject}>
+                     <div className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-muted/50 transition-colors group">
+                       <Folder className="w-4 h-4 text-muted-foreground" />
+                       <EditableText
+                         text={subject}
+                         onSave={(newName) => updateSubject(subject, newName)}
+                         className="flex-1 text-sm"
+                         placeholder="과목명을 입력하세요"
+                       />
+                       <NavLink 
+                         to={`/subject/${subject}`} 
+                         className={`text-xs opacity-0 group-hover:opacity-100 transition-opacity ${
+                           isActive(`/subject/${subject}`) ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                         }`}
+                       >
+                         이동
+                       </NavLink>
+                     </div>
+                   </SidebarMenuItem>
+                 ))
               )}
             </SidebarMenu>
           </SidebarGroupContent>

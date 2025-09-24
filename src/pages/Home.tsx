@@ -16,6 +16,7 @@ import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { EditableText } from "@/components/EditableText";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const Home = () => {
   const [deleteTargetName, setDeleteTargetName] = useState("");
   
   const { toast } = useToast();
-  const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames } = useUnifiedData();
+  const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames, updateSubject, updateBook } = useUnifiedData();
   const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
   const { user, profile, loading: authLoading, signOut } = useAuth();
 
@@ -272,7 +273,12 @@ const Home = () => {
                     </Button>
                     
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-foreground text-lg">{subject.name}</h3>
+                      <EditableText
+                        text={subject.name}
+                        onSave={(newName) => updateSubject(subject.name, newName)}
+                        className="font-medium text-foreground text-lg"
+                        placeholder="과목명을 입력하세요"
+                      />
                       <p className="text-sm text-muted-foreground">
                         {subject.books.length > 0 ? `${subject.books.length}개의 책` : '책을 추가해보세요'}
                       </p>
@@ -320,13 +326,21 @@ const Home = () => {
                              const bookLink = `/subject/${encodeURIComponent(subject.name)}/book/${encodeURIComponent(bookName)}`;
                              console.log('Book link generated:', bookLink, 'for subject:', subject.name, 'book:', bookName);
                              return (
-                            <div key={bookName} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
-                              <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                             <div key={bookName} className="flex items-center gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors group/book">
+                               <BookOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                               <div className="flex-1">
+                                 <EditableText
+                                   text={bookName}
+                                   onSave={(newName) => updateBook(subject.name, bookName, newName)}
+                                   className="text-sm text-foreground"
+                                   placeholder="교재명을 입력하세요"
+                                 />
+                               </div>
                                <Link
                                  to={bookLink}
-                                 className="text-sm text-foreground flex-1 hover:underline"
+                                 className="text-xs text-primary hover:underline"
                                >
-                                 {bookName}
+                                 이동
                                </Link>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
