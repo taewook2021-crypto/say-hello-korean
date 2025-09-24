@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import remindLogo from '@/assets/remind-logo.png';
@@ -10,15 +11,39 @@ export default function Auth() {
   const { user, loading, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [isInAppBrowser, setIsInAppBrowser] = useState(false);
 
   useEffect(() => {
     // Redirect to home if user is already authenticated
     if (user && !loading) {
       navigate('/');
     }
+
+    // Detect in-app browsers (KakaoTalk, Naver, etc.)
+    const detectInAppBrowser = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isKakaoTalk = userAgent.includes('kakaotalk');
+      const isNaver = userAgent.includes('naver');
+      const isLine = userAgent.includes('line');
+      const isFacebook = userAgent.includes('fban') || userAgent.includes('fbav');
+      const isInstagram = userAgent.includes('instagram');
+      
+      return isKakaoTalk || isNaver || isLine || isFacebook || isInstagram;
+    };
+
+    setIsInAppBrowser(detectInAppBrowser());
   }, [user, loading, navigate]);
 
   const handleGoogleSignIn = async () => {
+    if (isInAppBrowser) {
+      toast({
+        title: "외부 브라우저에서 로그인해주세요",
+        description: "카카오톡 등의 앱 내에서는 Google 로그인이 제한됩니다. 우측 상단의 '외부 브라우저에서 열기'를 눌러주세요.",
+        duration: 5000,
+      });
+      return;
+    }
+
     try {
       await signInWithGoogle();
     } catch (error) {
@@ -28,6 +53,18 @@ export default function Auth() {
         description: "Google 로그인 중 오류가 발생했습니다. 다시 시도해주세요.",
       });
     }
+  };
+
+  const handleOpenInBrowser = () => {
+    const currentUrl = window.location.href;
+    // Try different methods to open in external browser
+    window.open(currentUrl, '_blank');
+    
+    toast({
+      title: "브라우저가 열렸나요?",
+      description: "외부 브라우저가 열리지 않으면 URL을 복사해서 직접 브라우저에 붙여넣어 주세요.",
+      duration: 3000,
+    });
   };
 
   if (loading) {
@@ -59,6 +96,34 @@ export default function Auth() {
           </p>
         </div>
 
+        {/* In-App Browser Warning */}
+        {isInAppBrowser && (
+          <Alert className="w-full max-w-md mb-4 border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800">
+            <AlertDescription className="text-sm">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <div className="font-medium text-orange-800 dark:text-orange-200 mb-1">
+                    인앱 브라우저에서는 Google 로그인이 제한됩니다
+                  </div>
+                  <div className="text-orange-700 dark:text-orange-300">
+                    우측 상단의 메뉴에서 "외부 브라우저에서 열기"를 선택해주세요
+                  </div>
+                  <Button 
+                    onClick={handleOpenInBrowser}
+                    className="mt-2 h-8 px-3 text-xs bg-orange-600 hover:bg-orange-700"
+                    size="sm"
+                  >
+                    외부 브라우저에서 열기
+                  </Button>
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Login Card */}
         <Card className="w-full max-w-md shadow-xl border-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md mb-8">
           <CardHeader className="text-center pb-4">
@@ -70,8 +135,11 @@ export default function Auth() {
           <CardContent className="space-y-6">
             <Button 
               onClick={handleGoogleSignIn}
-              className="w-full h-12 text-base font-medium relative overflow-hidden group hover:scale-[1.02] transition-all duration-200"
+              className={`w-full h-12 text-base font-medium relative overflow-hidden group hover:scale-[1.02] transition-all duration-200 ${
+                isInAppBrowser ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               size="lg"
+              disabled={isInAppBrowser}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700 group-hover:from-blue-700 group-hover:to-blue-800 transition-all duration-200"></div>
               <div className="relative flex items-center justify-center gap-3">
