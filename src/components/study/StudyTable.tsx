@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +60,85 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [chapterProblemCounts, setChapterProblemCounts] = useState<{[chapterOrder: number]: string}>({});
   const [isDeleteChapterDialogOpen, setIsDeleteChapterDialogOpen] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<Chapter | null>(null);
+  
+  // 실시간 오답노트 동기화
+  useEffect(() => {
+    const channel = supabase
+      .channel('wrong-notes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // INSERT, UPDATE, DELETE 모든 이벤트 감지
+          schema: 'public',
+          table: 'wrong_notes'
+        },
+        async (payload) => {
+          console.log('Wrong note change detected:', payload);
+          await syncWrongNoteStatus();
+        }
+      )
+      .subscribe();
+
+    // 컴포넌트 마운트 시 초기 동기화
+    syncWrongNoteStatus();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [studyData.subject, studyData.textbook]);
+
+  // 오답노트 상태 동기화 함수
+  const syncWrongNoteStatus = async () => {
+    try {
+      // 현재 과목과 교재의 모든 오답노트 조회
+      const { data: wrongNotes, error } = await supabase
+        .from('wrong_notes')
+        .select('chapter_name, source_text')
+        .eq('subject_name', studyData.subject)
+        .eq('book_name', studyData.textbook);
+
+      if (error) {
+        console.error('오답노트 동기화 오류:', error);
+        return;
+      }
+
+      // 각 단원의 문제별 오답노트 존재 여부 맵 생성
+      const wrongNoteMap = new Map<string, boolean>();
+      wrongNotes?.forEach(note => {
+        // source_text에서 문제 번호 추출 (예: "단원명 3번" -> 3)
+        const match = note.source_text.match(/(\d+)번/);
+        if (match) {
+          const problemNumber = parseInt(match[1]);
+          const key = `${note.chapter_name}-${problemNumber}`;
+          wrongNoteMap.set(key, true);
+        }
+      });
+
+      // 회독표 데이터의 hasNote 플래그 업데이트
+      const updatedChapters = studyData.chapters.map(chapter => ({
+        ...chapter,
+        problems: chapter.problems.map(problem => {
+          const key = `${chapter.name}-${problem.number}`;
+          return {
+            ...problem,
+            hasNote: wrongNoteMap.has(key) || false
+          };
+        })
+      }));
+
+      // 변경사항이 있으면 업데이트
+      const hasChanges = JSON.stringify(updatedChapters) !== JSON.stringify(studyData.chapters);
+      if (hasChanges) {
+        const updatedStudyData = {
+          ...studyData,
+          chapters: updatedChapters
+        };
+        onUpdateStudyData(updatedStudyData);
+      }
+    } catch (error) {
+      console.error('오답노트 동기화 중 오류:', error);
+    }
+  };
 
   const toggleChapterExpansion = (chapterOrder: number) => {
     const newExpanded = new Set(expandedChapters);
