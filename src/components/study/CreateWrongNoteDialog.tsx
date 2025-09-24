@@ -79,40 +79,8 @@ export function CreateWrongNoteDialog({
   };
 
   const generateAnswerWithGPT = async () => {
-    if (!problemText.trim()) {
-      toast.error("문제를 먼저 입력해주세요.");
-      return;
-    }
-
-    setIsGeneratingAnswer(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
-        body: {
-          message: `다음 문제에 대한 해설을 작성해주세요:\n\n${problemText}`,
-          messages: [], // 빈 배열로 초기화
-          model: 'gpt-4o-mini',
-          currentSubject: studyData.subject
-        }
-      });
-
-      if (error) {
-        console.error('GPT API 오류:', error);
-        toast.error("해설 생성 중 오류가 발생했습니다.");
-        return;
-      }
-
-      if (data?.response) {
-        setAnswer(data.response);
-        toast.success("GPT가 해설을 생성했습니다!");
-      } else {
-        toast.error("해설 생성에 실패했습니다.");
-      }
-    } catch (error) {
-      console.error('GPT 요청 오류:', error);
-      toast.error("해설 생성 중 오류가 발생했습니다.");
-    } finally {
-      setIsGeneratingAnswer(false);
-    }
+    toast.error("GPT 기능은 현재 준비 중입니다.");
+    return;
   };
 
   const handleSave = async () => {

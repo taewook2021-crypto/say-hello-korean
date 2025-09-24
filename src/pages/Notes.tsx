@@ -37,7 +37,7 @@ interface NewNote {
   explanation: string;
 }
 
-export default function Notes() {
+function Notes() {
   const { subjectName, bookName, chapterName } = useParams<{ subjectName: string; bookName: string; chapterName: string }>();
   const { toast } = useToast();
   
@@ -372,65 +372,12 @@ export default function Notes() {
   };
 
   const handleGPTGeneration = async () => {
-    if (!newNote.question.trim()) {
-      toast({
-        title: "문제를 입력해주세요",
-        description: "GPT 기능을 사용하려면 먼저 문제를 입력해야 합니다.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setGptLoading(true);
-      
-              const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
-        body: {
-          message: `다음 문제에 대해 해설을 작성해줘. 근거원문과 해설을 모두 하나의 해설 섹션에 통합해서 답변해줘:
-
-문제: ${newNote.question}
-
-답변 형식:
-**📖 해설**
-[출처] 관련 기준서/법령/규정의 원문을 먼저 정확히 인용하고, 이어서 해당 원문을 바탕으로 한 상세한 해설과 풀이과정을 함께 작성해줘. 암기법이나 기억법은 포함하지 말고 논리적 이해에 집중해줘.`,
-          pdfContent: '',
-          messages: []
-        },
-      });
-
-      if (error) {
-        console.error('GPT API 에러:', error);
-        throw error;
-      }
-
-      if (data?.response) {
-        const response = data.response;
-        
-        // GPT 응답을 해설에만 저장 (근거원문과 해설이 통합됨)
-        setNewNote(prev => ({
-          ...prev,
-          explanation: response.trim() || prev.explanation
-        }));
-        
-        toast({
-          title: "GPT 생성 완료",
-          description: "AI가 해설을 생성했습니다.",
-        });
-      } else {
-        throw new Error('응답을 받지 못했습니다.');
-      }
-    } catch (error) {
-      console.error('GPT 생성 에러:', error);
-      toast({
-        title: "GPT 생성 실패",
-        description: "AI 생성에 실패했습니다. 잠시 후 다시 시도해주세요.",
-        variant: "destructive",
-      });
-    } finally {
-      setGptLoading(false);
-    }
-  };
-
+    toast({
+      title: "준비 중",
+      description: "GPT 기능은 현재 준비 중입니다.",
+      variant: "destructive",
+    });
+    return;
   const toggleAnswerVisibility = (noteId: string) => {
     setShowAnswers(prev => ({
       ...prev,
@@ -869,3 +816,5 @@ export default function Notes() {
     </div>
   );
 }
+
+export default Notes;
