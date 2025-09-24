@@ -51,6 +51,7 @@ interface CreateWrongNoteDialogProps {
   chapterOrder: number;
   problemNumber: number;
   status: '🔺' | '❌';
+  round: number; // 회독 번호 추가
   onNoteCreated: () => void;
 }
 
@@ -61,6 +62,7 @@ export function CreateWrongNoteDialog({
   chapterOrder,
   problemNumber,
   status,
+  round, // 회독 번호 추가
   onNoteCreated
 }: CreateWrongNoteDialogProps) {
   const [problemText, setProblemText] = useState("");
@@ -138,6 +140,7 @@ export function CreateWrongNoteDialog({
           book_name: studyData.textbook,
           chapter_name: chapterName,
           source_text: `${chapterName} ${problemNumber}번`,
+          round_number: round, // 회독 번호 추가
           user_id: user?.id
         });
 
@@ -195,10 +198,10 @@ export function CreateWrongNoteDialog({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="text-lg">{status}</span>
-              오답노트 작성
+              {round}회독 오답노트 작성
             </DialogTitle>
             <DialogDescription>
-              {studyData.subject} &gt; {studyData.textbook} &gt; {chapterName} &gt; {problemNumber}번 문제
+              {studyData.subject} &gt; {studyData.textbook} &gt; {chapterName} &gt; {problemNumber}번 문제 ({round}회독)
             </DialogDescription>
           </DialogHeader>
 

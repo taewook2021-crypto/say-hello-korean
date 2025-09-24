@@ -50,6 +50,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     chapterOrder: number;
     problemNumber: number;
     status: '🔺' | '❌';
+    round: number; // 회독 번호 추가
   } | null>(null);
   const [isAddChapterDialogOpen, setIsAddChapterDialogOpen] = useState(false);
   const [newChapterName, setNewChapterName] = useState("");
@@ -98,7 +99,8 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       setSelectedProblem({
         chapterOrder,
         problemNumber,
-        status
+        status,
+        round: roundNumber // 회독 번호 추가
       });
       setIsWrongNoteConfirmOpen(true);
     }
@@ -910,6 +912,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
           chapterOrder={selectedProblem.chapterOrder}
           problemNumber={selectedProblem.problemNumber}
           status={selectedProblem.status}
+          round={selectedProblem.round} // 회독 번호 전달
           onNoteCreated={() => handleWrongNoteCreated(selectedProblem.chapterOrder, selectedProblem.problemNumber)}
         />
       )}
