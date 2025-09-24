@@ -73,29 +73,6 @@ export const TemplateDocumentGenerator: React.FC<TemplateDocumentGeneratorProps>
     }
   };
 
-  const generatePdfDocument = async () => {
-    if (selectedNotes.length === 0) {
-      toast.error("PDF로 변환할 노트를 선택해주세요.");
-      return;
-    }
-
-    setIsGenerating(true);
-    
-    try {
-      // 선택된 노트들만 필터링
-      const selectedWrongNotes = notes.filter(note => selectedNotes.includes(note.id));
-      
-      const fileName = await generatePdfFromTemplate(selectedWrongNotes);
-      toast.success(`PDF 문서가 생성되었습니다: ${fileName}`);
-      setIsDialogOpen(false);
-      
-    } catch (error) {
-      console.error('PDF 생성 중 오류:', error);
-      toast.error("PDF 생성 중 오류가 발생했습니다. 다시 시도해주세요.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -192,24 +169,6 @@ export const TemplateDocumentGenerator: React.FC<TemplateDocumentGeneratorProps>
               disabled={isGenerating}
             >
               취소
-            </Button>
-            <Button
-              onClick={generatePdfDocument}
-              disabled={isGenerating || selectedNotes.length === 0}
-              variant="outline"
-              className="gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  생성 중...
-                </>
-              ) : (
-                <>
-                  <FileImage className="h-4 w-4" />
-                  PDF 생성
-                </>
-              )}
             </Button>
             <Button
               onClick={generateWordDocument}
