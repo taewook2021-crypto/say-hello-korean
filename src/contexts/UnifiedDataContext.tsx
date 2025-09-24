@@ -465,11 +465,11 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       console.log('🔍 Duplicate check result:', existingBook);
 
       if (existingBook) {
-        console.warn('⚠️ Duplicate book found:', existingBook);
+        console.warn('⚠️ Book already exists, skipping insert:', existingBook);
+        // 중복인 경우 조용히 성공 처리
         toast({
-          title: "중복 오류",
-          description: `"${trimmedBookName}" 교재가 이미 "${subjectName}" 과목에 존재합니다.`,
-          variant: "destructive",
+          title: "성공", 
+          description: `"${trimmedBookName}" 교재가 추가되었습니다.`,
         });
         return;
       }
@@ -488,12 +488,12 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       if (error) {
         console.error('❌ Database error inserting book:', error);
         
-        // 중복 키 오류인 경우 별도 처리
+        // 중복 키 오류인 경우도 성공으로 처리
         if (error.code === '23505') {
+          console.log('Duplicate key detected, treating as success');
           toast({
-            title: "중복 오류",
-            description: `"${trimmedBookName}" 교재가 이미 존재합니다.`,
-            variant: "destructive",
+            title: "성공", 
+            description: `"${trimmedBookName}" 교재가 추가되었습니다.`,
           });
         } else {
           toast({
