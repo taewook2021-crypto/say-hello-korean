@@ -485,6 +485,12 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         console.log('✅ Book inserted successfully');
       } else {
         console.log('ℹ️ Book already exists');
+        toast({
+          title: "중복 오류",
+          description: "이미 존재하는 교재명입니다.",
+          variant: "destructive",
+        });
+        return;
       }
 
       // Create new study data
@@ -523,14 +529,14 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
       toast({
-        title: "성공",
-        description: "새 교재가 추가되었습니다.",
+        title: "성공", 
+        description: `${trimmedBookName} 교재가 추가되었습니다.`,
       });
     } catch (error) {
       console.error('Error adding book:', error);
       toast({
         title: "오류",
-        description: "교재 추가에 실패했습니다.",
+        description: "교재 추가에 실패했습니다. 다시 시도해주세요.",
         variant: "destructive",
       });
     }
@@ -635,6 +641,8 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addChapter = async (subjectName: string, bookName: string, chapterName: string) => {
+    console.log('🟡 addChapter called with:', { subjectName, bookName, chapterName });
+    
     if (!user) {
       toast({
         title: "로그인 필요",
@@ -644,18 +652,57 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const trimmedChapterName = chapterName.trim();
+    if (!trimmedChapterName) {
+      toast({
+        title: "입력 오류",
+        description: "단원명을 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // 중복 체크 (사용자별)
+      const { data: existingChapter, error: checkError } = await supabase
+        .from('chapters')
+        .select('id')
+        .eq('name', trimmedChapterName)
+        .eq('subject_name', subjectName)
+        .eq('book_name', bookName)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('❌ Error checking existing chapter:', checkError);
+        throw checkError;
+      }
+
+      if (existingChapter) {
+        toast({
+          title: "중복 오류",
+          description: "이미 존재하는 단원명입니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Save to Supabase with user_id
       const { error } = await supabase
         .from('chapters')
         .insert({
-          name: chapterName,
+          name: trimmedChapterName,
           subject_name: subjectName,
           book_name: bookName,
           user_id: user.id
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error inserting chapter:', error);
+        throw error;
+      }
+
+      console.log('✅ Chapter inserted successfully');
 
       // Update local state
       const updatedSubjects = subjects.map(subject => {
@@ -666,7 +713,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
               if (book.name === bookName) {
                 const newChapter: Chapter = {
                   order: book.studyData.chapters.length + 1,
-                  name: chapterName,
+                  name: trimmedChapterName,
                   problems: []
                 };
                 return {
@@ -688,14 +735,14 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
       toast({
-        title: "단원 추가됨",
-        description: `${chapterName} 단원이 추가되었습니다.`,
+        title: "성공",
+        description: `${trimmedChapterName} 단원이 추가되었습니다.`,
       });
     } catch (error) {
       console.error('Error adding chapter:', error);
       toast({
         title: "오류",
-        description: "단원 추가에 실패했습니다.",
+        description: "단원 추가에 실패했습니다. 다시 시도해주세요.",
         variant: "destructive",
       });
     }
