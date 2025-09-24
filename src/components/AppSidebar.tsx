@@ -18,6 +18,8 @@ import {
   Plus,
   Folder,
   User,
+  Search,
+  LogOut,
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +35,7 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const { getSubjectNames, addSubject } = useUnifiedData();
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
@@ -50,10 +52,18 @@ export function AppSidebar() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   const mainItems = [
     { title: "홈", url: "/", icon: Home },
     { title: "회독표", url: "/study-tracker", icon: BookOpen },
+    { title: "오답노트 검색", url: "/search", icon: Search },
   ];
 
   const isActive = (path: string) => currentPath === path;
@@ -187,6 +197,15 @@ export function AppSidebar() {
                   <UserAccount />
                 </DialogContent>
               </Dialog>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start gap-2"
+                onClick={handleSignOut}
+              >
+                <LogOut className="w-4 h-4" />
+                로그아웃
+              </Button>
             </div>
           </div>
         )}

@@ -140,16 +140,6 @@ const Home = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Search className="h-4 w-4 mr-2" />
-              검색
-            </Button>
-            <div className="flex items-center gap-3 text-sm">
-              <span className="font-medium">{profile?.full_name || profile?.email}</span>
-              <Button variant="outline" size="sm" onClick={signOut}>
-                로그아웃
-              </Button>
-            </div>
             <ThemeToggle />
           </div>
         </div>
