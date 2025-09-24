@@ -43,12 +43,24 @@ export function AppSidebar() {
   const subjects = getSubjectNames();
 
   const handleAddSubject = async () => {
+    if (!newSubjectName.trim()) {
+      toast.error("과목명을 입력해주세요.");
+      return;
+    }
+
+    if (!user) {
+      toast.error("과목을 추가하려면 로그인해주세요.");
+      return;
+    }
+
     try {
       await addSubject(newSubjectName.trim());
       setNewSubjectName("");
       setIsAddSubjectDialogOpen(false);
+      toast.success(`${newSubjectName.trim()} 과목이 추가되었습니다.`);
     } catch (error) {
-      // Error already handled in context
+      console.error('과목 추가 실패:', error);
+      toast.error("과목 추가에 실패했습니다. 다시 시도해주세요.");
     }
   };
 
