@@ -183,18 +183,9 @@ export default function StudyTracker() {
       setNewBookName("");
       setNewBookMaxRounds("");
       setSelectedSubjectForBook("");
-      
-      toast({
-        title: "성공",
-        description: "교재가 추가되었습니다!"
-      });
     } catch (error) {
       console.error('Error adding book:', error);
-      toast({
-        title: "오류",
-        description: "교재 추가 중 오류가 발생했습니다.",
-        variant: "destructive"
-      });
+      // UnifiedDataContext에서 이미 토스트를 표시하므로 여기서는 제거
     }
   };
 
