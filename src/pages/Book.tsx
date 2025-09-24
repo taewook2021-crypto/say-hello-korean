@@ -28,14 +28,49 @@ const Book = () => {
     }
   }, [subjectName, bookName]);
 
+  // 리얼타임 업데이트 구독
+  useEffect(() => {
+    const channel = supabase
+      .channel('chapters-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chapters'
+        },
+        () => {
+          // 단원 변경 시 다시 로드
+          if (subjectName && bookName) {
+            loadChapters();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [subjectName, bookName]);
+
   const loadChapters = async () => {
     try {
       console.log('Loading chapters for book:', decodeURIComponent(bookName || ''), 'in subject:', decodeURIComponent(subjectName || ''));
-      const { data, error } = await (supabase as any)
+      
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('User not authenticated, skipping chapter load');
+        setChapters([]);
+        return;
+      }
+      
+      const { data, error } = await supabase
         .from('chapters')
         .select('name')
         .eq('subject_name', decodeURIComponent(subjectName || ''))
         .eq('book_name', decodeURIComponent(bookName || ''))
+        .eq('user_id', user.id)
         .order('name');
       
       if (error) {
@@ -50,12 +85,13 @@ const Book = () => {
       // Load wrong note counts for each chapter
       const stats: { [key: string]: number } = {};
       for (const chapterName of chapterNames) {
-        const { data: wrongNotesData } = await (supabase as any)
+        const { data: wrongNotesData } = await supabase
           .from('wrong_notes')
           .select('id')
           .eq('subject_name', decodeURIComponent(subjectName || ''))
           .eq('book_name', decodeURIComponent(bookName || ''))
-          .eq('chapter_name', chapterName);
+          .eq('chapter_name', chapterName)
+          .eq('user_id', user.id);
         stats[chapterName] = wrongNotesData?.length || 0;
       }
       setChapterStats(stats);
@@ -79,13 +115,25 @@ const Book = () => {
     try {
       console.log('Adding chapter:', newChapterName.trim(), 'to book:', decodeURIComponent(bookName), 'in subject:', decodeURIComponent(subjectName));
       
-      // 1. 데이터베이스에 단원 추가
-      const { error } = await (supabase as any)
+      // Check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "로그인 필요",
+          description: "단원을 추가하려면 로그인해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // 1. 데이터베이스에 단원 추가 (user_id 포함)
+      const { error } = await supabase
         .from('chapters')
         .insert({ 
           name: newChapterName.trim(),
           subject_name: decodeURIComponent(subjectName),
-          book_name: decodeURIComponent(bookName)
+          book_name: decodeURIComponent(bookName),
+          user_id: user.id
         });
       
       if (error) {
