@@ -419,11 +419,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addBook = async (subjectName: string, bookName: string, maxRounds: number = 3) => {
-    console.log('🟡 addBook called with:', { subjectName, bookName, maxRounds });
-    console.log('🟡 Current user:', user ? { id: user.id, email: user.email } : 'Not authenticated');
-    
     if (!user) {
-      console.error('❌ User not authenticated');
       toast({
         title: "로그인 필요",
         description: "교재를 추가하려면 로그인해주세요.",
@@ -434,12 +430,10 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
     const trimmedBookName = bookName.trim();
     if (!trimmedBookName) {
-      console.error('❌ Book name is empty');
       return;
     }
 
     try {
-      console.log('🔍 Checking if book already exists...');
       // Check if book already exists for this user
       const { data: existingBook, error: checkError } = await supabase
         .from('books')
@@ -450,30 +444,16 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (checkError) {
-        console.error('❌ Error checking existing book:', checkError);
-        throw checkError;
+        console.error('Error checking existing book:', checkError);
+        toast({
+          title: "오류",
+          description: "교재 확인 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      console.log('🔍 Existing book check result:', existingBook);
-
-      if (!existingBook) {
-        console.log('➕ Inserting new book to Supabase...');
-        // Save to Supabase with user_id
-        const { error } = await supabase
-          .from('books')
-          .insert({ 
-            name: trimmedBookName,
-            subject_name: subjectName,
-            user_id: user.id
-          });
-
-        if (error) {
-          console.error('❌ Error inserting book:', error);
-          throw error;
-        }
-        console.log('✅ Book inserted successfully');
-      } else {
-        console.log('ℹ️ Book already exists');
+      if (existingBook) {
         toast({
           title: "중복 오류",
           description: "이미 존재하는 교재명입니다.",
@@ -482,50 +462,75 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Create new study data
-      const newStudyData: StudyData = {
-        id: `${subjectName}-${trimmedBookName}`,
-        subject: subjectName,
-        textbook: trimmedBookName,
-        maxRounds,
-        chapters: [],
-        createdAt: new Date()
-      };
+      // Save to Supabase with user_id
+      const { error } = await supabase
+        .from('books')
+        .insert({ 
+          name: trimmedBookName,
+          subject_name: subjectName,
+          user_id: user.id
+        });
 
-      // Update local state
-      const updatedSubjects = subjects.map(subject => {
-        if (subject.name === subjectName) {
-          const existingBooks = subject.books || [];
-          const bookExists = existingBooks.some(book => book.name === trimmedBookName);
-          
-          if (!bookExists) {
-            return {
-              ...subject,
-              books: [...existingBooks, { name: trimmedBookName, studyData: newStudyData, isExpanded: false }]
-            };
+      if (error) {
+        console.error('Error inserting book:', error);
+        toast({
+          title: "오류",
+          description: "교재 추가에 실패했습니다. 다시 시도해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 성공 시에만 상태 업데이트와 토스트 표시
+      try {
+        // Create new study data
+        const newStudyData: StudyData = {
+          id: `${subjectName}-${trimmedBookName}`,
+          subject: subjectName,
+          textbook: trimmedBookName,
+          maxRounds,
+          chapters: [],
+          createdAt: new Date()
+        };
+
+        // Update local state
+        const updatedSubjects = subjects.map(subject => {
+          if (subject.name === subjectName) {
+            const existingBooks = subject.books || [];
+            const bookExists = existingBooks.some(book => book.name === trimmedBookName);
+            
+            if (!bookExists) {
+              return {
+                ...subject,
+                books: [...existingBooks, { name: trimmedBookName, studyData: newStudyData, isExpanded: false }]
+              };
+            }
           }
-        }
-        return subject;
-      });
+          return subject;
+        });
 
-      setSubjects(updatedSubjects);
-      setSubjectBooks(prev => ({
-        ...prev,
-        [subjectName]: [...new Set([...(prev[subjectName] || []), trimmedBookName])]
-      }));
+        setSubjects(updatedSubjects);
+        setSubjectBooks(prev => ({
+          ...prev,
+          [subjectName]: [...new Set([...(prev[subjectName] || []), trimmedBookName])]
+        }));
 
-      // Update localStorage
-      localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
+        // Update localStorage
+        localStorage.setItem('aro-study-data', JSON.stringify(updatedSubjects));
 
-      toast({
-        title: "성공", 
-        description: `${trimmedBookName} 교재가 추가되었습니다.`,
-      });
+        toast({
+          title: "성공", 
+          description: `${trimmedBookName} 교재가 추가되었습니다.`,
+        });
+      } catch (stateError) {
+        // 상태 업데이트 오류는 로그만 남기고 토스트는 표시하지 않음
+        console.error('State update error (non-critical):', stateError);
+      }
     } catch (error) {
-      console.error('Error adding book:', error);
+      console.error('Database error adding book:', error);
       toast({
         title: "오류",
-        description: "교재 추가에 실패했습니다. 다시 시도해주세요.",
+        description: "교재 추가 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     }
