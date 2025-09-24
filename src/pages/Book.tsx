@@ -4,12 +4,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, FileText, Plus, Trash2, MoreVertical } from "lucide-react";
+import { ArrowLeft, FileText, Plus, Trash2, MoreVertical, Edit2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
 const Book = () => {
   const { subjectName, bookName } = useParams<{ subjectName: string; bookName: string }>();
@@ -20,7 +21,11 @@ const Book = () => {
   const [loading, setLoading] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<string>("");
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [chapterToEdit, setChapterToEdit] = useState<string>("");
+  const [editChapterName, setEditChapterName] = useState<string>("");
   const { toast } = useToast();
+  const { updateChapter } = useUnifiedData();
 
   useEffect(() => {
     if (subjectName && bookName) {
@@ -363,6 +368,48 @@ const Book = () => {
     setShowDeleteDialog(true);
   };
 
+  const openEditDialog = (chapterName: string) => {
+    setChapterToEdit(chapterName);
+    setEditChapterName(chapterName);
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateChapter = async () => {
+    if (!editChapterName.trim() || !subjectName || !bookName) return;
+    
+    if (editChapterName.trim() === chapterToEdit) {
+      setShowEditDialog(false);
+      return;
+    }
+
+    try {
+      await updateChapter(
+        decodeURIComponent(subjectName),
+        decodeURIComponent(bookName),
+        chapterToEdit,
+        editChapterName.trim()
+      );
+
+      // UI 업데이트
+      setChapters(chapters.map(ch => ch === chapterToEdit ? editChapterName.trim() : ch));
+      setShowEditDialog(false);
+      setChapterToEdit("");
+      setEditChapterName("");
+
+      toast({
+        title: "성공",
+        description: `단원명이 "${chapterToEdit}"에서 "${editChapterName.trim()}"로 변경되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Error updating chapter:', error);
+      toast({
+        title: "오류",
+        description: "단원명 수정에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="flex justify-between items-center mb-6">
@@ -449,6 +496,10 @@ const Book = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openEditDialog(chapter)}>
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      단원명 수정
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => openDeleteDialog(chapter)}>
                       <Trash2 className="h-4 w-4 mr-2" />
                       단원 삭제
@@ -490,6 +541,40 @@ const Book = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 단원명 수정 다이얼로그 */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>단원명 수정</DialogTitle>
+            <DialogDescription>단원의 이름을 수정합니다.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="editChapterName">단원 이름</Label>
+              <Input
+                id="editChapterName"
+                value={editChapterName}
+                onChange={(e) => setEditChapterName(e.target.value)}
+                placeholder="새 단원 이름을 입력하세요"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleUpdateChapter();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                취소
+              </Button>
+              <Button onClick={handleUpdateChapter}>
+                수정
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
