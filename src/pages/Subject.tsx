@@ -203,14 +203,15 @@ const Subject = () => {
               <Card className="p-4 text-center hover:bg-accent">
                 <CardContent className="p-0">
                   <BookOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <div className="mb-2">
-                    <EditableText
-                      text={book}
-                      onSave={(newName) => handleUpdateBook(book, newName)}
-                      className="text-sm font-medium"
-                      placeholder="교재명을 입력하세요"
-                    />
-                  </div>
+                   <div className="mb-2">
+                     <EditableText
+                       text={book}
+                       onSave={(newName) => handleUpdateBook(book, newName)}
+                       className="text-sm font-medium"
+                       placeholder="교재명을 입력하세요"
+                       centered={true}
+                     />
+                   </div>
                   <div className="text-xs text-muted-foreground space-y-1">
                     <div>단원: {bookStats[book]?.chapters || 0}개</div>
                     <div>오답노트: {bookStats[book]?.wrongNotes || 0}개</div>
