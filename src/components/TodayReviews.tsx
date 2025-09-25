@@ -36,7 +36,11 @@ interface WrongNote {
   is_resolved: boolean;
 }
 
-export function TodayReviews() {
+interface TodayReviewsProps {
+  onStudyModeChange?: (isStudying: boolean) => void;
+}
+
+export function TodayReviews({ onStudyModeChange }: TodayReviewsProps = {}) {
   const [todayReviews, setTodayReviews] = useState<ReviewItem[]>([]);
   const [upcomingReviews, setUpcomingReviews] = useState<ReviewItem[]>([]);
   const [todayCreatedNotes, setTodayCreatedNotes] = useState<WrongNote[]>([]);
@@ -175,6 +179,7 @@ export function TodayReviews() {
       console.log('Review notes from TodayReviews:', notes);
       setReviewNotes(notes || []);
       setShowStudyModeSelector(true);
+      onStudyModeChange?.(true);
     } catch (error) {
       console.error('Error loading review notes:', error);
     }
@@ -188,12 +193,14 @@ export function TodayReviews() {
   const handleStudyComplete = () => {
     setStudyMode(null);
     setShowStudyModeSelector(false);
+    onStudyModeChange?.(false);
     loadReviews(); // 복습 완료 후 데이터 새로고침
   };
 
   const handleBackToReviews = () => {
     setStudyMode(null);
     setShowStudyModeSelector(false);
+    onStudyModeChange?.(false);
   };
 
   const formatDate = (dateString: string) => {

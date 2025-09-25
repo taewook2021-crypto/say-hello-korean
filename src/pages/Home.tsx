@@ -31,6 +31,7 @@ const Home = () => {
   const [deleteTargetType, setDeleteTargetType] = useState<'subject' | 'book'>('subject');
   const [deleteTargetId, setDeleteTargetId] = useState("");
   const [deleteTargetName, setDeleteTargetName] = useState("");
+  const [isStudyMode, setIsStudyMode] = useState(false);
   
   const { toast } = useToast();
   const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames, updateSubject, updateBook } = useUnifiedData();
@@ -219,12 +220,12 @@ const Home = () => {
             )}
           </div>
         ) : (
-          <TodayReviews />
+          <TodayReviews onStudyModeChange={setIsStudyMode} />
         )}
       </div>
 
-      {/* Subjects Section - Hide when search is active */}
-      {!isSearchActive && (
+      {/* Subjects Section - Hide when search is active or study mode is active */}
+      {!isSearchActive && !isStudyMode && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
