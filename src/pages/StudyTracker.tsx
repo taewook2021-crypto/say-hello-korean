@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StudyTable } from "@/components/study/StudyTable";
+import { EditableText } from "@/components/EditableText";
 import { useToast } from "@/hooks/use-toast";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 
@@ -69,7 +70,8 @@ export default function StudyTracker() {
     subjects, 
     loading,
     addSubject,
-    addBook, 
+    addBook,
+    updateBook,
     refreshSubjects,
     toggleSubjectExpansion,
     toggleBookExpansion,
@@ -206,6 +208,28 @@ export default function StudyTracker() {
     } finally {
       setIsDeleteAlertOpen(false);
       setChapterToDelete(null);
+    }
+  };
+
+  const handleUpdateBookName = async (oldBookName: string, newBookName: string) => {
+    try {
+      await updateBook(selectedSubject, oldBookName, newBookName);
+      toast({
+        title: "성공",
+        description: `교재명이 "${newBookName}"으로 변경되었습니다.`
+      });
+      
+      // 선택된 책 이름도 업데이트
+      if (selectedBook === oldBookName) {
+        setSelectedBook(newBookName);
+      }
+    } catch (error) {
+      console.error('Error updating book name:', error);
+      toast({
+        title: "오류",
+        description: "교재명 변경 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -490,14 +514,28 @@ export default function StudyTracker() {
                        <Card 
                          key={book.name} 
                          className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105"
-                         onClick={() => {
+                         onClick={(e) => {
+                           // EditableText의 편집 버튼 클릭 시에는 카드 클릭 이벤트 방지
+                           if ((e.target as HTMLElement).closest('.editable-text-edit-mode') || 
+                               (e.target as HTMLElement).closest('[data-editable-text]')) {
+                             return;
+                           }
+                           
                            setSelectedBook(book.name);
                            setCurrentView('study');
                          }}
                        >
                          <CardContent className="p-6 text-center">
                            <BookOpen className="w-12 h-12 text-accent mx-auto mb-4" />
-                           <h3 className="text-lg font-semibold text-foreground mb-2">{book.name}</h3>
+                           <h3 className="text-lg font-semibold text-foreground mb-2">
+                             <EditableText
+                               text={book.name}
+                               onSave={(newBookName) => handleUpdateBookName(book.name, newBookName)}
+                               className="inline-flex items-center justify-center w-full"
+                               inputClassName="text-lg font-semibold text-center"
+                               showEditIcon={true}
+                             />
+                           </h3>
                            <p className="text-sm text-muted-foreground">
                              {book.studyData.chapters.length}개 단원
                            </p>
