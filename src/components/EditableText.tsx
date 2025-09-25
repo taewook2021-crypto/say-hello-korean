@@ -10,6 +10,7 @@ interface EditableTextProps {
   className?: string;
   inputClassName?: string;
   showEditIcon?: boolean;
+  centered?: boolean;
 }
 
 export const EditableText: React.FC<EditableTextProps> = ({
@@ -18,7 +19,8 @@ export const EditableText: React.FC<EditableTextProps> = ({
   placeholder = "텍스트를 입력하세요",
   className = "",
   inputClassName = "",
-  showEditIcon = true
+  showEditIcon = true,
+  centered = false
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(text);
@@ -111,6 +113,30 @@ export const EditableText: React.FC<EditableTextProps> = ({
         >
           <X className="h-4 w-4 text-red-600" />
         </Button>
+      </div>
+    );
+  }
+
+  if (centered) {
+    return (
+      <div 
+        className={`relative group ${className}`}
+        data-editable-text="display"
+      >
+        <span className="block text-center w-full">{text}</span>
+        {showEditIcon && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
+            className="absolute -top-1 -right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Edit className="h-3 w-3" />
+          </Button>
+        )}
       </div>
     );
   }

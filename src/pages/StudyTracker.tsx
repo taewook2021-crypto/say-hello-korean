@@ -527,13 +527,14 @@ export default function StudyTracker() {
                        >
                          <CardContent className="p-6 text-center">
                            <BookOpen className="w-12 h-12 text-accent mx-auto mb-4" />
-                           <h3 className="text-lg font-semibold text-foreground mb-2 flex justify-center">
+                           <h3 className="text-lg font-semibold text-foreground mb-2">
                              <EditableText
                                text={book.name}
                                onSave={(newBookName) => handleUpdateBookName(book.name, newBookName)}
-                               className="flex items-center justify-center"
+                               className=""
                                inputClassName="text-lg font-semibold text-center"
                                showEditIcon={true}
+                               centered={true}
                              />
                            </h3>
                            <p className="text-sm text-muted-foreground">
