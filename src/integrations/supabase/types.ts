@@ -1126,6 +1126,15 @@ export type Database = {
         }
         Returns: number
       }
+      check_backup_health: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          days_since_last_backup: number
+          last_backup_date: string
+          status: string
+          user_id: string
+        }[]
+      }
       check_usage_limits: {
         Args: { p_subscription_tier?: string; p_user_id: string }
         Returns: {
