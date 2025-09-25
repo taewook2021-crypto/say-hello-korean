@@ -57,6 +57,7 @@ function Notes() {
     { text: '', is_correct: false }
   ]);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
+  const [showMultipleChoices, setShowMultipleChoices] = useState<{ [key: string]: boolean }>({});
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } }>({});
   const [studyMode, setStudyMode] = useState<'list' | 'flashcard' | 'quiz' | 'subjective'>('list');
   const [currentStudyNotes, setCurrentStudyNotes] = useState<any[]>([]);
@@ -428,6 +429,13 @@ function Notes() {
 
   const toggleAnswerVisibility = (noteId: string) => {
     setShowAnswers(prev => ({
+      ...prev,
+      [noteId]: !prev[noteId]
+    }));
+  };
+
+  const toggleMultipleChoiceVisibility = (noteId: string) => {
+    setShowMultipleChoices(prev => ({
       ...prev,
       [noteId]: !prev[noteId]
     }));
@@ -892,7 +900,53 @@ function Notes() {
                     {showAnswers[note.id] && (
                       <div className="space-y-4 border-t pt-4">
                         <div className="grid grid-cols-1 gap-4">                         
-                          {note.explanation && renderAnswerField(note, 'explanation', '해설', 'bg-green/10 border-green/20', 'text-green-600')}
+                          {note.explanation && (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-green-600">해설</span>
+                                {(note as any).multiple_choice_options && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleMultipleChoiceVisibility(note.id)}
+                                    className="h-6 px-2"
+                                  >
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    <span className="text-xs">
+                                      {showMultipleChoices[note.id] ? '선지 숨기기' : '선지 보기'}
+                                    </span>
+                                  </Button>
+                                )}
+                              </div>
+                              <div className="text-sm bg-green/10 border-green/20 p-3 rounded-lg border">
+                                {note.explanation}
+                              </div>
+                              
+                              {/* Multiple Choice Options */}
+                              {showMultipleChoices[note.id] && (note as any).multiple_choice_options && (
+                                <div className="bg-blue/10 border-blue/20 p-3 rounded-lg border">
+                                  <h5 className="text-sm font-medium text-blue-600 mb-3">객관식 선택지</h5>
+                                  <div className="space-y-2">
+                                    {(note as any).multiple_choice_options.map((option: any, index: number) => (
+                                      <div key={index} className={`flex items-center gap-2 p-2 rounded ${
+                                        option.is_correct 
+                                          ? 'bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800' 
+                                          : 'bg-muted/50'
+                                      }`}>
+                                        <span className="text-sm font-mono w-6 h-6 rounded-full bg-background border flex items-center justify-center">
+                                          {index + 1}
+                                        </span>
+                                        <span className="text-sm flex-1">{option.text}</span>
+                                        {option.is_correct && (
+                                          <CheckCircle className="h-4 w-4 text-green-600" />
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
