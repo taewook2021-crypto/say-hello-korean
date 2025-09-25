@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      books_backup: {
+        Row: {
+          backup_timestamp: string
+          book_name: string
+          created_at: string
+          id: string
+          operation_type: string
+          original_book_id: string
+          subject_name: string
+          user_id: string
+        }
+        Insert: {
+          backup_timestamp?: string
+          book_name: string
+          created_at: string
+          id?: string
+          operation_type: string
+          original_book_id: string
+          subject_name: string
+          user_id: string
+        }
+        Update: {
+          backup_timestamp?: string
+          book_name?: string
+          created_at?: string
+          id?: string
+          operation_type?: string
+          original_book_id?: string
+          subject_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cards: {
         Row: {
           back: string
@@ -114,6 +147,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      chapters_backup: {
+        Row: {
+          backup_timestamp: string
+          book_name: string
+          chapter_name: string
+          created_at: string
+          id: string
+          major_chapter_id: string | null
+          operation_type: string
+          original_chapter_id: string
+          subject_name: string
+          user_id: string
+        }
+        Insert: {
+          backup_timestamp?: string
+          book_name: string
+          chapter_name: string
+          created_at: string
+          id?: string
+          major_chapter_id?: string | null
+          operation_type: string
+          original_chapter_id: string
+          subject_name: string
+          user_id: string
+        }
+        Update: {
+          backup_timestamp?: string
+          book_name?: string
+          chapter_name?: string
+          created_at?: string
+          id?: string
+          major_chapter_id?: string | null
+          operation_type?: string
+          original_chapter_id?: string
+          subject_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      comprehensive_daily_backup: {
+        Row: {
+          backup_date: string
+          backup_size_kb: number | null
+          backup_status: string | null
+          books_data: Json
+          chapters_data: Json
+          created_at: string
+          id: string
+          study_progress_data: Json
+          subjects_data: Json
+          user_id: string
+          wrong_notes_data: Json
+        }
+        Insert: {
+          backup_date?: string
+          backup_size_kb?: number | null
+          backup_status?: string | null
+          books_data?: Json
+          chapters_data?: Json
+          created_at?: string
+          id?: string
+          study_progress_data?: Json
+          subjects_data?: Json
+          user_id: string
+          wrong_notes_data?: Json
+        }
+        Update: {
+          backup_date?: string
+          backup_size_kb?: number | null
+          backup_status?: string | null
+          books_data?: Json
+          chapters_data?: Json
+          created_at?: string
+          id?: string
+          study_progress_data?: Json
+          subjects_data?: Json
+          user_id?: string
+          wrong_notes_data?: Json
+        }
+        Relationships: []
       }
       conversations: {
         Row: {
@@ -575,6 +689,63 @@ export type Database = {
         }
         Relationships: []
       }
+      study_progress_backup: {
+        Row: {
+          backup_timestamp: string
+          book_name: string
+          chapter_name: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          notes: string | null
+          operation_type: string
+          original_progress_id: string
+          round_number: number
+          status: string | null
+          subject_name: string
+          target_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backup_timestamp?: string
+          book_name: string
+          chapter_name: string
+          completed_at?: string | null
+          created_at: string
+          id?: string
+          is_completed: boolean
+          notes?: string | null
+          operation_type: string
+          original_progress_id: string
+          round_number: number
+          status?: string | null
+          subject_name: string
+          target_date?: string | null
+          updated_at: string
+          user_id: string
+        }
+        Update: {
+          backup_timestamp?: string
+          book_name?: string
+          chapter_name?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          notes?: string | null
+          operation_type?: string
+          original_progress_id?: string
+          round_number?: number
+          status?: string | null
+          subject_name?: string
+          target_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       study_sessions: {
         Row: {
           completed_at: string
@@ -636,6 +807,36 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subjects_backup: {
+        Row: {
+          backup_timestamp: string
+          created_at: string
+          id: string
+          operation_type: string
+          original_subject_id: string
+          subject_name: string
+          user_id: string
+        }
+        Insert: {
+          backup_timestamp?: string
+          created_at: string
+          id?: string
+          operation_type: string
+          original_subject_id: string
+          subject_name: string
+          user_id: string
+        }
+        Update: {
+          backup_timestamp?: string
+          created_at?: string
+          id?: string
+          operation_type?: string
+          original_subject_id?: string
+          subject_name?: string
           user_id?: string
         }
         Relationships: []
@@ -938,6 +1139,18 @@ export type Database = {
       debug_auth_info: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_user_backup_summary: {
+        Args: { p_user_id?: string }
+        Returns: {
+          backup_date: string
+          backup_size_kb: number
+          books_count: number
+          chapters_count: number
+          study_progress_count: number
+          subjects_count: number
+          wrong_notes_count: number
+        }[]
       }
       update_usage_tracking: {
         Args: {

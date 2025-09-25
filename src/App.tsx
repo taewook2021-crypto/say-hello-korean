@@ -16,6 +16,7 @@ import Home from "./pages/Home";
 import WrongNoteSubject from "./pages/WrongNoteSubject";
 import StudyTracker from "./pages/StudyTracker";
 import WrongNoteSearch from "./pages/WrongNoteSearch";
+import Backup from "./pages/Backup";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -72,6 +73,18 @@ const App = () => (
                       <AppSidebar />
                       <main className="flex-1">
                         <WrongNoteSearch />
+                      </main>
+                    </div>
+                  </SidebarProvider>
+                </ProtectedRoute>
+              } />
+              <Route path="/backup" element={
+                <ProtectedRoute>
+                  <SidebarProvider defaultOpen={true}>
+                    <div className="min-h-screen flex w-full">
+                      <AppSidebar />
+                      <main className="flex-1">
+                        <Backup />
                       </main>
                     </div>
                   </SidebarProvider>

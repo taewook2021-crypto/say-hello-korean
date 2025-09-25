@@ -320,7 +320,7 @@ ${pdfContent.substring(0, 10000)}
   } catch (error) {
     console.error('Error in chat-with-gpt function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: (error as Error).message || 'Unknown error occurred',
       details: 'Failed to process chat request'
     }), {
       status: 500,

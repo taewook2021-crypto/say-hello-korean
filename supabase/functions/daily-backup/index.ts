@@ -5,19 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface WrongNote {
-  id: string;
-  user_id: string;
-  question: string;
-  source_text: string;
-  explanation: string | null;
-  subject_name: string;
-  book_name: string;
-  chapter_name: string;
-  round_number: number;
-  is_resolved: boolean;
-  created_at: string;
-  updated_at: string;
+interface UserData {
+  subjects: any[];
+  books: any[];
+  chapters: any[];
+  wrong_notes: any[];
+  study_progress: any[];
 }
 
 Deno.serve(async (req) => {
@@ -32,51 +25,38 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Starting daily backup process...');
+    console.log('Starting comprehensive daily backup process...');
 
-    // Get all users who have wrong notes
-    const { data: users, error: usersError } = await supabase
-      .from('wrong_notes')
-      .select('user_id')
-      .neq('user_id', null);
+    // Get all users who have data to backup
+    const { data: allUsers, error: usersError } = await supabase
+      .from('profiles')
+      .select('id');
 
     if (usersError) {
       console.error('Error fetching users:', usersError);
       throw usersError;
     }
 
-    // Get unique user IDs
-    const uniqueUserIds = [...new Set(users?.map(u => u.user_id) || [])];
-    console.log(`Processing daily backup for ${uniqueUserIds.length} users`);
+    const userIds = allUsers?.map(u => u.id) || [];
+    console.log(`Processing comprehensive daily backup for ${userIds.length} users`);
 
     let successCount = 0;
     let errorCount = 0;
 
     // Process each user
-    for (const userId of uniqueUserIds) {
+    for (const userId of userIds) {
       try {
-        // Get all wrong notes for this user
-        const { data: wrongNotes, error: notesError } = await supabase
-          .from('wrong_notes')
-          .select('*')
-          .eq('user_id', userId);
-
-        if (notesError) {
-          console.error(`Error fetching notes for user ${userId}:`, notesError);
-          errorCount++;
-          continue;
-        }
-
-        // Check if backup already exists for today
         const today = new Date().toISOString().split('T')[0];
+        
+        // Check if backup already exists for today
         const { data: existingBackup, error: checkError } = await supabase
-          .from('wrong_notes_daily_backup')
+          .from('comprehensive_daily_backup')
           .select('id')
           .eq('user_id', userId)
           .eq('backup_date', today)
-          .single();
+          .maybeSingle();
 
-        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found
+        if (checkError) {
           console.error(`Error checking existing backup for user ${userId}:`, checkError);
           errorCount++;
           continue;
@@ -84,24 +64,63 @@ Deno.serve(async (req) => {
 
         // Skip if backup already exists
         if (existingBackup) {
-          console.log(`Daily backup already exists for user ${userId}`);
+          console.log(`Comprehensive daily backup already exists for user ${userId}`);
           continue;
         }
 
-        // Create daily backup
+        // Fetch all user data in parallel
+        const [subjectsRes, booksRes, chaptersRes, wrongNotesRes, studyProgressRes] = await Promise.all([
+          supabase.from('subjects').select('*').eq('user_id', userId),
+          supabase.from('books').select('*').eq('user_id', userId),
+          supabase.from('chapters').select('*').eq('user_id', userId),
+          supabase.from('wrong_notes').select('*').eq('user_id', userId),
+          supabase.from('study_progress').select('*').eq('user_id', userId)
+        ]);
+
+        // Check for errors
+        if (subjectsRes.error || booksRes.error || chaptersRes.error || wrongNotesRes.error || studyProgressRes.error) {
+          console.error(`Error fetching data for user ${userId}:`, {
+            subjects: subjectsRes.error,
+            books: booksRes.error,
+            chapters: chaptersRes.error,
+            wrongNotes: wrongNotesRes.error,
+            studyProgress: studyProgressRes.error
+          });
+          errorCount++;
+          continue;
+        }
+
+        const userData: UserData = {
+          subjects: subjectsRes.data || [],
+          books: booksRes.data || [],
+          chapters: chaptersRes.data || [],
+          wrong_notes: wrongNotesRes.data || [],
+          study_progress: studyProgressRes.data || []
+        };
+
+        // Calculate backup size
+        const backupSizeKb = Math.round(JSON.stringify(userData).length / 1024);
+
+        // Create comprehensive daily backup
         const { error: backupError } = await supabase
-          .from('wrong_notes_daily_backup')
+          .from('comprehensive_daily_backup')
           .insert({
             user_id: userId,
             backup_date: today,
-            backup_data: wrongNotes || []
+            subjects_data: userData.subjects,
+            books_data: userData.books,
+            chapters_data: userData.chapters,
+            wrong_notes_data: userData.wrong_notes,
+            study_progress_data: userData.study_progress,
+            backup_size_kb: backupSizeKb,
+            backup_status: 'completed'
           });
 
         if (backupError) {
-          console.error(`Error creating daily backup for user ${userId}:`, backupError);
+          console.error(`Error creating comprehensive backup for user ${userId}:`, backupError);
           errorCount++;
         } else {
-          console.log(`Daily backup created successfully for user ${userId} (${wrongNotes?.length || 0} notes)`);
+          console.log(`Comprehensive backup created successfully for user ${userId} (${backupSizeKb}KB)`);
           successCount++;
         }
 
@@ -111,31 +130,41 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Clean up old backups (older than 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // Clean up old backups (older than 90 days)
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
     
     const { error: cleanupError } = await supabase
-      .from('wrong_notes_daily_backup')
+      .from('comprehensive_daily_backup')
       .delete()
-      .lt('backup_date', thirtyDaysAgo.toISOString().split('T')[0]);
+      .lt('backup_date', ninetyDaysAgo.toISOString().split('T')[0]);
 
     if (cleanupError) {
-      console.error('Error cleaning up old backups:', cleanupError);
+      console.error('Error cleaning up old comprehensive backups:', cleanupError);
     } else {
-      console.log('Old backups cleaned up successfully');
+      console.log('Old comprehensive backups cleaned up successfully');
+    }
+
+    // Also clean up old wrong_notes_daily_backup table
+    const { error: oldCleanupError } = await supabase
+      .from('wrong_notes_daily_backup')
+      .delete()
+      .lt('backup_date', ninetyDaysAgo.toISOString().split('T')[0]);
+
+    if (oldCleanupError) {
+      console.error('Error cleaning up old wrong notes backups:', oldCleanupError);
     }
 
     const result = {
       success: true,
-      message: `Daily backup completed: ${successCount} successful, ${errorCount} errors`,
-      processed_users: uniqueUserIds.length,
+      message: `Comprehensive daily backup completed: ${successCount} successful, ${errorCount} errors`,
+      processed_users: userIds.length,
       successful_backups: successCount,
       failed_backups: errorCount,
       timestamp: new Date().toISOString()
     };
 
-    console.log('Daily backup process completed:', result);
+    console.log('Comprehensive daily backup process completed:', result);
 
     return new Response(
       JSON.stringify(result),
@@ -146,12 +175,12 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Daily backup process failed:', error);
+    console.error('Comprehensive daily backup process failed:', error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: (error as Error).message || 'Unknown error occurred',
         timestamp: new Date().toISOString()
       }),
       {
