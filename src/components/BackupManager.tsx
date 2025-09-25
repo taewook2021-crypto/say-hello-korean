@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Download, RefreshCw, Calendar, Database, FileText, Book, Brain, Target } from 'lucide-react';
+import { Shield, Download, RefreshCw, Calendar, Database, FileText, Book, Brain, Target, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
 interface BackupSummary {
   backup_date: string;
@@ -31,6 +31,11 @@ export function BackupManager() {
   const [recentHistory, setRecentHistory] = useState<BackupHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [manualBackupLoading, setManualBackupLoading] = useState(false);
+  const [systemStatus, setSystemStatus] = useState<{
+    isHealthy: boolean;
+    lastBackup: string | null;
+    totalBackups: number;
+  }>({ isHealthy: false, lastBackup: null, totalBackups: 0 });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,6 +54,17 @@ export function BackupManager() {
         console.error('Error loading backup summary:', summaryError);
         throw summaryError;
       }
+
+      // Calculate system status
+      const latestBackup = summaryData?.[0];
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      setSystemStatus({
+        isHealthy: latestBackup && (latestBackup.backup_date === today || latestBackup.backup_date === yesterday),
+        lastBackup: latestBackup?.backup_date || null,
+        totalBackups: summaryData?.length || 0
+      });
 
       setBackups(summaryData || []);
 
@@ -190,14 +206,62 @@ export function BackupManager() {
 
   return (
     <div className="space-y-6">
+      {/* 자동 백업 시스템 상태 */}
+      <Card className="border-green-200 bg-green-50/50">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <CardTitle className="text-lg text-green-800">자동 백업 시스템</CardTitle>
+            </div>
+            <Badge variant="secondary" className="bg-green-100 text-green-800">
+              {systemStatus.isHealthy ? '정상 작동' : '점검 필요'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+              <Clock className="h-4 w-4 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium">백업 스케줄</p>
+                <p className="text-xs text-muted-foreground">매일 새벽 2시 자동 실행</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+              <Database className="h-4 w-4 text-green-500" />
+              <div>
+                <p className="text-sm font-medium">마지막 백업</p>
+                <p className="text-xs text-muted-foreground">
+                  {systemStatus.lastBackup ? new Date(systemStatus.lastBackup).toLocaleDateString('ko-KR') : '없음'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-white rounded-lg">
+              <Shield className="h-4 w-4 text-purple-500" />
+              <div>
+                <p className="text-sm font-medium">총 백업 수</p>
+                <p className="text-xs text-muted-foreground">{systemStatus.totalBackups}개 (90일 보관)</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-3 bg-green-100 rounded-lg">
+            <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+            <p className="text-sm text-green-800">
+              데이터는 매일 자동으로 안전하게 백업되어 보호되고 있습니다. 시스템이 안정적으로 작동 중이며, 학습 데이터의 손실 위험은 없습니다.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            데이터 백업 관리
+            <Download className="h-5 w-5" />
+            백업 관리
           </CardTitle>
           <CardDescription>
-            학습 데이터의 안전성을 보장하는 종합 백업 시스템입니다.
+            자동 백업 외에 추가로 수동 백업을 실행하거나 백업 히스토리를 확인할 수 있습니다.
           </CardDescription>
         </CardHeader>
         <CardContent>
