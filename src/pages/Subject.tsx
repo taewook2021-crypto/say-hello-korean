@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, BookOpen, Plus, MoreVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, MoreVertical, Trash2, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useState, useEffect } from "react";
@@ -11,6 +11,7 @@ import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
+import { EditableText } from "@/components/EditableText";
 
 const Subject = () => {
   const { subjectName } = useParams<{ subjectName: string }>();
@@ -22,7 +23,7 @@ const Subject = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteBookName, setDeleteBookName] = useState("");
   const { toast } = useToast();
-  const { addBook, deleteBook } = useUnifiedData();
+  const { addBook, deleteBook, updateBook } = useUnifiedData();
 
   useEffect(() => {
     if (subjectName) {
@@ -126,6 +127,17 @@ const Subject = () => {
     setShowDeleteDialog(true);
   };
 
+  const handleUpdateBook = async (oldName: string, newName: string) => {
+    if (!subjectName || !newName.trim() || oldName === newName.trim()) return;
+    
+    try {
+      await updateBook(decodeURIComponent(subjectName), oldName, newName.trim());
+      setBooks(books.map(book => book === oldName ? newName.trim() : book));
+    } catch (error) {
+      console.error('Error updating book:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="flex justify-between items-center mb-6">
@@ -192,7 +204,14 @@ const Subject = () => {
                 <Card className="p-4 text-center cursor-pointer hover:bg-accent">
                   <CardContent className="p-0">
                     <BookOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                    <p className="text-sm font-medium mb-2">{book}</p>
+                    <div className="mb-2">
+                      <EditableText
+                        text={book}
+                        onSave={(newName) => handleUpdateBook(book, newName)}
+                        className="text-sm font-medium"
+                        placeholder="교재명을 입력하세요"
+                      />
+                    </div>
                     <div className="text-xs text-muted-foreground space-y-1">
                       <div>단원: {bookStats[book]?.chapters || 0}개</div>
                       <div>오답노트: {bookStats[book]?.wrongNotes || 0}개</div>
