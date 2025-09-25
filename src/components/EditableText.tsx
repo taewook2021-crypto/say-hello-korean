@@ -72,7 +72,11 @@ export const EditableText: React.FC<EditableTextProps> = ({
 
   if (isEditing) {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
+      <div 
+        className={`flex items-center gap-2 ${className}`}
+        onClick={(e) => e.stopPropagation()}
+        data-editable-text="editing"
+      >
         <Input
           ref={inputRef}
           value={value}
@@ -81,11 +85,15 @@ export const EditableText: React.FC<EditableTextProps> = ({
           placeholder={placeholder}
           className={`flex-1 ${inputClassName}`}
           disabled={isLoading}
+          onClick={(e) => e.stopPropagation()}
         />
         <Button
           size="sm"
           variant="ghost"
-          onClick={handleSave}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSave();
+          }}
           disabled={isLoading}
           className="h-8 w-8 p-0"
         >
@@ -94,7 +102,10 @@ export const EditableText: React.FC<EditableTextProps> = ({
         <Button
           size="sm"
           variant="ghost"
-          onClick={handleCancel}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCancel();
+          }}
           disabled={isLoading}
           className="h-8 w-8 p-0"
         >
@@ -105,13 +116,19 @@ export const EditableText: React.FC<EditableTextProps> = ({
   }
 
   return (
-    <div className={`flex items-center gap-2 group ${className}`}>
+    <div 
+      className={`flex items-center gap-2 group ${className}`}
+      data-editable-text="display"
+    >
       <span className="flex-1">{text}</span>
       {showEditIcon && (
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => setIsEditing(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsEditing(true);
+          }}
           className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <Edit className="h-3 w-3" />
