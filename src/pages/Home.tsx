@@ -416,7 +416,11 @@ const Home = () => {
               placeholder="과목명을 입력하세요"
               value={newSubject}
               onChange={(e) => setNewSubject(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddSubject()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                  handleAddSubject();
+                }
+              }}
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowAddDialog(false)}>
@@ -442,7 +446,11 @@ const Home = () => {
               placeholder="책 이름을 입력하세요"
               value={newBook}
               onChange={(e) => setNewBook(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddBook()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                  handleAddBook();
+                }
+              }}
             />
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => {

@@ -139,7 +139,7 @@ export function AppSidebar() {
                       onChange={(e) => setNewSubjectName(e.target.value)}
                       placeholder="예: 수학"
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                           handleAddSubject();
                         }
                       }}
