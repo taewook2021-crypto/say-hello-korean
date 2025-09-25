@@ -41,7 +41,7 @@ interface StudyTableProps {
 
 export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([1])); // 첫 번째 단원은 기본 확장
-  const { addChapter, deleteChapter, updateChapter } = useUnifiedData();
+  const { addChapter, deleteChapter, updateChapter, updateBook } = useUnifiedData();
   const [isWrongNoteDialogOpen, setIsWrongNoteDialogOpen] = useState(false);
   const [isWrongNoteConfirmOpen, setIsWrongNoteConfirmOpen] = useState(false);
   const [isWrongNoteViewOpen, setIsWrongNoteViewOpen] = useState(false);
@@ -513,7 +513,25 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       {/* 상단 버튼들 */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-foreground">
-          {studyData.subject} &gt; {studyData.textbook} (최대 {studyData.maxRounds || 3}회독)
+          {studyData.subject} &gt; <EditableText
+            text={studyData.textbook}
+            onSave={async (newBookName) => {
+              try {
+                await updateBook(studyData.subject, studyData.textbook, newBookName);
+                onUpdateStudyData({
+                  ...studyData,
+                  textbook: newBookName
+                });
+                toast.success(`교재명이 "${newBookName}"으로 변경되었습니다.`);
+              } catch (error) {
+                console.error('Error updating book name:', error);
+                toast.error("교재명 변경 중 오류가 발생했습니다.");
+              }
+            }}
+            className="inline-flex items-center"
+            inputClassName="text-lg font-semibold"
+            showEditIcon={true}
+          /> (최대 {studyData.maxRounds || 3}회독)
         </h3>
         <div className="flex gap-2">
           <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
