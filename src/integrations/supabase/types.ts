@@ -998,6 +998,7 @@ export type Database = {
           explanation: string | null
           id: string
           is_resolved: boolean
+          multiple_choice_options: Json | null
           question: string
           round_number: number | null
           source_text: string
@@ -1012,6 +1013,7 @@ export type Database = {
           explanation?: string | null
           id?: string
           is_resolved?: boolean
+          multiple_choice_options?: Json | null
           question: string
           round_number?: number | null
           source_text: string
@@ -1026,6 +1028,7 @@ export type Database = {
           explanation?: string | null
           id?: string
           is_resolved?: boolean
+          multiple_choice_options?: Json | null
           question?: string
           round_number?: number | null
           source_text?: string

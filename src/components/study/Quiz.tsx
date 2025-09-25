@@ -18,6 +18,10 @@ interface WrongNote {
   book_name: string;
   chapter_name: string;
   is_resolved: boolean;
+  multiple_choice_options?: Array<{
+    text: string;
+    is_correct: boolean;
+  }>;
 }
 
 interface QuizProps {
@@ -51,6 +55,26 @@ export function Quiz({ notes, onComplete }: QuizProps) {
 
   const generateQuizQuestions = () => {
     const questions: QuizQuestion[] = notes.map(note => {
+      // Check if note has user-defined multiple choice options
+      if (note.multiple_choice_options && Array.isArray(note.multiple_choice_options)) {
+        const correctOption = note.multiple_choice_options.find(opt => opt.is_correct);
+        const correctAnswer = correctOption?.text || note.source_text;
+        
+        // Use user-defined options
+        const options = note.multiple_choice_options.map(opt => opt.text);
+        const shuffledOptions = options.sort(() => Math.random() - 0.5);
+        
+        return {
+          id: note.id,
+          question: note.question,
+          options: shuffledOptions,
+          correctAnswer,
+          explanation: note.explanation,
+          originalNote: note
+        };
+      }
+      
+      // Fallback to automatic generation for backward compatibility
       const options = [note.source_text];
       
       // 다른 노트들에서 오답 선택지 생성

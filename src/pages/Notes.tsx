@@ -49,6 +49,13 @@ function Notes() {
     sourceText: "",
     explanation: ""
   });
+  const [showMultipleChoice, setShowMultipleChoice] = useState(false);
+  const [multipleChoiceOptions, setMultipleChoiceOptions] = useState([
+    { text: '', is_correct: true },
+    { text: '', is_correct: false },
+    { text: '', is_correct: false },
+    { text: '', is_correct: false }
+  ]);
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } }>({});
   const [studyMode, setStudyMode] = useState<'list' | 'flashcard' | 'quiz' | 'subjective'>('list');
@@ -116,8 +123,9 @@ function Notes() {
         sourceText: note.source_text || '',
         explanation: note.explanation || '',
         createdAt: new Date(note.created_at),
-        isResolved: note.is_resolved
-      })));
+        isResolved: note.is_resolved,
+        multiple_choice_options: note.multiple_choice_options || null
+      } as any)));
     } catch (error) {
       console.error('Error loading notes:', error);
       toast({
@@ -138,6 +146,30 @@ function Notes() {
         variant: "destructive",
       });
       return;
+    }
+
+    // Validate multiple choice options if enabled
+    if (showMultipleChoice) {
+      const correctAnswers = multipleChoiceOptions.filter(opt => opt.is_correct);
+      const filledOptions = multipleChoiceOptions.filter(opt => opt.text.trim());
+      
+      if (correctAnswers.length !== 1) {
+        toast({
+          title: "선택지 오류",
+          description: "정답을 정확히 1개 선택해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (filledOptions.length < 4) {
+        toast({
+          title: "선택지 오류",
+          description: "모든 선택지를 입력해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     if (!decodedSubject || !decodedBook || !decodedChapter) {
@@ -162,18 +194,25 @@ function Notes() {
         return;
       }
 
+      const insertData: any = {
+        question: newNote.question.trim(),
+        source_text: newNote.sourceText.trim() || '',
+        explanation: newNote.explanation.trim() || '',
+        subject_name: decodedSubject,
+        book_name: decodedBook,
+        chapter_name: decodedChapter,
+        is_resolved: false,
+        user_id: user.id
+      };
+
+      // Add multiple choice options if provided
+      if (showMultipleChoice) {
+        insertData.multiple_choice_options = multipleChoiceOptions;
+      }
+
       const { data, error } = await supabase
         .from('wrong_notes')
-        .insert({
-          question: newNote.question.trim(),
-          source_text: newNote.sourceText.trim() || '',
-          explanation: newNote.explanation.trim() || '',
-          subject_name: decodedSubject,
-          book_name: decodedBook,
-          chapter_name: decodedChapter,
-          is_resolved: false,
-          user_id: user.id
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -210,6 +249,13 @@ function Notes() {
         sourceText: "",
         explanation: ""
       });
+      setShowMultipleChoice(false);
+      setMultipleChoiceOptions([
+        { text: '', is_correct: true },
+        { text: '', is_correct: false },
+        { text: '', is_correct: false },
+        { text: '', is_correct: false }
+      ]);
       setShowAddForm(false);
 
       toast({
@@ -413,7 +459,8 @@ function Notes() {
         subject_name: decodedSubject,
         book_name: decodedBook,
         chapter_name: decodedChapter,
-        is_resolved: note.isResolved
+        is_resolved: note.isResolved,
+        multiple_choice_options: (note as any).multiple_choice_options || null
       }));
       setCurrentStudyNotes(studyNotes);
     }
@@ -617,6 +664,54 @@ function Notes() {
                   rows={6}
                 />
               </div>
+
+              {/* Multiple Choice Toggle */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="multiple-choice-toggle"
+                  checked={showMultipleChoice}
+                  onChange={(e) => setShowMultipleChoice(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="multiple-choice-toggle">객관식 선지 추가</Label>
+              </div>
+
+              {/* Multiple Choice Options */}
+              {showMultipleChoice && (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
+                  <Label className="text-sm font-medium">객관식 선택지 (정답 1개, 오답 3개)</Label>
+                  {multipleChoiceOptions.map((option, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="correct-answer"
+                        checked={option.is_correct}
+                        onChange={() => {
+                          const newOptions = [...multipleChoiceOptions];
+                          newOptions.forEach(opt => opt.is_correct = false);
+                          newOptions[index].is_correct = true;
+                          setMultipleChoiceOptions(newOptions);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <Input
+                        placeholder={`선택지 ${index + 1}`}
+                        value={option.text}
+                        onChange={(e) => {
+                          const newOptions = [...multipleChoiceOptions];
+                          newOptions[index].text = e.target.value;
+                          setMultipleChoiceOptions(newOptions);
+                        }}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        {option.is_correct ? '정답' : '오답'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <Button
