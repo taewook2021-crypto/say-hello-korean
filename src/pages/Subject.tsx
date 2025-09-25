@@ -200,25 +200,32 @@ const Subject = () => {
         ) : (
           books.map((book, index) => (
             <div key={index} className="relative group">
-              <Link to={`/subject/${subjectName}/book/${encodeURIComponent(book)}`}>
-                <Card className="p-4 text-center cursor-pointer hover:bg-accent">
-                  <CardContent className="p-0">
-                    <BookOpen className="h-12 w-12 text-primary mx-auto mb-2" />
-                    <div className="mb-2">
-                      <EditableText
-                        text={book}
-                        onSave={(newName) => handleUpdateBook(book, newName)}
-                        className="text-sm font-medium"
-                        placeholder="교재명을 입력하세요"
-                      />
-                    </div>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div>단원: {bookStats[book]?.chapters || 0}개</div>
-                      <div>오답노트: {bookStats[book]?.wrongNotes || 0}개</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+              <Card className="p-4 text-center hover:bg-accent">
+                <CardContent className="p-0">
+                  <BookOpen className="h-12 w-12 text-primary mx-auto mb-2" />
+                  <div className="mb-2">
+                    <EditableText
+                      text={book}
+                      onSave={(newName) => handleUpdateBook(book, newName)}
+                      className="text-sm font-medium"
+                      placeholder="교재명을 입력하세요"
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div>단원: {bookStats[book]?.chapters || 0}개</div>
+                    <div>오답노트: {bookStats[book]?.wrongNotes || 0}개</div>
+                  </div>
+                  
+                  {/* 카드 하단에 이동 버튼 추가 */}
+                  <div className="mt-3 pt-3 border-t">
+                    <Link to={`/subject/${subjectName}/book/${encodeURIComponent(book)}`}>
+                      <Button variant="outline" size="sm" className="w-full">
+                        교재 열기
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
               
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <DropdownMenu>
