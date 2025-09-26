@@ -32,7 +32,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onEditorReady
 }) => {
   const [currentTable, setCurrentTable] = React.useState<HTMLElement | null>(null);
-  const [selectedCells, setSelectedCells] = React.useState<HTMLElement[]>([]);
   
   const editor = useEditor({
     extensions: [
@@ -76,132 +75,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_table]:relative [&_.selectedCell]:bg-blue-100 [&_.column-resize-handle]:bg-blue-500',
+        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_table]:relative [&_.column-resize-handle]:bg-blue-500',
         style: 'white-space: pre-wrap;'
-      },
-      handleKeyDown: (view, event) => {
-        // Handle Delete key and Backspace key for selected table cells/rows/columns
-        if ((event.key === 'Delete' || event.key === 'Backspace') && selectedCells.length > 0) {
-          console.log('Selected cells count:', selectedCells.length);
-          
-          // Analyze selected cells to determine deletion strategy
-          const rows = new Set<number>();
-          const cols = new Set<number>();
-          
-          selectedCells.forEach((cell, index) => {
-            console.log('Processing cell', index, cell);
-            const row = cell.closest('tr');
-            const table = cell.closest('table');
-            
-            console.log('Found row:', row);
-            console.log('Found table:', table);
-            
-            if (row && table) {
-              const allRows = Array.from(table.querySelectorAll('tr'));
-              const rowIndex = allRows.indexOf(row);
-              const cellsInRow = Array.from(row.children);
-              const cellIndex = cellsInRow.indexOf(cell);
-              
-              console.log('All rows count:', allRows.length);
-              console.log('Cells in row count:', cellsInRow.length);
-              console.log('Row index:', rowIndex, 'Cell index:', cellIndex);
-              
-              if (rowIndex >= 0) {
-                rows.add(rowIndex);
-                console.log('Added row index:', rowIndex);
-              } else {
-                console.log('Failed to find row index');
-              }
-              
-              if (cellIndex >= 0) {
-                cols.add(cellIndex);
-                console.log('Added col index:', cellIndex);
-              } else {
-                console.log('Failed to find cell index');
-              }
-            } else {
-              console.log('Could not find row or table for cell');
-            }
-          });
-          
-          console.log('Selected cells analysis:', { rows: Array.from(rows), cols: Array.from(cols) });
-          
-          // Determine what to delete
-          const table = selectedCells[0].closest('table');
-          if (table) {
-            const totalRows = table.querySelectorAll('tr').length;
-            const totalCols = table.querySelector('tr')?.children.length || 0;
-            
-            if (rows.size === totalRows && cols.size < totalCols) {
-              // Entire column(s) selected
-              console.log('Deleting', cols.size, 'columns');
-              for (let i = 0; i < cols.size; i++) {
-                editor.chain().focus().deleteColumn().run();
-              }
-            } else if (cols.size === totalCols && rows.size < totalRows) {
-              // Entire row(s) selected  
-              console.log('Deleting', rows.size, 'rows');
-              for (let i = 0; i < rows.size; i++) {
-                editor.chain().focus().deleteRow().run();
-              }
-            } else {
-              // Partial selection - default to row deletion
-              console.log('Deleting rows (default)');
-              editor.chain().focus().deleteRow().run();
-            }
-          }
-          
-          // Clear selection
-          setSelectedCells([]);
-          return true;
-        }
-        
-        return false;
-      },
-      handleDOMEvents: {
-        mousedown: (view, event) => {
-          const target = event.target as HTMLElement;
-          if (target.tagName === 'TD' || target.tagName === 'TH') {
-            // Clear previous selection
-            const table = target.closest('table');
-            if (table) {
-              table.querySelectorAll('.selectedCell').forEach(cell => {
-                cell.classList.remove('selectedCell');
-              });
-            }
-            // Start new selection
-            setSelectedCells([target]);
-            target.classList.add('selectedCell');
-            console.log('Started selection with cell:', target);
-          }
-          return false;
-        },
-        
-        mouseover: (view, event) => {
-          if (event.buttons === 1) { // Left mouse button is down
-            const target = event.target as HTMLElement;
-            if (target.tagName === 'TD' || target.tagName === 'TH') {
-              // Add to selection if not already included
-              setSelectedCells(prev => {
-                if (!prev.includes(target)) {
-                  target.classList.add('selectedCell');
-                  console.log('Added cell to selection:', target);
-                  return [...prev, target];
-                }
-                return prev;
-              });
-            }
-          }
-          return false;
-        },
-        
-        mouseup: (view, event) => {
-          // Selection complete - log final selection
-          setTimeout(() => {
-            console.log('Final selected cells:', selectedCells.length);
-          }, 100);
-          return false;
-        }
       }
     },
   });

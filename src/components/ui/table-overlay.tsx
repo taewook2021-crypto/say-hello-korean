@@ -13,55 +13,78 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   const [columnMenuPosition, setColumnMenuPosition] = useState({ top: 0, left: 0 });
   const [rowMenuPosition, setRowMenuPosition] = useState({ top: 0, left: 0 });
   const [isVisible, setIsVisible] = useState(false);
+  const [clickedCell, setClickedCell] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!tableElement) {
       setIsVisible(false);
+      setClickedCell(null);
       return;
     }
 
-    const updatePositions = () => {
-      const rect = tableElement.getBoundingClientRect();
-      const editorContainer = editor.view.dom.closest('.ProseMirror');
-      const containerRect = editorContainer?.getBoundingClientRect();
-      
-      if (containerRect) {
-        // 첫 번째 셀 찾기
-        const firstCell = tableElement.querySelector('td, th');
-        if (firstCell) {
-          const cellRect = firstCell.getBoundingClientRect();
-          
-          // 열 메뉴 위치 (첫 번째 셀 위쪽)
-          setColumnMenuPosition({
-            top: cellRect.top - containerRect.top - 30,
-            left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
-          });
-          
-          // 행 메뉴 위치 (첫 번째 셀 왼쪽)
-          setRowMenuPosition({
-            top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
-            left: cellRect.left - containerRect.left - 30
-          });
-          
-          setIsVisible(true);
-        }
+    const handleCellClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if ((target.tagName === 'TD' || target.tagName === 'TH') && 
+          tableElement.contains(target)) {
+        setClickedCell(target);
+        updateMenuPositions(target);
+        setIsVisible(true);
+      } else if (!target.closest('.table-overlay-menu')) {
+        // Hide menus when clicking outside table or menus
+        setIsVisible(false);
+        setClickedCell(null);
       }
     };
 
-    updatePositions();
+    const updateMenuPositions = (cell: HTMLElement) => {
+      const editorContainer = editor.view.dom.closest('.ProseMirror');
+      const containerRect = editorContainer?.getBoundingClientRect();
+      
+      if (containerRect && cell) {
+        const cellRect = cell.getBoundingClientRect();
+        
+        // 열 메뉴 위치 (클릭된 셀의 열 위쪽)
+        setColumnMenuPosition({
+          top: cellRect.top - containerRect.top - 30,
+          left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
+        });
+        
+        // 행 메뉴 위치 (클릭된 셀의 행 왼쪽)
+        setRowMenuPosition({
+          top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
+          left: cellRect.left - containerRect.left - 30
+        });
+      }
+    };
+
+    // Add click event listener to document
+    document.addEventListener('click', handleCellClick);
     
-    const resizeObserver = new ResizeObserver(updatePositions);
+    const resizeObserver = new ResizeObserver(() => {
+      if (clickedCell) {
+        updateMenuPositions(clickedCell);
+      }
+    });
     resizeObserver.observe(tableElement);
     
-    window.addEventListener('scroll', updatePositions);
-    window.addEventListener('resize', updatePositions);
+    window.addEventListener('scroll', () => {
+      if (clickedCell) {
+        updateMenuPositions(clickedCell);
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (clickedCell) {
+        updateMenuPositions(clickedCell);
+      }
+    });
 
     return () => {
+      document.removeEventListener('click', handleCellClick);
       resizeObserver.disconnect();
-      window.removeEventListener('scroll', updatePositions);
-      window.removeEventListener('resize', updatePositions);
+      window.removeEventListener('scroll', () => {});
+      window.removeEventListener('resize', () => {});
     };
-  }, [tableElement, editor]);
+  }, [tableElement, editor, clickedCell]);
 
   const handleAddColumnBefore = () => {
     editor.chain().focus().addColumnBefore().run();
@@ -93,7 +116,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     <>
       {/* 열 편집 메뉴 (위쪽) */}
       <div
-        className="absolute z-50"
+        className="absolute z-50 table-overlay-menu"
         style={{
           top: `${columnMenuPosition.top}px`,
           left: `${columnMenuPosition.left}px`
@@ -110,6 +133,10 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-40">
+            <DropdownMenuItem onClick={handleAddColumnBefore}>
+              <Plus className="h-4 w-4 mr-2" />
+              왼쪽에 열 추가
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleAddColumnAfter}>
               <Plus className="h-4 w-4 mr-2" />
               오른쪽에 열 추가
@@ -125,7 +152,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
 
       {/* 행 편집 메뉴 (왼쪽) */}
       <div
-        className="absolute z-50"
+        className="absolute z-50 table-overlay-menu"
         style={{
           top: `${rowMenuPosition.top}px`,
           left: `${rowMenuPosition.left}px`
@@ -142,6 +169,10 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-40">
+            <DropdownMenuItem onClick={handleAddRowBefore}>
+              <Plus className="h-4 w-4 mr-2" />
+              위에 행 추가
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleAddRowAfter}>
               <Plus className="h-4 w-4 mr-2" />
               아래에 행 추가
