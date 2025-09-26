@@ -65,8 +65,10 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       const target = event.target as HTMLElement;
       if ((target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
         event.preventDefault();
+        console.log('Mouse down on cell:', target);
         const position = getCellPosition(target);
         if (position) {
+          console.log('Start position:', position);
           setIsDragging(true);
           setDragStart(position);
           setDragEnd(position);
@@ -82,7 +84,8 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement;
       if (target && (target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
         const position = getCellPosition(target);
-        if (position) {
+        if (position && (position.row !== dragEnd?.row || position.col !== dragEnd?.col)) {
+          console.log('Move to position:', position);
           setDragEnd(position);
           updateSelection(dragStart, position);
         }
@@ -91,6 +94,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
 
     const handleMouseUp = () => {
       if (isDragging) {
+        console.log('Mouse up - analyzing selection');
         setIsDragging(false);
         if (dragStart && dragEnd) {
           analyzeSelection(dragStart, dragEnd);
@@ -98,8 +102,27 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       }
     };
 
+    const handleMouseEnter = (event: MouseEvent) => {
+      if (!isDragging || !dragStart) return;
+      
+      const target = event.target as HTMLElement;
+      if ((target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
+        const position = getCellPosition(target);
+        if (position && (position.row !== dragEnd?.row || position.col !== dragEnd?.col)) {
+          setDragEnd(position);
+          updateSelection(dragStart, position);
+        }
+      }
+    };
+
     updateButtonPositions();
     setIsVisible(true);
+    
+    // 테이블의 모든 셀에 이벤트 리스너 추가
+    const cells = tableElement.querySelectorAll('td, th');
+    cells.forEach(cell => {
+      cell.addEventListener('mouseenter', handleMouseEnter as EventListener);
+    });
     
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
@@ -112,6 +135,9 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     window.addEventListener('resize', updateButtonPositions);
 
     return () => {
+      cells.forEach(cell => {
+        cell.removeEventListener('mouseenter', handleMouseEnter as EventListener);
+      });
       document.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
