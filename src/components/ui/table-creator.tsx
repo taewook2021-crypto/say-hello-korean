@@ -31,8 +31,14 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
       const newData = Array(rows).fill(null).map(() => Array(cols).fill(''));
       setTableData(newData);
       setSelectedCells(null);
+      
+      // inline 모드에서는 초기 빈 표도 생성
+      if (inline) {
+        const tableHtml = generateTableHtml(newData);
+        onTableCreate(tableHtml);
+      }
     }
-  }, [rows, cols, isOpen]);
+  }, [rows, cols, isOpen, inline]);
 
   // 키보드 이벤트 핸들러
   useEffect(() => {
@@ -53,6 +59,12 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
     const newData = [...tableData];
     newData[row][col] = value;
     setTableData(newData);
+    
+    // inline 모드에서는 실시간으로 HTML 업데이트
+    if (inline) {
+      const tableHtml = generateTableHtml(newData);
+      onTableCreate(tableHtml);
+    }
   };
 
   const addRow = () => {
@@ -147,10 +159,10 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
     return row >= minRow && row <= maxRow && col >= minCol && col <= maxCol;
   };
 
-  const generateTableHtml = () => {
+  const generateTableHtml = (data = tableData) => {
     let html = '<table border="1" style="border-collapse: collapse; width: 100%;">\n';
     
-    tableData.forEach((row, rowIndex) => {
+    data.forEach((row, rowIndex) => {
       html += '  <tr>\n';
       row.forEach((cell, colIndex) => {
         html += `    <td style="border: 1px solid #ddd; padding: 8px;">${cell || '&nbsp;'}</td>\n`;
