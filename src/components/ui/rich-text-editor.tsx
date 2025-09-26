@@ -71,6 +71,67 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       attributes: {
         class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_table]:relative [&_.column-resize-handle]:bg-blue-500',
         style: 'white-space: pre-wrap;'
+      },
+      handleKeyDown: (view, event) => {
+        // Handle backspace and delete keys for table operations
+        if (event.key === 'Backspace' || event.key === 'Delete') {
+          const { state } = view;
+          const { selection } = state;
+          
+          // Check if we're in a table
+          if (editor?.isActive('table')) {
+            // If there's a selection range (dragged selection)
+            if (!selection.empty) {
+              const { from, to } = selection;
+              const selectedContent = state.doc.textBetween(from, to, ' ');
+              
+              // Check if entire table is selected
+              const tableNode = editor.state.selection.$from.node(-1);
+              if (tableNode && tableNode.type.name === 'table') {
+                // If most/all of table content is selected, delete entire table
+                const tableSize = tableNode.content.size;
+                const selectionSize = to - from;
+                
+                if (selectionSize >= tableSize * 0.8) { // 80% threshold
+                  event.preventDefault();
+                  editor.chain().focus().deleteTable().run();
+                  return true;
+                }
+              }
+              
+              // Check for row/column selection patterns
+              const tr = state.tr;
+              const resolvedFrom = tr.doc.resolve(from);
+              const resolvedTo = tr.doc.resolve(to);
+              
+              // If selection spans multiple cells in same row, delete row
+              if (resolvedFrom.parent.type.name === 'tableRow' && 
+                  resolvedTo.parent.type.name === 'tableRow' &&
+                  resolvedFrom.parent === resolvedTo.parent) {
+                event.preventDefault();
+                editor.chain().focus().deleteRow().run();
+                return true;
+              }
+              
+              // If selection spans multiple rows in same column position, delete column
+              const fromCellIndex = resolvedFrom.index(-1);
+              const toCellIndex = resolvedTo.index(-1);
+              if (fromCellIndex === toCellIndex && 
+                  resolvedFrom.depth > 2 && resolvedTo.depth > 2) {
+                event.preventDefault();
+                editor.chain().focus().deleteColumn().run();
+                return true;
+              }
+              
+              // For regular cell content selection, clear the content
+              event.preventDefault();
+              editor.chain().focus().deleteSelection().run();
+              return true;
+            }
+          }
+        }
+        
+        return false;
       }
     },
   });
