@@ -7,14 +7,12 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { Button } from '@/components/ui/button';
 import { TableSizeSelector } from '@/components/ui/table-size-selector';
+import { TableOverlay } from '@/components/ui/table-overlay';
 import { 
   Bold, 
   Italic, 
   List, 
-  ListOrdered, 
-  Minus,
-  Plus,
-  Trash2
+  ListOrdered
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +31,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   className,
   onEditorReady
 }) => {
+  const [currentTable, setCurrentTable] = React.useState<HTMLElement | null>(null);
+  
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -50,11 +50,42 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     onCreate: ({ editor }) => {
       onEditorReady?.(editor);
     },
+    onSelectionUpdate: ({ editor }) => {
+      // Check if we're in a table
+      if (editor.isActive('table')) {
+        try {
+          const selection = editor.state.selection;
+          const resolvedPos = editor.view.domAtPos(selection.anchor);
+          let element = resolvedPos.node as Node;
+          
+          // Walk up the DOM tree to find the table element
+          while (element && element.nodeType !== Node.ELEMENT_NODE) {
+            element = element.parentNode!;
+          }
+          
+          const tableElement = (element as Element)?.closest('table') as HTMLElement;
+          setCurrentTable(tableElement || null);
+        } catch (error) {
+          setCurrentTable(null);
+        }
+      } else {
+        setCurrentTable(null);
+      }
+    },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted',
+        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_table]:relative',
         style: 'white-space: pre-wrap;'
       },
+      handleKeyDown: (view, event) => {
+        // Handle Delete key for table deletion
+        if (event.key === 'Delete' && editor.isActive('table')) {
+          // Simplified implementation - user can use the 3-dot menu for precise control
+          // This is a basic fallback for Delete key
+          return false;
+        }
+        return false;
+      }
     },
   });
 
@@ -111,158 +142,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
           } 
         />
-        
-         {editor.isActive('table') && (
-           <>
-             <div className="flex items-center gap-1 ml-2">
-               <span className="text-xs text-muted-foreground mr-2">표 편집:</span>
-               <Button
-                 type="button"
-                 variant="ghost"
-                 size="sm"
-                 onClick={() => editor.chain().focus().addRowBefore().run()}
-                 className="text-xs px-2"
-               >
-                 행 추가(위)
-               </Button>
-               <Button
-                 type="button"
-                 variant="ghost"
-                 size="sm"
-                 onClick={() => editor.chain().focus().addRowAfter().run()}
-                 className="text-xs px-2"
-               >
-                 행 추가(아래)
-               </Button>
-               <Button
-                 type="button"
-                 variant="ghost"
-                 size="sm"
-                 onClick={() => editor.chain().focus().addColumnBefore().run()}
-                 className="text-xs px-2"
-               >
-                 열 추가(왼쪽)
-               </Button>
-               <Button
-                 type="button"
-                 variant="ghost"
-                 size="sm"
-                 onClick={() => editor.chain().focus().addColumnAfter().run()}
-                 className="text-xs px-2"
-               >
-                 열 추가(오른쪽)
-               </Button>
-               <Button
-                 type="button"
-                 variant="ghost"
-                 size="sm"
-                 onClick={() => editor.chain().focus().deleteRow().run()}
-                 className="text-xs px-2 text-destructive"
-               >
-                 행 삭제
-               </Button>
-               <Button
-                 type="button"
-                 variant="ghost"
-                 size="sm"
-                 onClick={() => editor.chain().focus().deleteColumn().run()}
-                 className="text-xs px-2 text-destructive"
-               >
-                 열 삭제
-               </Button>
-               <Button
-                 type="button"
-                 variant="ghost"
-                 size="sm"
-                 onClick={() => editor.chain().focus().deleteTable().run()}
-                 className="text-xs px-2 text-destructive"
-               >
-                 표 삭제
-               </Button>
-             </div>
-           </>
-         )}
       </div>
       
       {/* Editor */}
-      <EditorContent 
-        editor={editor} 
-        className="min-h-[100px]"
-        placeholder={placeholder}
-      />
-      
-      {/* Floating Table Controls */}
-      {editor?.isActive('table') && (
-        <div className="mt-2 p-2 bg-muted rounded-md border">
-          <p className="text-xs text-muted-foreground mb-2">표가 선택되었습니다. 아래 버튼으로 편집하세요:</p>
-          <div className="flex flex-wrap gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-              className="text-xs"
-            >
-              위에 행 추가
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-              className="text-xs"
-            >
-              아래에 행 추가
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-              className="text-xs"
-            >
-              왼쪽에 열 추가
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-              className="text-xs"
-            >
-              오른쪽에 열 추가
-            </Button>
-            <div className="w-px h-6 bg-border mx-1" />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => editor.chain().focus().deleteRow().run()}
-              className="text-xs text-destructive"
-            >
-              행 삭제
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => editor.chain().focus().deleteColumn().run()}
-              className="text-xs text-destructive"
-            >
-              열 삭제
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => editor.chain().focus().deleteTable().run()}
-              className="text-xs text-destructive"
-            >
-              표 전체 삭제
-            </Button>
-          </div>
-        </div>
-      )}
+      <div className="relative">
+        <EditorContent 
+          editor={editor} 
+          className="min-h-[100px]"
+          placeholder={placeholder}
+        />
+        <TableOverlay editor={editor} tableElement={currentTable} />
+      </div>
     </div>
   );
 };
