@@ -146,6 +146,9 @@ export const TableModeInterface: React.FC<TableModeInterfaceProps> = ({
                 selectedCellsCount={selectedCells.length}
               />
               <div className="border rounded-lg p-4 min-h-[300px] bg-background">
+                <div className="mb-2 text-sm text-muted-foreground">
+                  💡 문제 표: 빈칸을 원하는 셀은 비워두세요
+                </div>
                 <TableCreator
                   isOpen={true}
                   onClose={() => {}}
@@ -174,6 +177,9 @@ export const TableModeInterface: React.FC<TableModeInterfaceProps> = ({
                 selectedCellsCount={selectedCells.length}
               />
               <div className="border rounded-lg p-4 min-h-[300px] bg-background">
+                <div className="mb-2 text-sm text-muted-foreground">
+                  💡 정답/해설 표: 모든 셀에 완전한 답안을 입력하세요
+                </div>
                 <TableCreator
                   isOpen={true}
                   onClose={() => {}}

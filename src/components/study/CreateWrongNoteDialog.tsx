@@ -97,19 +97,13 @@ export function CreateWrongNoteDialog({
   const generateTableHtml = (data: string[][]) => {
     if (data.length === 0) return '';
     
-    // Filter out completely empty rows and ensure there's content
-    const nonEmptyData = data.filter(row => 
-      row.some(cell => cell && cell.trim() !== '')
-    );
-    
-    if (nonEmptyData.length === 0) return '';
-    
+    // Keep all rows, including empty ones to maintain table structure
     let html = '<table border="1" style="border-collapse: collapse; width: 100%;">\n';
-    nonEmptyData.forEach((row) => {
+    data.forEach((row) => {
       html += '  <tr>\n';
       row.forEach((cell) => {
         const cellContent = cell && cell.trim() !== '' ? cell : '';
-        html += `    <td style="border: 1px solid #ddd; padding: 8px;">${cellContent}</td>\n`;
+        html += `    <td style="border: 1px solid #ddd; padding: 8px; min-height: 20px;">${cellContent}</td>\n`;
       });
       html += '  </tr>\n';
     });
@@ -202,6 +196,7 @@ export function CreateWrongNoteDialog({
     setAnswerTableData([]);
     setShowOCR(false);
     setShowTableCreator(false);
+    setIsTableMode(false);
     onClose();
   };
 
@@ -219,7 +214,18 @@ export function CreateWrongNoteDialog({
             </DialogDescription>
           </DialogHeader>
 
-          {!isTableMode ? (
+          {isTableMode ? (
+            // 표 생성 전용 모드
+            <TableModeInterface
+              problemTableData={problemTableData}
+              answerTableData={answerTableData}
+              onProblemTableChange={setProblemTableData}
+              onAnswerTableChange={setAnswerTableData}
+              onBackToTextMode={() => setIsTableMode(false)}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          ) : (
             // 기존 텍스트 입력 모드
             <div className="space-y-4">
               {/* 문제 내용 */}
@@ -292,17 +298,6 @@ export function CreateWrongNoteDialog({
                 </Button>
               </div>
             </div>
-          ) : (
-            // 표 생성 전용 모드
-            <TableModeInterface
-              problemTableData={problemTableData}
-              answerTableData={answerTableData}
-              onProblemTableChange={setProblemTableData}
-              onAnswerTableChange={setAnswerTableData}
-              onBackToTextMode={() => setIsTableMode(false)}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
           )}
         </DialogContent>
       </Dialog>
