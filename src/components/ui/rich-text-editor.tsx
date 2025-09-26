@@ -32,6 +32,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onEditorReady
 }) => {
   const [currentTable, setCurrentTable] = React.useState<HTMLElement | null>(null);
+  const [selectedCells, setSelectedCells] = React.useState<HTMLElement[]>([]);
   
   const editor = useEditor({
     extensions: [
@@ -80,79 +81,78 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       },
       handleKeyDown: (view, event) => {
         // Handle Delete key and Backspace key for selected table cells/rows/columns
-        if ((event.key === 'Delete' || event.key === 'Backspace') && editor.isActive('table')) {
-          const { state } = editor;
-          const { selection } = state;
+        if ((event.key === 'Delete' || event.key === 'Backspace') && selectedCells.length > 0) {
+          // Analyze selected cells to determine deletion strategy
+          const rows = new Set<number>();
+          const cols = new Set<number>();
           
-          // Check if we have any kind of cell selection
-          if (selection.constructor.name === 'CellSelection') {
-            const cellSelection = selection as any;
+          selectedCells.forEach(cell => {
+            const row = cell.closest('tr');
+            const table = cell.closest('table');
+            if (row && table) {
+              const rowIndex = Array.from(table.querySelectorAll('tr')).indexOf(row);
+              const cellIndex = Array.from(row.children).indexOf(cell);
+              rows.add(rowIndex);
+              cols.add(cellIndex);
+            }
+          });
+          
+          console.log('Selected cells analysis:', { rows: Array.from(rows), cols: Array.from(cols) });
+          
+          // Determine what to delete
+          const table = selectedCells[0].closest('table');
+          if (table) {
+            const totalRows = table.querySelectorAll('tr').length;
+            const totalCols = table.querySelector('tr')?.children.length || 0;
             
-            try {
-              // Get the table map to analyze the selection
-              const map = cellSelection.map;
-              const anchorCell = cellSelection.$anchorCell;
-              const headCell = cellSelection.$headCell;
-              
-              // Calculate selection boundaries
-              const rect = map.rectBetween(anchorCell.pos, headCell.pos);
-              const selectedRows = rect.bottom - rect.top;
-              const selectedCols = rect.right - rect.left;
-              const totalRows = map.height;
-              const totalCols = map.width;
-              
-              console.log('Selection info:', { selectedRows, selectedCols, totalRows, totalCols });
-              
-              // Determine what to delete based on selection pattern
-              if (selectedRows === totalRows && selectedCols < totalCols) {
-                // Full column(s) selected - delete column
-                console.log('Deleting column');
-                for (let i = 0; i < selectedCols; i++) {
-                  editor.chain().focus().deleteColumn().run();
-                }
-              } else if (selectedCols === totalCols && selectedRows < totalRows) {
-                // Full row(s) selected - delete row  
-                console.log('Deleting row');
-                for (let i = 0; i < selectedRows; i++) {
-                  editor.chain().focus().deleteRow().run();
-                }
-              } else if (selectedRows === 1 && selectedCols < totalCols) {
-                // Single row partially selected - delete the row
-                console.log('Deleting single row');
-                editor.chain().focus().deleteRow().run();
-              } else if (selectedCols === 1 && selectedRows < totalRows) {
-                // Single column partially selected - delete the column
-                console.log('Deleting single column');
+            if (rows.size === totalRows && cols.size < totalCols) {
+              // Entire column(s) selected
+              console.log('Deleting', cols.size, 'columns');
+              for (let i = 0; i < cols.size; i++) {
                 editor.chain().focus().deleteColumn().run();
-              } else {
-                // Default: delete row
-                console.log('Default: deleting row');
+              }
+            } else if (cols.size === totalCols && rows.size < totalRows) {
+              // Entire row(s) selected  
+              console.log('Deleting', rows.size, 'rows');
+              for (let i = 0; i < rows.size; i++) {
                 editor.chain().focus().deleteRow().run();
               }
-              
-              return true;
-            } catch (error) {
-              console.error('Error in table deletion:', error);
-              // Fallback: delete current row
+            } else {
+              // Partial selection - default to row deletion
+              console.log('Deleting rows (default)');
               editor.chain().focus().deleteRow().run();
-              return true;
             }
           }
+          
+          // Clear selection
+          setSelectedCells([]);
+          return true;
         }
         
         return false;
       },
       handleDOMEvents: {
         mousedown: (view, event) => {
-          // Add selection styling for table cells
           const target = event.target as HTMLElement;
           if (target.tagName === 'TD' || target.tagName === 'TH') {
-            // Enable cell selection highlighting
-            const table = target.closest('table');
-            if (table) {
-              // Remove previous selections
-              table.querySelectorAll('.selectedCell').forEach(cell => {
-                cell.classList.remove('selectedCell');
+            // Start cell selection
+            setSelectedCells([target]);
+            target.classList.add('selectedCell');
+          }
+          return false;
+        },
+        
+        mouseover: (view, event) => {
+          if (event.buttons === 1) { // Left mouse button is down
+            const target = event.target as HTMLElement;
+            if (target.tagName === 'TD' || target.tagName === 'TH') {
+              // Add to selection
+              setSelectedCells(prev => {
+                if (!prev.includes(target)) {
+                  target.classList.add('selectedCell');
+                  return [...prev, target];
+                }
+                return prev;
               });
             }
           }
@@ -160,25 +160,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         },
         
         mouseup: (view, event) => {
-          // Handle cell selection completion
-          setTimeout(() => {
-            const { state } = view;
-            const { selection } = state;
-            
-            if (selection.constructor.name === 'CellSelection') {
-              const cellSelection = selection as any;
-              cellSelection.forEachCell((cell: any, cellPos: number) => {
-                const domNode = view.domAtPos(cellPos + 1).node;
-                const cellElement = domNode.nodeType === Node.ELEMENT_NODE 
-                  ? domNode as HTMLElement 
-                  : domNode.parentElement;
-                  
-                if (cellElement && (cellElement.tagName === 'TD' || cellElement.tagName === 'TH')) {
-                  cellElement.classList.add('selectedCell');
-                }
-              });
-            }
-          }, 0);
+          // Selection complete
           return false;
         }
       }
