@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { HtmlContent } from "@/components/ui/html-content";
+import { TableCreator } from "@/components/ui/table-creator";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2 } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2, Table } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
@@ -65,6 +66,7 @@ function Notes() {
   const [currentStudyNotes, setCurrentStudyNotes] = useState<any[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
   const [showOCR, setShowOCR] = useState(false);
+  const [showTableCreator, setShowTableCreator] = useState(false);
   const [gptLoading, setGptLoading] = useState(false);
 
   const decodedSubject = decodeURIComponent(subjectName || '');
@@ -426,6 +428,14 @@ function Notes() {
     setShowOCR(false);
   };
 
+  const handleTableCreate = (tableHtml: string) => {
+    setNewNote(prev => ({
+      ...prev,
+      question: prev.question + '\n\n' + tableHtml + '\n\n'
+    }));
+    setShowTableCreator(false);
+  };
+
   const handleGPTGeneration = async () => {
     toast({
       title: "준비 중",
@@ -650,14 +660,24 @@ function Notes() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <Label htmlFor="question">문제</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowOCR(true)}
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    OCR
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowOCR(true)}
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      OCR
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowTableCreator(true)}
+                    >
+                      <Table className="h-4 w-4 mr-2" />
+                      표 생성
+                    </Button>
+                  </div>
                 </div>
                 <Textarea
                   value={newNote.question}
@@ -963,11 +983,17 @@ function Notes() {
       </div>
 
       {/* OCR Camera */}
-      <OCRCamera
-        isOpen={showOCR}
-        onClose={() => setShowOCR(false)}
-        onTextExtracted={handleOCRResult}
-      />
+        <OCRCamera
+          isOpen={showOCR}
+          onClose={() => setShowOCR(false)}
+          onTextExtracted={handleOCRResult}
+        />
+
+        <TableCreator
+          isOpen={showTableCreator}
+          onClose={() => setShowTableCreator(false)}
+          onTableCreate={handleTableCreate}
+        />
     </div>
   );
 }

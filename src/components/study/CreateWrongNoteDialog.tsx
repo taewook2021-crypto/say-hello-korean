@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Camera } from "lucide-react";
+import { Camera, Table } from "lucide-react";
 import OCRCamera from "@/components/OCRCamera";
+import { TableCreator } from "@/components/ui/table-creator";
 
 interface StudyData {
   id: string;
@@ -68,6 +69,7 @@ export function CreateWrongNoteDialog({
   const [problemText, setProblemText] = useState("");
   const [answer, setAnswer] = useState("");
   const [showOCR, setShowOCR] = useState(false);
+  const [showTableCreator, setShowTableCreator] = useState(false);
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
@@ -75,6 +77,11 @@ export function CreateWrongNoteDialog({
   const handleOCRResult = (text: string) => {
     setProblemText(prev => prev + text);
     setShowOCR(false);
+  };
+
+  const handleTableCreate = (tableHtml: string) => {
+    setProblemText(prev => prev + '\n\n' + tableHtml + '\n\n');
+    setShowTableCreator(false);
   };
 
 
@@ -156,6 +163,7 @@ export function CreateWrongNoteDialog({
     setProblemText("");
     setAnswer("");
     setShowOCR(false);
+    setShowTableCreator(false);
     onClose();
   };
 
@@ -178,16 +186,28 @@ export function CreateWrongNoteDialog({
             <div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="problemText">문제 *</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowOCR(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Camera className="w-4 h-4" />
-                  카메라로 입력
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowOCR(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Camera className="w-4 h-4" />
+                    카메라로 입력
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowTableCreator(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Table className="w-4 h-4" />
+                    표 생성
+                  </Button>
+                </div>
               </div>
               <Textarea
                 id="problemText"
@@ -228,6 +248,13 @@ export function CreateWrongNoteDialog({
         isOpen={showOCR}
         onClose={() => setShowOCR(false)}
         onTextExtracted={handleOCRResult}
+      />
+
+      {/* Table Creator Modal */}
+      <TableCreator
+        isOpen={showTableCreator}
+        onClose={() => setShowTableCreator(false)}
+        onTableCreate={handleTableCreate}
       />
     </>
   );
