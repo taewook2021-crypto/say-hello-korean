@@ -38,6 +38,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       StarterKit,
       Table.configure({
         resizable: true,
+        allowTableNodeSelection: true,
       }),
       TableRow,
       TableHeader,
@@ -74,17 +75,79 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_table]:relative',
+        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_table]:relative [&_.selectedCell]:bg-blue-100 [&_.column-resize-handle]:bg-blue-500',
         style: 'white-space: pre-wrap;'
       },
       handleKeyDown: (view, event) => {
-        // Handle Delete key for table deletion
+        // Handle Delete key for selected table cells/rows/columns
         if (event.key === 'Delete' && editor.isActive('table')) {
-          // Simplified implementation - user can use the 3-dot menu for precise control
-          // This is a basic fallback for Delete key
+          const { state } = editor;
+          const { selection } = state;
+          
+          // Check if we have multiple cells selected (CellSelection)
+          if (selection.constructor.name === 'CellSelection') {
+            // Clear content of selected cells
+            const cellSelection = selection as any;
+            let tr = state.tr;
+            
+            cellSelection.forEachCell((cell: any, cellPos: number) => {
+              const cellStart = cellPos + 1;
+              const cellEnd = cellPos + cell.content.size + 1;
+              tr = tr.delete(cellStart, cellEnd);
+            });
+            
+            if (tr.docChanged) {
+              view.dispatch(tr);
+              return true;
+            }
+          } else {
+            // Single cell - just delete selection
+            editor.chain().focus().deleteSelection().run();
+            return true;
+          }
+        }
+        
+        return false;
+      },
+      handleDOMEvents: {
+        mousedown: (view, event) => {
+          // Add selection styling for table cells
+          const target = event.target as HTMLElement;
+          if (target.tagName === 'TD' || target.tagName === 'TH') {
+            // Enable cell selection highlighting
+            const table = target.closest('table');
+            if (table) {
+              // Remove previous selections
+              table.querySelectorAll('.selectedCell').forEach(cell => {
+                cell.classList.remove('selectedCell');
+              });
+            }
+          }
+          return false;
+        },
+        
+        mouseup: (view, event) => {
+          // Handle cell selection completion
+          setTimeout(() => {
+            const { state } = view;
+            const { selection } = state;
+            
+            if (selection.constructor.name === 'CellSelection') {
+              const cellSelection = selection as any;
+              cellSelection.forEachCell((cell: any, cellPos: number) => {
+                const domNode = view.domAtPos(cellPos + 1).node;
+                const cellElement = domNode.nodeType === Node.ELEMENT_NODE 
+                  ? domNode as HTMLElement 
+                  : domNode.parentElement;
+                  
+                if (cellElement && (cellElement.tagName === 'TD' || cellElement.tagName === 'TH')) {
+                  cellElement.classList.add('selectedCell');
+                }
+              });
+            }
+          }, 0);
           return false;
         }
-        return false;
       }
     },
   });
