@@ -8,12 +8,6 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { Button } from '@/components/ui/button';
 import { TableSizeSelector } from '@/components/ui/table-size-selector';
 import { TableOverlay } from '@/components/ui/table-overlay';
-import { 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered
-} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
@@ -89,44 +83,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     <div className={cn("border border-input rounded-md", className)}>
       {/* Toolbar */}
       <div className="border-b border-input p-2 flex flex-wrap gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={editor.isActive('bold') ? 'bg-muted' : ''}
-        >
-          <Bold className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={editor.isActive('italic') ? 'bg-muted' : ''}
-        >
-          <Italic className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={editor.isActive('bulletList') ? 'bg-muted' : ''}
-        >
-          <List className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={editor.isActive('orderedList') ? 'bg-muted' : ''}
-        >
-          <ListOrdered className="h-4 w-4" />
-        </Button>
-        
-        <div className="w-px h-6 bg-border mx-1" />
         
         {/* Table buttons */}
         <TableSizeSelector 
