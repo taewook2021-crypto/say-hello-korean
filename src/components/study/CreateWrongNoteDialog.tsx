@@ -1,15 +1,12 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Camera, Table } from "lucide-react";
+import { Camera } from "lucide-react";
 import OCRCamera from "@/components/OCRCamera";
-import { TableCreator } from "@/components/ui/table-creator";
-import { TableModeInterface } from "./TableModeInterface";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 interface StudyData {
   id: string;
@@ -70,10 +67,6 @@ export function CreateWrongNoteDialog({
   const [problemText, setProblemText] = useState("");
   const [answer, setAnswer] = useState("");
   const [showOCR, setShowOCR] = useState(false);
-  const [showTableCreator, setShowTableCreator] = useState(false);
-  const [isTableMode, setIsTableMode] = useState(false);
-  const [problemTableData, setProblemTableData] = useState<string[][]>([]);
-  const [answerTableData, setAnswerTableData] = useState<string[][]>([]);
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
@@ -83,41 +76,9 @@ export function CreateWrongNoteDialog({
     setShowOCR(false);
   };
 
-  const handleTableCreate = (tableHtml: string) => {
-    setProblemText(prev => prev + '\n\n' + tableHtml + '\n\n');
-    setShowTableCreator(false);
-  };
-
-
-  const generateAnswerWithGPT = async () => {
-    toast.error("GPT 기능은 현재 준비 중입니다.");
-    return;
-  };
-
-  const generateTableHtml = (data: string[][]) => {
-    if (data.length === 0) return '';
-    
-    // Keep all rows, including empty ones to maintain table structure
-    let html = '<table border="1" style="border-collapse: collapse; width: 100%;">\n';
-    data.forEach((row) => {
-      html += '  <tr>\n';
-      row.forEach((cell) => {
-        const cellContent = cell && cell.trim() !== '' ? cell : '';
-        html += `    <td style="border: 1px solid #ddd; padding: 8px; min-height: 20px;">${cellContent}</td>\n`;
-      });
-      html += '  </tr>\n';
-    });
-    html += '</table>';
-    return html;
-  };
-
   const handleSave = async () => {
-    const finalProblemText = isTableMode 
-      ? generateTableHtml(problemTableData)
-      : problemText.trim();
-    const finalAnswer = isTableMode 
-      ? generateTableHtml(answerTableData) 
-      : answer.trim();
+    const finalProblemText = problemText.trim();
+    const finalAnswer = answer.trim();
 
     if (!finalProblemText) {
       toast.error("문제 내용을 입력해주세요.");
@@ -178,8 +139,6 @@ export function CreateWrongNoteDialog({
       // 폼 초기화
       setProblemText("");
       setAnswer("");
-      setProblemTableData([]);
-      setAnswerTableData([]);
       
       onNoteCreated();
     } catch (error) {
@@ -192,11 +151,7 @@ export function CreateWrongNoteDialog({
     // 폼 초기화
     setProblemText("");
     setAnswer("");
-    setProblemTableData([]);
-    setAnswerTableData([]);
     setShowOCR(false);
-    setShowTableCreator(false);
-    setIsTableMode(false);
     onClose();
   };
 
@@ -219,96 +174,37 @@ export function CreateWrongNoteDialog({
             <div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="problemText">문제 *</Label>
-                <div className="flex gap-2">
-                  {!isTableMode && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowOCR(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Camera className="w-4 h-4" />
-                      카메라로 입력
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant={isTableMode ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setIsTableMode(!isTableMode)}
-                    className="flex items-center gap-2"
-                  >
-                    <Table className="w-4 h-4" />
-                    {isTableMode ? "텍스트 모드" : "표 생성 모드"}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowOCR(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  카메라로 입력
+                </Button>
               </div>
               
-              {isTableMode ? (
-                <div className="mt-2 border rounded-lg p-4 bg-background">
-                  <div className="mb-2 text-sm text-muted-foreground">
-                    💡 문제 표: 빈칸을 원하는 셀은 비워두세요
-                  </div>
-                  <TableCreator
-                    isOpen={true}
-                    onClose={() => {}}
-                    onTableCreate={() => {}}
-                    onTableDataChange={setProblemTableData}
-                    inline={true}
-                    initialData={problemTableData}
-                  />
-                </div>
-              ) : (
-                <Textarea
-                  id="problemText"
-                  value={problemText}
-                  onChange={(e) => setProblemText(e.target.value)}
-                  placeholder="문제를 입력하거나 설명을 작성해주세요..."
-                  className="mt-2 min-h-[120px] resize-y"
+              <div className="mt-2">
+                <RichTextEditor
+                  content={problemText}
+                  onChange={setProblemText}
+                  placeholder="문제를 입력하거나 설명을 작성해주세요. 표가 필요한 경우 툴바의 표 버튼을 사용하세요..."
                 />
-              )}
+              </div>
             </div>
 
             {/* 정답 */}
             <div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="answer">정답 *</Label>
-                <Button
-                  type="button"
-                  variant={isTableMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsTableMode(!isTableMode)}
-                  className="flex items-center gap-2"
-                >
-                  <Table className="w-4 h-4" />
-                  {isTableMode ? "텍스트 모드" : "표 생성 모드"}
-                </Button>
-              </div>
-              
-              {isTableMode ? (
-                <div className="mt-2 border rounded-lg p-4 bg-background">
-                  <div className="mb-2 text-sm text-muted-foreground">
-                    💡 정답/해설 표: 모든 셀에 완전한 답안을 입력하세요
-                  </div>
-                  <TableCreator
-                    isOpen={true}
-                    onClose={() => {}}
-                    onTableCreate={() => {}}
-                    onTableDataChange={setAnswerTableData}
-                    inline={true}
-                    initialData={answerTableData}
-                  />
-                </div>
-              ) : (
-                <Textarea
-                  id="answer"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="정답과 풀이 과정을 작성해주세요..."
-                  className="mt-2 min-h-[120px] resize-y"
+              <Label htmlFor="answer">정답 *</Label>
+              <div className="mt-2">
+                <RichTextEditor
+                  content={answer}
+                  onChange={setAnswer}
+                  placeholder="정답과 풀이 과정을 작성해주세요. 표 형태의 답안이 필요한 경우 툴바의 표 버튼을 사용하세요..."
                 />
-              )}
+              </div>
             </div>
 
             {/* 버튼 */}
@@ -329,13 +225,6 @@ export function CreateWrongNoteDialog({
         isOpen={showOCR}
         onClose={() => setShowOCR(false)}
         onTextExtracted={handleOCRResult}
-      />
-
-      {/* Table Creator Modal */}
-      <TableCreator
-        isOpen={showTableCreator}
-        onClose={() => setShowTableCreator(false)}
-        onTableCreate={handleTableCreate}
       />
     </>
   );
