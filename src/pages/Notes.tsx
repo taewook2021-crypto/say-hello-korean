@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { HtmlContent } from "@/components/ui/html-content";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -411,10 +413,16 @@ function Notes() {
   };
 
   const handleOCRResult = (text: string) => {
-    setNewNote(prev => ({
-      ...prev,
-      question: prev.question + text
-    }));
+    setNewNote(prev => {
+      // If prev.question is HTML, convert it to text, append new text, then convert back
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = prev.question;
+      const existingText = tempDiv.textContent || tempDiv.innerText || '';
+      return {
+        ...prev,
+        question: existingText + text
+      };
+    });
     setShowOCR(false);
   };
 
@@ -510,11 +518,10 @@ function Notes() {
               </Button>
             </div>
           </div>
-          <Textarea
-            value={editingFields[note.id]?.value || ''}
-            onChange={(e) => updateEditValue(note.id, e.target.value)}
+          <RichTextEditor
+            content={editingFields[note.id]?.value || ''}
+            onChange={(value) => updateEditValue(note.id, value)}
             className="text-sm"
-            rows={3}
           />
         </div>
       );
@@ -652,24 +659,20 @@ function Notes() {
                     OCR
                   </Button>
                 </div>
-                <Textarea
-                  id="question"
-                  placeholder="문제를 입력하세요"
-                  value={newNote.question}
-                  onChange={(e) => setNewNote({...newNote, question: e.target.value})}
-                  rows={3}
+                <RichTextEditor
+                  content={newNote.question}
+                  onChange={(value) => setNewNote({...newNote, question: value})}
+                  placeholder="문제를 입력하세요 (표 삽입 가능)"
                 />
               </div>
 
 
               <div>
                 <Label htmlFor="explanation">해설</Label>
-                <Textarea
-                  id="explanation"
-                  placeholder="근거원문과 해설을 함께 입력하세요"
-                  value={newNote.explanation}
-                  onChange={(e) => setNewNote({...newNote, explanation: e.target.value})}
-                  rows={6}
+                <RichTextEditor
+                  content={newNote.explanation}
+                  onChange={(value) => setNewNote({...newNote, explanation: value})}
+                  placeholder="근거원문과 해설을 함께 입력하세요 (표 삽입 가능)"
                 />
               </div>
 
@@ -837,11 +840,10 @@ function Notes() {
                                 </Button>
                               </div>
                             </div>
-                            <Textarea
-                              value={editingFields[note.id]?.value || ''}
-                              onChange={(e) => updateEditValue(note.id, e.target.value)}
+                            <RichTextEditor
+                              content={editingFields[note.id]?.value || ''}
+                              onChange={(value) => updateEditValue(note.id, value)}
                               className="text-base"
-                              rows={3}
                             />
                           </div>
                         ) : (
@@ -856,12 +858,12 @@ function Notes() {
                                 <Edit2 className="h-3 w-3" />
                               </Button>
                             </div>
-                            <p 
-                              className="text-base cursor-pointer p-2 rounded border hover:bg-muted/50"
+                            <div 
+                              className="cursor-pointer p-2 rounded border hover:bg-muted/50"
                               onClick={() => startEdit(note.id, 'question', note.question)}
                             >
-                              {note.question}
-                            </p>
+                              <HtmlContent content={note.question} />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -919,7 +921,7 @@ function Notes() {
                                 )}
                               </div>
                               <div className="text-sm bg-green/10 border-green/20 p-3 rounded-lg border">
-                                {note.explanation}
+                                <HtmlContent content={note.explanation} />
                               </div>
                               
                               {/* Multiple Choice Options */}

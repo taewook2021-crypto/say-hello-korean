@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles, Camera } from "lucide-react";
@@ -74,7 +75,13 @@ export function CreateWrongNoteDialog({
   const chapterName = chapter?.name || "";
 
   const handleOCRResult = (text: string) => {
-    setProblemText(prev => prev + text);
+    setProblemText(prev => {
+      // If prev is HTML, convert it to text, append new text, then convert back
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = prev;
+      const existingText = tempDiv.textContent || tempDiv.innerText || '';
+      return existingText + text;
+    });
     setShowOCR(false);
   };
 
@@ -189,12 +196,11 @@ export function CreateWrongNoteDialog({
                   카메라로 입력
                 </Button>
               </div>
-              <Textarea
-                id="problemText"
-                value={problemText}
-                onChange={(e) => setProblemText(e.target.value)}
-                placeholder="문제를 입력하거나 설명을 작성해주세요..."
-                className="min-h-24 mt-2"
+              <RichTextEditor
+                content={problemText}
+                onChange={setProblemText}
+                placeholder="문제를 입력하거나 설명을 작성해주세요... (표 삽입은 툴바의 표 아이콘을 클릭하세요)"
+                className="mt-2"
               />
             </div>
 
@@ -225,12 +231,11 @@ export function CreateWrongNoteDialog({
                 </Button>
                 */}
               </div>
-              <Textarea
-                id="answer"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="정답과 풀이 과정을 작성해주세요..."
-                className="min-h-24 mt-2"
+              <RichTextEditor
+                content={answer}
+                onChange={setAnswer}
+                placeholder="정답과 풀이 과정을 작성해주세요... (표 삽입 가능)"
+                className="mt-2"
               />
             </div>
 
