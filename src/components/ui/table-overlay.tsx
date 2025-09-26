@@ -110,10 +110,6 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-40">
-            <DropdownMenuItem onClick={handleAddColumnBefore}>
-              <Plus className="h-4 w-4 mr-2" />
-              왼쪽에 열 추가
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleAddColumnAfter}>
               <Plus className="h-4 w-4 mr-2" />
               오른쪽에 열 추가
@@ -146,10 +142,6 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-40">
-            <DropdownMenuItem onClick={handleAddRowBefore}>
-              <Plus className="h-4 w-4 mr-2" />
-              위에 행 추가
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleAddRowAfter}>
               <Plus className="h-4 w-4 mr-2" />
               아래에 행 추가
