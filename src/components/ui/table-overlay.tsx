@@ -148,6 +148,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
               variant="outline"
               size="sm"
               className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent table-overlay-menu"
+              onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-3 w-3" />
             </Button>
@@ -184,6 +185,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
               variant="outline"
               size="sm"
               className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent table-overlay-menu"
+              onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="h-3 w-3" />
             </Button>
