@@ -6,12 +6,12 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { Button } from '@/components/ui/button';
+import { TableSizeSelector } from '@/components/ui/table-size-selector';
 import { 
   Bold, 
   Italic, 
   List, 
   ListOrdered, 
-  Table as TableIcon,
   Minus,
   Plus,
   Trash2
@@ -106,17 +106,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <div className="w-px h-6 bg-border mx-1" />
         
         {/* Table buttons */}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-          }
-          title="표 삽입"
-        >
-          <TableIcon className="h-4 w-4" />
-        </Button>
+        <TableSizeSelector 
+          onTableCreate={(rows, cols) => 
+            editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
+          } 
+        />
         
          {editor.isActive('table') && (
            <>
