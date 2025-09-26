@@ -79,8 +79,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         style: 'white-space: pre-wrap;'
       },
       handleKeyDown: (view, event) => {
-        // Handle Delete key for selected table cells/rows/columns
-        if (event.key === 'Delete' && editor.isActive('table')) {
+        // Handle Delete key and Backspace key for selected table cells/rows/columns
+        if ((event.key === 'Delete' || event.key === 'Backspace') && editor.isActive('table')) {
           const { state } = editor;
           const { selection } = state;
           
