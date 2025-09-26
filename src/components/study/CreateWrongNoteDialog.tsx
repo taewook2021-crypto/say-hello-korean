@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Camera } from "lucide-react";
+import { Camera, Copy } from "lucide-react";
 import OCRCamera from "@/components/OCRCamera";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
@@ -74,6 +74,28 @@ export function CreateWrongNoteDialog({
   const handleOCRResult = (text: string) => {
     setProblemText(prev => prev + text);
     setShowOCR(false);
+  };
+
+  const copyTablesFromProblemToAnswer = () => {
+    // 문제 텍스트에서 표만 추출
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = problemText;
+    const tables = tempDiv.querySelectorAll('table');
+    
+    if (tables.length === 0) {
+      toast.error("문제란에 복사할 표가 없습니다.");
+      return;
+    }
+    
+    // 표들을 HTML 문자열로 변환
+    let tablesHtml = '';
+    tables.forEach(table => {
+      tablesHtml += table.outerHTML + '\n\n';
+    });
+    
+    // 해설란에 표 추가
+    setAnswer(prev => prev + '\n\n' + tablesHtml);
+    toast.success(`${tables.length}개의 표를 해설란에 복사했습니다.`);
   };
 
   const handleSave = async () => {
@@ -197,7 +219,19 @@ export function CreateWrongNoteDialog({
 
             {/* 정답 */}
             <div>
-              <Label htmlFor="answer">정답 *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="answer">정답 *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={copyTablesFromProblemToAnswer}
+                  className="flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  문제 표 복사
+                </Button>
+              </div>
               <div className="mt-2">
                 <RichTextEditor
                   content={answer}

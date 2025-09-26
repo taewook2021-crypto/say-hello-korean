@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2 } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
@@ -428,6 +428,39 @@ function Notes() {
     setShowOCR(false);
   };
 
+  const copyTablesFromQuestionToExplanation = () => {
+    // 문제 텍스트에서 표만 추출
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = newNote.question;
+    const tables = tempDiv.querySelectorAll('table');
+    
+    if (tables.length === 0) {
+      toast({
+        title: "복사할 표가 없습니다",
+        description: "문제란에 표가 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // 표들을 HTML 문자열로 변환
+    let tablesHtml = '';
+    tables.forEach(table => {
+      tablesHtml += table.outerHTML + '\n\n';
+    });
+    
+    // 해설란에 표 추가
+    setNewNote(prev => ({
+      ...prev,
+      explanation: prev.explanation + '\n\n' + tablesHtml
+    }));
+    
+    toast({
+      title: "표 복사 완료",
+      description: `${tables.length}개의 표를 해설란에 복사했습니다.`,
+    });
+  };
+
 
   const handleGPTGeneration = async () => {
     toast({
@@ -673,7 +706,18 @@ function Notes() {
 
 
               <div>
-                <Label htmlFor="explanation">해설</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="explanation">해설</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyTablesFromQuestionToExplanation}
+                    className="flex items-center gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    문제 표 복사
+                  </Button>
+                </div>
                 <RichTextEditor
                   content={newNote.explanation}
                   onChange={(content) => setNewNote(prev => ({ ...prev, explanation: content }))}
