@@ -64,12 +64,14 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     const handleMouseDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if ((target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
+        event.preventDefault();
         const position = getCellPosition(target);
         if (position) {
           setIsDragging(true);
           setDragStart(position);
           setDragEnd(position);
           clearSelection();
+          updateSelection(position, position);
         }
       }
     };
@@ -77,8 +79,8 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     const handleMouseMove = (event: MouseEvent) => {
       if (!isDragging || !dragStart) return;
       
-      const target = event.target as HTMLElement;
-      if ((target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
+      const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement;
+      if (target && (target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
         const position = getCellPosition(target);
         if (position) {
           setDragEnd(position);
