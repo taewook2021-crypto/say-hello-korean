@@ -8,7 +8,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, Camera, Table as TableIcon } from "lucide-react";
+import { Loader2, Sparkles, Camera } from "lucide-react";
 import OCRCamera from "@/components/OCRCamera";
 
 interface StudyData {
@@ -88,17 +88,6 @@ export function CreateWrongNoteDialog({
     setShowOCR(false);
   };
 
-  const insertTableToProblem = (rows: number, cols: number) => {
-    if (problemEditor) {
-      problemEditor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
-    }
-  };
-
-  const insertTableToAnswer = (rows: number, cols: number) => {
-    if (answerEditor) {
-      answerEditor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
-    }
-  };
 
   const generateAnswerWithGPT = async () => {
     toast.error("GPT 기능은 현재 준비 중입니다.");
@@ -200,51 +189,16 @@ export function CreateWrongNoteDialog({
             <div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="problemText">문제 *</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowOCR(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Camera className="w-4 h-4" />
-                    카메라로 입력
-                  </Button>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                      >
-                        <TableIcon className="w-4 h-4" />
-                        표 생성하기
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-40 p-2">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">표 크기 선택</p>
-                        <div className="grid grid-cols-4 gap-1">
-                          {[1, 2, 3, 4].map(rows => 
-                            [1, 2, 3, 4].map(cols => (
-                              <Button
-                                key={`${rows}-${cols}`}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-xs"
-                                onClick={() => insertTableToProblem(rows, cols)}
-                              >
-                                {rows}×{cols}
-                              </Button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowOCR(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  카메라로 입력
+                </Button>
               </div>
               <RichTextEditor
                 content={problemText}
@@ -257,45 +211,7 @@ export function CreateWrongNoteDialog({
 
             {/* 정답 */}
             <div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="answer">정답 *</Label>
-                <div className="flex gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                      >
-                        <TableIcon className="w-4 h-4" />
-                        표 생성하기
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-40 p-2">
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">표 크기 선택</p>
-                        <div className="grid grid-cols-4 gap-1">
-                          {[1, 2, 3, 4].map(rows => 
-                            [1, 2, 3, 4].map(cols => (
-                              <Button
-                                key={`${rows}-${cols}`}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-xs"
-                                onClick={() => insertTableToAnswer(rows, cols)}
-                              >
-                                {rows}×{cols}
-                              </Button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  {/* GPT 기능 일시 비활성화 */}
-                </div>
-              </div>
+              <Label htmlFor="answer">정답 *</Label>
               <RichTextEditor
                 content={answer}
                 onChange={setAnswer}
