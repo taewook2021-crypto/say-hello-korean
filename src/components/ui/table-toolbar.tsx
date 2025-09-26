@@ -12,7 +12,7 @@ import {
   Bold,
   Italic,
   Palette,
-  Grid3X3
+  Square
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
@@ -198,7 +198,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
             className="h-8 w-8 p-0"
             title="테두리 스타일"
           >
-            <Grid3X3 className="h-4 w-4" />
+            <Square className="h-4 w-4" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-2">
