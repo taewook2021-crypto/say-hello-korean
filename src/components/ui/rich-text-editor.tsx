@@ -8,6 +8,7 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { Button } from '@/components/ui/button';
 import { TableSizeSelector } from '@/components/ui/table-size-selector';
 import { TableOverlay } from '@/components/ui/table-overlay';
+import { TableContextMenu } from '@/components/ui/table-context-menu';
 import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
@@ -162,11 +163,20 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       
       {/* Editor */}
       <div className="relative min-h-[100px]">
-        <EditorContent 
-          editor={editor} 
-          className="min-h-[100px]"
-          placeholder={placeholder}
-        />
+        <TableContextMenu
+          editor={editor}
+          onAddRow={() => editor?.chain().focus().addRowAfter().run()}
+          onAddColumn={() => editor?.chain().focus().addColumnAfter().run()}
+          onDeleteRow={() => editor?.chain().focus().deleteRow().run()}
+          onDeleteColumn={() => editor?.chain().focus().deleteColumn().run()}
+          onDeleteTable={() => editor?.chain().focus().deleteTable().run()}
+        >
+          <EditorContent 
+            editor={editor} 
+            className="min-h-[100px]"
+            placeholder={placeholder}
+          />
+        </TableContextMenu>
         <TableOverlay editor={editor} tableElement={currentTable} />
       </div>
     </div>
