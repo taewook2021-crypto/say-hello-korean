@@ -86,24 +86,33 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           
           // Check if we have multiple cells selected (CellSelection)
           if (selection.constructor.name === 'CellSelection') {
-            // Clear content of selected cells
             const cellSelection = selection as any;
-            let tr = state.tr;
             
-            cellSelection.forEachCell((cell: any, cellPos: number) => {
-              const cellStart = cellPos + 1;
-              const cellEnd = cellPos + cell.content.size + 1;
-              tr = tr.delete(cellStart, cellEnd);
-            });
-            
-            if (tr.docChanged) {
-              view.dispatch(tr);
+            // Simple approach: check if entire rows or columns are selected
+            try {
+              // Try to get selection info
+              const rect = cellSelection.getRanges()[0];
+              const table = cellSelection.$anchorCell.node(-1);
+              
+              // Check if we can delete rows/columns
+              if (cellSelection.isRowSelected && cellSelection.isRowSelected()) {
+                // Delete the current row
+                editor.chain().focus().deleteRow().run();
+                return true;
+              } else if (cellSelection.isColSelected && cellSelection.isColSelected()) {
+                // Delete the current column  
+                editor.chain().focus().deleteColumn().run();
+                return true;
+              } else {
+                // For partial selections, delete the row containing the selection
+                editor.chain().focus().deleteRow().run();
+                return true;
+              }
+            } catch (error) {
+              // Fallback: just delete current row
+              editor.chain().focus().deleteRow().run();
               return true;
             }
-          } else {
-            // Single cell - just delete selection
-            editor.chain().focus().deleteSelection().run();
-            return true;
           }
         }
         
