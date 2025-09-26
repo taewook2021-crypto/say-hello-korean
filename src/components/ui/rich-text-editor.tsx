@@ -82,18 +82,27 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       handleKeyDown: (view, event) => {
         // Handle Delete key and Backspace key for selected table cells/rows/columns
         if ((event.key === 'Delete' || event.key === 'Backspace') && selectedCells.length > 0) {
+          console.log('Selected cells count:', selectedCells.length);
+          
           // Analyze selected cells to determine deletion strategy
           const rows = new Set<number>();
           const cols = new Set<number>();
           
-          selectedCells.forEach(cell => {
+          selectedCells.forEach((cell, index) => {
+            console.log('Processing cell', index, cell);
             const row = cell.closest('tr');
             const table = cell.closest('table');
+            
             if (row && table) {
-              const rowIndex = Array.from(table.querySelectorAll('tr')).indexOf(row);
-              const cellIndex = Array.from(row.children).indexOf(cell);
-              rows.add(rowIndex);
-              cols.add(cellIndex);
+              const allRows = Array.from(table.querySelectorAll('tr'));
+              const rowIndex = allRows.indexOf(row);
+              const cellsInRow = Array.from(row.children);
+              const cellIndex = cellsInRow.indexOf(cell);
+              
+              console.log('Row index:', rowIndex, 'Cell index:', cellIndex);
+              
+              if (rowIndex >= 0) rows.add(rowIndex);
+              if (cellIndex >= 0) cols.add(cellIndex);
             }
           });
           
@@ -135,9 +144,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         mousedown: (view, event) => {
           const target = event.target as HTMLElement;
           if (target.tagName === 'TD' || target.tagName === 'TH') {
-            // Start cell selection
+            // Clear previous selection
+            const table = target.closest('table');
+            if (table) {
+              table.querySelectorAll('.selectedCell').forEach(cell => {
+                cell.classList.remove('selectedCell');
+              });
+            }
+            // Start new selection
             setSelectedCells([target]);
             target.classList.add('selectedCell');
+            console.log('Started selection with cell:', target);
           }
           return false;
         },
@@ -146,10 +163,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           if (event.buttons === 1) { // Left mouse button is down
             const target = event.target as HTMLElement;
             if (target.tagName === 'TD' || target.tagName === 'TH') {
-              // Add to selection
+              // Add to selection if not already included
               setSelectedCells(prev => {
                 if (!prev.includes(target)) {
                   target.classList.add('selectedCell');
+                  console.log('Added cell to selection:', target);
                   return [...prev, target];
                 }
                 return prev;
@@ -160,7 +178,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         },
         
         mouseup: (view, event) => {
-          // Selection complete
+          // Selection complete - log final selection
+          setTimeout(() => {
+            console.log('Final selected cells:', selectedCells.length);
+          }, 100);
           return false;
         }
       }
