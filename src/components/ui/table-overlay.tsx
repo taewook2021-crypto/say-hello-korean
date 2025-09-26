@@ -24,12 +24,20 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
 
     const handleCellClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
+      
+      // Don't hide menus if clicking on dropdown menu elements
+      if (target.closest('[data-radix-popper-content-wrapper]') || 
+          target.closest('.table-overlay-menu') ||
+          target.closest('[role="menuitem"]')) {
+        return;
+      }
+      
       if ((target.tagName === 'TD' || target.tagName === 'TH') && 
           tableElement.contains(target)) {
         setClickedCell(target);
         updateMenuPositions(target);
         setIsVisible(true);
-      } else if (!target.closest('.table-overlay-menu')) {
+      } else {
         // Hide menus when clicking outside table or menus
         setIsVisible(false);
         setClickedCell(null);
