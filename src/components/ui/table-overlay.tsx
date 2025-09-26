@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Minus } from 'lucide-react';
 import { Button } from './button';
 import { Editor } from '@tiptap/react';
@@ -18,145 +18,31 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   const [selectedCells, setSelectedCells] = useState<HTMLElement[]>([]);
   const [deleteButtonPosition, setDeleteButtonPosition] = useState({ top: 0, left: 0 });
   const [deleteType, setDeleteType] = useState<'row' | 'column' | null>(null);
+  
+  const isMouseDownRef = useRef(false);
 
-  useEffect(() => {
-    if (!tableElement) {
-      setIsVisible(false);
-      return;
-    }
-
-    const updateButtonPositions = () => {
-      const editorContainer = editor.view.dom.closest('.ProseMirror');
-      const containerRect = editorContainer?.getBoundingClientRect();
-      
-      if (containerRect) {
-        // 맨 첫 번째 셀 (좌상단) 찾기
-        const firstCell = tableElement.querySelector('tr:first-child td:first-child, tr:first-child th:first-child') as HTMLElement;
-        
-        if (firstCell) {
-          const cellRect = firstCell.getBoundingClientRect();
-          
-          // 열 추가 버튼 위치 (첫 번째 셀 위쪽)
-          setColumnButtonPosition({
-            top: cellRect.top - containerRect.top - 30,
-            left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
-          });
-          
-          // 행 추가 버튼 위치 (첫 번째 셀 왼쪽)
-          setRowButtonPosition({
-            top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
-            left: cellRect.left - containerRect.left - 30
-          });
-        }
-      }
-    };
-
-    const getCellPosition = (cell: HTMLElement) => {
-      const row = cell.closest('tr');
-      const table = cell.closest('table');
-      if (!row || !table) return null;
-      
-      const rowIndex = Array.from(table.querySelectorAll('tr')).indexOf(row);
-      const colIndex = Array.from(row.children).indexOf(cell);
-      return { row: rowIndex, col: colIndex };
-    };
-
-    const handleMouseDown = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if ((target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
-        event.preventDefault();
-        console.log('Mouse down on cell:', target);
-        const position = getCellPosition(target);
-        if (position) {
-          console.log('Start position:', position);
-          setIsDragging(true);
-          setDragStart(position);
-          setDragEnd(position);
-          clearSelection();
-          updateSelection(position, position);
-        }
-      }
-    };
-
-    const handleMouseMove = (event: MouseEvent) => {
-      if (!isDragging || !dragStart) return;
-      
-      const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement;
-      if (target && (target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
-        const position = getCellPosition(target);
-        if (position && (position.row !== dragEnd?.row || position.col !== dragEnd?.col)) {
-          console.log('Move to position:', position);
-          setDragEnd(position);
-          updateSelection(dragStart, position);
-        }
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (isDragging) {
-        console.log('Mouse up - analyzing selection');
-        setIsDragging(false);
-        if (dragStart && dragEnd) {
-          analyzeSelection(dragStart, dragEnd);
-        }
-      }
-    };
-
-    const handleMouseEnter = (event: MouseEvent) => {
-      if (!isDragging || !dragStart) return;
-      
-      const target = event.target as HTMLElement;
-      if ((target.tagName === 'TD' || target.tagName === 'TH') && tableElement.contains(target)) {
-        const position = getCellPosition(target);
-        if (position && (position.row !== dragEnd?.row || position.col !== dragEnd?.col)) {
-          setDragEnd(position);
-          updateSelection(dragStart, position);
-        }
-      }
-    };
-
-    updateButtonPositions();
-    setIsVisible(true);
+  const getCellPosition = useCallback((cell: HTMLElement) => {
+    const row = cell.closest('tr');
+    const table = cell.closest('table');
+    if (!row || !table) return null;
     
-    // 테이블의 모든 셀에 이벤트 리스너 추가
-    const cells = tableElement.querySelectorAll('td, th');
-    cells.forEach(cell => {
-      cell.addEventListener('mouseenter', handleMouseEnter as EventListener);
-    });
-    
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    
-    const resizeObserver = new ResizeObserver(updateButtonPositions);
-    resizeObserver.observe(tableElement);
-    
-    window.addEventListener('scroll', updateButtonPositions);
-    window.addEventListener('resize', updateButtonPositions);
+    const rowIndex = Array.from(table.querySelectorAll('tr')).indexOf(row);
+    const colIndex = Array.from(row.children).indexOf(cell);
+    return { row: rowIndex, col: colIndex };
+  }, []);
 
-    return () => {
-      cells.forEach(cell => {
-        cell.removeEventListener('mouseenter', handleMouseEnter as EventListener);
-      });
-      document.removeEventListener('mousedown', handleMouseDown);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      resizeObserver.disconnect();
-      window.removeEventListener('scroll', updateButtonPositions);
-      window.removeEventListener('resize', updateButtonPositions);
-    };
-  }, [tableElement, editor, isDragging, dragStart, dragEnd]);
-
-  const clearSelection = () => {
+  const clearSelection = useCallback(() => {
     selectedCells.forEach(cell => {
       cell.style.backgroundColor = '';
       cell.style.border = '';
     });
     setSelectedCells([]);
     setDeleteType(null);
-  };
+  }, [selectedCells]);
 
-  const updateSelection = (start: { row: number; col: number }, end: { row: number; col: number }) => {
+  const updateSelection = useCallback((start: { row: number; col: number }, end: { row: number; col: number }) => {
+    if (!tableElement) return;
+    
     clearSelection();
     
     const minRow = Math.min(start.row, end.row);
@@ -164,9 +50,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     const minCol = Math.min(start.col, end.col);
     const maxCol = Math.max(start.col, end.col);
     
-    const rows = tableElement?.querySelectorAll('tr');
-    if (!rows) return;
-    
+    const rows = tableElement.querySelectorAll('tr');
     const cells: HTMLElement[] = [];
     
     for (let r = minRow; r <= maxRow; r++) {
@@ -185,25 +69,22 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     }
     
     setSelectedCells(cells);
-  };
+    console.log('Selection updated:', { minRow, maxRow, minCol, maxCol, cellsCount: cells.length });
+  }, [tableElement, clearSelection]);
 
-  const analyzeSelection = (start: { row: number; col: number }, end: { row: number; col: number }) => {
+  const analyzeSelection = useCallback((start: { row: number; col: number }, end: { row: number; col: number }) => {
+    if (!tableElement) return;
+    
     const minRow = Math.min(start.row, end.row);
     const maxRow = Math.max(start.row, end.row);
     const minCol = Math.min(start.col, end.col);
     const maxCol = Math.max(start.col, end.col);
     
-    const rows = tableElement?.querySelectorAll('tr');
-    if (!rows) return;
-    
+    const rows = tableElement.querySelectorAll('tr');
     const totalRows = rows.length;
     const totalCols = rows[0]?.children.length || 0;
     
-    console.log('Selection analysis:', { minRow, maxRow, minCol, maxCol, totalRows, totalCols });
-    
-    // 전체 행이 선택되었는지 확인 (모든 열이 포함)
     const isFullRowSelection = minCol === 0 && maxCol === totalCols - 1;
-    // 전체 열이 선택되었는지 확인 (모든 행이 포함)
     const isFullColumnSelection = minRow === 0 && maxRow === totalRows - 1;
     
     const editorContainer = editor.view.dom.closest('.ProseMirror');
@@ -211,9 +92,10 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     
     if (!containerRect) return;
     
+    console.log('Analyzing selection:', { isFullRowSelection, isFullColumnSelection, minRow, maxRow, minCol, maxCol });
+    
     if (isFullRowSelection && !isFullColumnSelection) {
       setDeleteType('row');
-      // 선택된 행의 중간 위치에 삭제 버튼 배치
       const middleRow = Math.floor((minRow + maxRow) / 2);
       const middleRowElement = rows[middleRow];
       if (middleRowElement) {
@@ -228,7 +110,6 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       }
     } else if (isFullColumnSelection && !isFullRowSelection) {
       setDeleteType('column');
-      // 선택된 열의 중간 위치에 삭제 버튼 배치
       const middleCol = Math.floor((minCol + maxCol) / 2);
       const firstRow = rows[0];
       if (firstRow) {
@@ -244,7 +125,121 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     } else {
       setDeleteType(null);
     }
-  };
+  }, [tableElement, editor]);
+
+  const updateButtonPositions = useCallback(() => {
+    if (!tableElement) return;
+    
+    const editorContainer = editor.view.dom.closest('.ProseMirror');
+    const containerRect = editorContainer?.getBoundingClientRect();
+    
+    if (containerRect) {
+      const firstCell = tableElement.querySelector('tr:first-child td:first-child, tr:first-child th:first-child') as HTMLElement;
+      
+      if (firstCell) {
+        const cellRect = firstCell.getBoundingClientRect();
+        
+        setColumnButtonPosition({
+          top: cellRect.top - containerRect.top - 30,
+          left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
+        });
+        
+        setRowButtonPosition({
+          top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
+          left: cellRect.left - containerRect.left - 30
+        });
+      }
+    }
+  }, [tableElement, editor]);
+
+  // 마우스 이벤트 핸들러
+  const handleMouseDown = useCallback((event: Event) => {
+    const mouseEvent = event as MouseEvent;
+    const target = mouseEvent.target as HTMLElement;
+    
+    if (!tableElement || !tableElement.contains(target)) return;
+    if (target.closest('.table-button')) return; // 버튼 클릭은 제외
+    
+    if (target.tagName === 'TD' || target.tagName === 'TH') {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const position = getCellPosition(target);
+      if (position) {
+        console.log('Starting drag at:', position);
+        setIsDragging(true);
+        setDragStart(position);
+        setDragEnd(position);
+        isMouseDownRef.current = true;
+        clearSelection();
+        updateSelection(position, position);
+      }
+    }
+  }, [tableElement, getCellPosition, clearSelection, updateSelection]);
+
+  const handleMouseMove = useCallback((event: Event) => {
+    if (!isDragging || !dragStart || !isMouseDownRef.current) return;
+    
+    const mouseEvent = event as MouseEvent;
+    const target = document.elementFromPoint(mouseEvent.clientX, mouseEvent.clientY) as HTMLElement;
+    
+    if (target && (target.tagName === 'TD' || target.tagName === 'TH') && tableElement?.contains(target)) {
+      const position = getCellPosition(target);
+      if (position && (position.row !== dragEnd?.row || position.col !== dragEnd?.col)) {
+        console.log('Dragging to:', position);
+        setDragEnd(position);
+        updateSelection(dragStart, position);
+      }
+    }
+  }, [isDragging, dragStart, dragEnd, tableElement, getCellPosition, updateSelection]);
+
+  const handleMouseUp = useCallback(() => {
+    if (isDragging && dragStart && dragEnd) {
+      console.log('Drag ended, analyzing selection');
+      analyzeSelection(dragStart, dragEnd);
+    }
+    setIsDragging(false);
+    isMouseDownRef.current = false;
+  }, [isDragging, dragStart, dragEnd, analyzeSelection]);
+
+  const handleClickOutside = useCallback((event: Event) => {
+    const target = event.target as HTMLElement;
+    if (!tableElement?.contains(target) && !target.closest('.table-button')) {
+      clearSelection();
+    }
+  }, [tableElement, clearSelection]);
+
+  useEffect(() => {
+    if (!tableElement) {
+      setIsVisible(false);
+      return;
+    }
+
+    updateButtonPositions();
+    setIsVisible(true);
+    
+    // 이벤트 리스너 등록
+    document.addEventListener('mousedown', handleMouseDown, true);
+    document.addEventListener('mousemove', handleMouseMove, true);
+    document.addEventListener('mouseup', handleMouseUp, true);
+    document.addEventListener('click', handleClickOutside);
+    
+    const resizeObserver = new ResizeObserver(updateButtonPositions);
+    resizeObserver.observe(tableElement);
+    
+    window.addEventListener('scroll', updateButtonPositions);
+    window.addEventListener('resize', updateButtonPositions);
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown, true);
+      document.removeEventListener('mousemove', handleMouseMove, true);
+      document.removeEventListener('mouseup', handleMouseUp, true);
+      document.removeEventListener('click', handleClickOutside);
+      resizeObserver.disconnect();
+      window.removeEventListener('scroll', updateButtonPositions);
+      window.removeEventListener('resize', updateButtonPositions);
+    };
+  }, [tableElement, handleMouseDown, handleMouseMove, handleMouseUp, handleClickOutside, updateButtonPositions]);
 
   const handleAddColumn = () => {
     editor.chain().focus().addColumnAfter().run();
@@ -263,25 +258,11 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     clearSelection();
   };
 
-  const handleClickOutside = (event: MouseEvent) => {
-    const target = event.target as HTMLElement;
-    if (!tableElement?.contains(target) && !target.closest('.table-button')) {
-      clearSelection();
-    }
-  };
-
-  useEffect(() => {
-    document.addEventListener('click', handleClickOutside);
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [tableElement]);
-
   if (!isVisible) return null;
 
   return (
     <>
-      {/* 열 추가 버튼 (상단 고정) */}
+      {/* 열 추가 버튼 */}
       <div
         className="absolute z-50"
         style={{
@@ -300,7 +281,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         </Button>
       </div>
 
-      {/* 행 추가 버튼 (왼쪽 고정) */}
+      {/* 행 추가 버튼 */}
       <div
         className="absolute z-50"
         style={{
@@ -319,7 +300,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         </Button>
       </div>
 
-      {/* 삭제 버튼 (드래그 선택 시) */}
+      {/* 삭제 버튼 */}
       {deleteType && (
         <div
           className="absolute z-50"
