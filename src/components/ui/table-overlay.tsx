@@ -153,18 +153,18 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   }, [tableElement, editor]);
 
   // 마우스 이벤트 핸들러
-  const handleMouseDown = useCallback((event: Event) => {
-    const mouseEvent = event as MouseEvent;
-    const target = mouseEvent.target as HTMLElement;
+  const handleMouseDown = useCallback((event: MouseEvent) => {
+    const target = event.target as HTMLElement;
     
     if (!tableElement || !tableElement.contains(target)) return;
     if (target.closest('.table-button')) return; // 버튼 클릭은 제외
     
-    if (target.tagName === 'TD' || target.tagName === 'TH') {
+    const cell = target.closest('td, th') as HTMLElement;
+    if (cell) {
       event.preventDefault();
       event.stopPropagation();
       
-      const position = getCellPosition(target);
+      const position = getCellPosition(cell);
       if (position) {
         console.log('Starting drag at:', position);
         setIsDragging(true);
@@ -173,18 +173,22 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         isMouseDownRef.current = true;
         clearSelection();
         updateSelection(position, position);
+        
+        // 전체 document에 드래그 이벤트 추가
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
       }
     }
   }, [tableElement, getCellPosition, clearSelection, updateSelection]);
 
-  const handleMouseMove = useCallback((event: Event) => {
+  const handleMouseMove = useCallback((event: MouseEvent) => {
     if (!isDragging || !dragStart || !isMouseDownRef.current) return;
     
-    const mouseEvent = event as MouseEvent;
-    const target = document.elementFromPoint(mouseEvent.clientX, mouseEvent.clientY) as HTMLElement;
+    const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement;
+    const cell = target?.closest('td, th') as HTMLElement;
     
-    if (target && (target.tagName === 'TD' || target.tagName === 'TH') && tableElement?.contains(target)) {
-      const position = getCellPosition(target);
+    if (cell && tableElement?.contains(cell)) {
+      const position = getCellPosition(cell);
       if (position && (position.row !== dragEnd?.row || position.col !== dragEnd?.col)) {
         console.log('Dragging to:', position);
         setDragEnd(position);
@@ -200,6 +204,10 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     }
     setIsDragging(false);
     isMouseDownRef.current = false;
+    
+    // 드래그 이벤트 정리
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
   }, [isDragging, dragStart, dragEnd, analyzeSelection]);
 
   const handleClickOutside = useCallback((event: Event) => {
@@ -218,10 +226,8 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     updateButtonPositions();
     setIsVisible(true);
     
-    // 이벤트 리스너 등록
-    document.addEventListener('mousedown', handleMouseDown, true);
-    document.addEventListener('mousemove', handleMouseMove, true);
-    document.addEventListener('mouseup', handleMouseUp, true);
+    // 테이블에 직접 마우스다운 이벤트 리스너 등록
+    tableElement.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('click', handleClickOutside);
     
     const resizeObserver = new ResizeObserver(updateButtonPositions);
@@ -231,15 +237,13 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     window.addEventListener('resize', updateButtonPositions);
 
     return () => {
-      document.removeEventListener('mousedown', handleMouseDown, true);
-      document.removeEventListener('mousemove', handleMouseMove, true);
-      document.removeEventListener('mouseup', handleMouseUp, true);
+      tableElement.removeEventListener('mousedown', handleMouseDown);
       document.removeEventListener('click', handleClickOutside);
       resizeObserver.disconnect();
       window.removeEventListener('scroll', updateButtonPositions);
       window.removeEventListener('resize', updateButtonPositions);
     };
-  }, [tableElement, handleMouseDown, handleMouseMove, handleMouseUp, handleClickOutside, updateButtonPositions]);
+  }, [tableElement, handleMouseDown, handleClickOutside, updateButtonPositions]);
 
   const handleAddColumn = () => {
     editor.chain().focus().addColumnAfter().run();
