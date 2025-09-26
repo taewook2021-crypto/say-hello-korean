@@ -59,7 +59,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
           }
         }
 
-        if (rowIndex === -1 || colIndex === -1) return;
+        if (rowIndex === -1 || colIndex === -1 || rows.length === 0) return;
 
         // 해당 열의 첫 번째 셀 (첫 번째 행의 해당 열)
         const firstRowCells = Array.from(rows[0].querySelectorAll('td, th'));
@@ -75,14 +75,14 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
           
           // 열 메뉴 위치 (해당 열의 제일 위쪽)
           setColumnMenuPosition({
-            top: columnRect.top - containerRect.top - 30,
+            top: Math.max(0, columnRect.top - containerRect.top - 30),
             left: columnRect.left - containerRect.left + (columnRect.width / 2) - 12
           });
           
           // 행 메뉴 위치 (해당 행의 제일 왼쪽)
           setRowMenuPosition({
             top: rowRect.top - containerRect.top + (rowRect.height / 2) - 12,
-            left: rowRect.left - containerRect.left - 30
+            left: Math.max(0, rowRect.left - containerRect.left - 30)
           });
         }
       }
