@@ -4,11 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Sparkles, Camera } from "lucide-react";
+import { Camera } from "lucide-react";
 import OCRCamera from "@/components/OCRCamera";
 
 interface StudyData {
@@ -69,22 +67,13 @@ export function CreateWrongNoteDialog({
 }: CreateWrongNoteDialogProps) {
   const [problemText, setProblemText] = useState("");
   const [answer, setAnswer] = useState("");
-  const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
   const [showOCR, setShowOCR] = useState(false);
-  const [problemEditor, setProblemEditor] = useState<any>(null);
-  const [answerEditor, setAnswerEditor] = useState<any>(null);
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
 
   const handleOCRResult = (text: string) => {
-    setProblemText(prev => {
-      // If prev is HTML, convert it to text, append new text, then convert back
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = prev;
-      const existingText = tempDiv.textContent || tempDiv.innerText || '';
-      return existingText + text;
-    });
+    setProblemText(prev => prev + text);
     setShowOCR(false);
   };
 
@@ -200,24 +189,24 @@ export function CreateWrongNoteDialog({
                   카메라로 입력
                 </Button>
               </div>
-              <RichTextEditor
-                content={problemText}
-                onChange={setProblemText}
-                onEditorReady={setProblemEditor}
+              <Textarea
+                id="problemText"
+                value={problemText}
+                onChange={(e) => setProblemText(e.target.value)}
                 placeholder="문제를 입력하거나 설명을 작성해주세요..."
-                className="mt-2"
+                className="mt-2 min-h-[120px] resize-y"
               />
             </div>
 
             {/* 정답 */}
             <div>
               <Label htmlFor="answer">정답 *</Label>
-              <RichTextEditor
-                content={answer}
-                onChange={setAnswer}
-                onEditorReady={setAnswerEditor}
+              <Textarea
+                id="answer"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
                 placeholder="정답과 풀이 과정을 작성해주세요..."
-                className="mt-2"
+                className="mt-2 min-h-[120px] resize-y"
               />
             </div>
 
