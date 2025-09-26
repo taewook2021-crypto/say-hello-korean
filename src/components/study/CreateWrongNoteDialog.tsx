@@ -96,11 +96,20 @@ export function CreateWrongNoteDialog({
 
   const generateTableHtml = (data: string[][]) => {
     if (data.length === 0) return '';
+    
+    // Filter out completely empty rows and ensure there's content
+    const nonEmptyData = data.filter(row => 
+      row.some(cell => cell && cell.trim() !== '')
+    );
+    
+    if (nonEmptyData.length === 0) return '';
+    
     let html = '<table border="1" style="border-collapse: collapse; width: 100%;">\n';
-    data.forEach((row) => {
+    nonEmptyData.forEach((row) => {
       html += '  <tr>\n';
       row.forEach((cell) => {
-        html += `    <td style="border: 1px solid #ddd; padding: 8px;">${cell || '&nbsp;'}</td>\n`;
+        const cellContent = cell && cell.trim() !== '' ? cell : '';
+        html += `    <td style="border: 1px solid #ddd; padding: 8px;">${cellContent}</td>\n`;
       });
       html += '  </tr>\n';
     });
