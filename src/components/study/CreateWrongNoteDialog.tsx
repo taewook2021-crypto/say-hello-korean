@@ -214,25 +214,13 @@ export function CreateWrongNoteDialog({
             </DialogDescription>
           </DialogHeader>
 
-          {isTableMode ? (
-            // 표 생성 전용 모드
-            <TableModeInterface
-              problemTableData={problemTableData}
-              answerTableData={answerTableData}
-              onProblemTableChange={setProblemTableData}
-              onAnswerTableChange={setAnswerTableData}
-              onBackToTextMode={() => setIsTableMode(false)}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          ) : (
-            // 기존 텍스트 입력 모드
-            <div className="space-y-4">
-              {/* 문제 내용 */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="problemText">문제 *</Label>
-                  <div className="flex gap-2">
+          <div className="space-y-4">
+            {/* 문제 내용 */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="problemText">문제 *</Label>
+                <div className="flex gap-2">
+                  {!isTableMode && (
                     <Button
                       type="button"
                       variant="outline"
@@ -243,18 +231,35 @@ export function CreateWrongNoteDialog({
                       <Camera className="w-4 h-4" />
                       카메라로 입력
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsTableMode(true)}
-                      className="flex items-center gap-2"
-                    >
-                      <Table className="w-4 h-4" />
-                      표 생성 모드
-                    </Button>
-                  </div>
+                  )}
+                  <Button
+                    type="button"
+                    variant={isTableMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsTableMode(!isTableMode)}
+                    className="flex items-center gap-2"
+                  >
+                    <Table className="w-4 h-4" />
+                    {isTableMode ? "텍스트 모드" : "표 생성 모드"}
+                  </Button>
                 </div>
+              </div>
+              
+              {isTableMode ? (
+                <div className="mt-2 border rounded-lg p-4 bg-background">
+                  <div className="mb-2 text-sm text-muted-foreground">
+                    💡 문제 표: 빈칸을 원하는 셀은 비워두세요
+                  </div>
+                  <TableCreator
+                    isOpen={true}
+                    onClose={() => {}}
+                    onTableCreate={() => {}}
+                    onTableDataChange={setProblemTableData}
+                    inline={true}
+                    initialData={problemTableData}
+                  />
+                </div>
+              ) : (
                 <Textarea
                   id="problemText"
                   value={problemText}
@@ -262,23 +267,40 @@ export function CreateWrongNoteDialog({
                   placeholder="문제를 입력하거나 설명을 작성해주세요..."
                   className="mt-2 min-h-[120px] resize-y"
                 />
-              </div>
+              )}
+            </div>
 
-              {/* 정답 */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="answer">정답 *</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsTableMode(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Table className="w-4 h-4" />
-                    표 생성 모드
-                  </Button>
+            {/* 정답 */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="answer">정답 *</Label>
+                <Button
+                  type="button"
+                  variant={isTableMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsTableMode(!isTableMode)}
+                  className="flex items-center gap-2"
+                >
+                  <Table className="w-4 h-4" />
+                  {isTableMode ? "텍스트 모드" : "표 생성 모드"}
+                </Button>
+              </div>
+              
+              {isTableMode ? (
+                <div className="mt-2 border rounded-lg p-4 bg-background">
+                  <div className="mb-2 text-sm text-muted-foreground">
+                    💡 정답/해설 표: 모든 셀에 완전한 답안을 입력하세요
+                  </div>
+                  <TableCreator
+                    isOpen={true}
+                    onClose={() => {}}
+                    onTableCreate={() => {}}
+                    onTableDataChange={setAnswerTableData}
+                    inline={true}
+                    initialData={answerTableData}
+                  />
                 </div>
+              ) : (
                 <Textarea
                   id="answer"
                   value={answer}
@@ -286,19 +308,19 @@ export function CreateWrongNoteDialog({
                   placeholder="정답과 풀이 과정을 작성해주세요..."
                   className="mt-2 min-h-[120px] resize-y"
                 />
-              </div>
-
-              {/* 버튼 */}
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={handleCancel}>
-                  취소
-                </Button>
-                <Button onClick={handleSave}>
-                  저장하기
-                </Button>
-              </div>
+              )}
             </div>
-          )}
+
+            {/* 버튼 */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={handleCancel}>
+                취소
+              </Button>
+              <Button onClick={handleSave}>
+                저장하기
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
