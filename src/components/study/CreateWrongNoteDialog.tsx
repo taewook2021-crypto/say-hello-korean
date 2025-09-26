@@ -71,6 +71,8 @@ export function CreateWrongNoteDialog({
   const [showOCR, setShowOCR] = useState(false);
   const [showTableCreator, setShowTableCreator] = useState(false);
   const [isTableMode, setIsTableMode] = useState(false);
+  const [problemTableHtml, setProblemTableHtml] = useState("");
+  const [answerTableHtml, setAnswerTableHtml] = useState("");
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
@@ -224,7 +226,10 @@ export function CreateWrongNoteDialog({
                   <TableCreator
                     isOpen={true}
                     onClose={() => {}}
-                    onTableCreate={(tableHtml) => setProblemText(tableHtml)}
+                    onTableCreate={(tableHtml) => {
+                      setProblemTableHtml(tableHtml);
+                      setProblemText(tableHtml);
+                    }}
                     inline={true}
                   />
                 </div>
@@ -259,7 +264,10 @@ export function CreateWrongNoteDialog({
                   <TableCreator
                     isOpen={true}
                     onClose={() => {}}
-                    onTableCreate={(tableHtml) => setAnswer(tableHtml)}
+                    onTableCreate={(tableHtml) => {
+                      setAnswerTableHtml(tableHtml);
+                      setAnswer(tableHtml);
+                    }}
                     inline={true}
                   />
                 </div>

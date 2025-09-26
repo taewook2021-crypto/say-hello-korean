@@ -222,12 +222,13 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
         )}
       </div>
 
-      {/* 표 편집 영역 */}
-      <div className="border rounded-lg p-4 max-h-96 overflow-auto">
+      {/* 표 편집 영역 - inline 모드에서는 실제 표처럼 보이게 */}
+      <div className={`border rounded-lg p-4 ${inline ? 'bg-background' : ''} max-h-96 overflow-auto`}>
         <table 
           ref={tableRef}
-          className="w-full border-collapse"
+          className="w-full border-collapse border border-border"
           onMouseUp={handleMouseUp}
+          style={inline ? { borderCollapse: 'collapse', width: '100%' } : {}}
         >
           <tbody>
             {tableData.map((row, rowIndex) => (
@@ -235,18 +236,21 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
                 {row.map((cell, colIndex) => (
                   <td
                     key={`${rowIndex}-${colIndex}`}
-                    className={`border border-border p-1 ${
+                    className={`border border-border p-2 ${
                       isCellSelected(rowIndex, colIndex) 
                         ? 'bg-blue-100 dark:bg-blue-900' 
                         : 'hover:bg-muted'
                     }`}
+                    style={inline ? { border: '1px solid #ddd', padding: '8px' } : {}}
                     onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
                     onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
                   >
                     <Input
                       value={cell}
                       onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
-                      className="border-0 p-1 text-sm bg-transparent focus-visible:ring-0"
+                      className={`border-0 p-1 text-sm bg-transparent focus-visible:ring-0 ${
+                        inline ? 'h-auto min-h-[24px]' : ''
+                      }`}
                       placeholder=""
                     />
                   </td>
