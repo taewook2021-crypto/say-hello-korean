@@ -518,10 +518,10 @@ function Notes() {
               </Button>
             </div>
           </div>
-          <RichTextEditor
-            content={editingFields[note.id]?.value || ''}
-            onChange={(value) => updateEditValue(note.id, value)}
-            className="text-sm"
+          <Textarea
+            value={editingFields[note.id]?.value || ''}
+            onChange={(e) => updateEditValue(note.id, e.target.value)}
+            className="text-sm min-h-[100px] resize-y"
           />
         </div>
       );
@@ -659,20 +659,22 @@ function Notes() {
                     OCR
                   </Button>
                 </div>
-                <RichTextEditor
-                  content={newNote.question}
-                  onChange={(value) => setNewNote({...newNote, question: value})}
-                  placeholder="문제를 입력하세요 (표 삽입 가능)"
+                <Textarea
+                  value={newNote.question}
+                  onChange={(e) => setNewNote({...newNote, question: e.target.value})}
+                  placeholder="문제를 입력하세요"
+                  className="min-h-[100px] resize-y"
                 />
               </div>
 
 
               <div>
                 <Label htmlFor="explanation">해설</Label>
-                <RichTextEditor
-                  content={newNote.explanation}
-                  onChange={(value) => setNewNote({...newNote, explanation: value})}
-                  placeholder="근거원문과 해설을 함께 입력하세요 (표 삽입 가능)"
+                <Textarea
+                  value={newNote.explanation}
+                  onChange={(e) => setNewNote({...newNote, explanation: e.target.value})}
+                  placeholder="근거원문과 해설을 함께 입력하세요"
+                  className="min-h-[100px] resize-y"
                 />
               </div>
 
@@ -840,10 +842,10 @@ function Notes() {
                                 </Button>
                               </div>
                             </div>
-                            <RichTextEditor
-                              content={editingFields[note.id]?.value || ''}
-                              onChange={(value) => updateEditValue(note.id, value)}
-                              className="text-base"
+                            <Textarea
+                              value={editingFields[note.id]?.value || ''}
+                              onChange={(e) => updateEditValue(note.id, e.target.value)}
+                              className="text-base min-h-[100px] resize-y"
                             />
                           </div>
                         ) : (
