@@ -122,6 +122,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   const clearSelection = () => {
     selectedCells.forEach(cell => {
       cell.style.backgroundColor = '';
+      cell.style.border = '';
     });
     setSelectedCells([]);
     setDeleteType(null);
@@ -146,7 +147,9 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         for (let c = minCol; c <= maxCol; c++) {
           const cell = row.children[c] as HTMLElement;
           if (cell) {
-            cell.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+            cell.style.backgroundColor = 'rgba(59, 130, 246, 0.4)';
+            cell.style.border = '2px solid rgb(59, 130, 246)';
+            cell.style.boxSizing = 'border-box';
             cells.push(cell);
           }
         }
@@ -168,10 +171,17 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     const totalRows = rows.length;
     const totalCols = rows[0]?.children.length || 0;
     
-    // 전체 행이 선택되었는지 확인
+    console.log('Selection analysis:', { minRow, maxRow, minCol, maxCol, totalRows, totalCols });
+    
+    // 전체 행이 선택되었는지 확인 (모든 열이 포함)
     const isFullRowSelection = minCol === 0 && maxCol === totalCols - 1;
-    // 전체 열이 선택되었는지 확인
+    // 전체 열이 선택되었는지 확인 (모든 행이 포함)
     const isFullColumnSelection = minRow === 0 && maxRow === totalRows - 1;
+    
+    const editorContainer = editor.view.dom.closest('.ProseMirror');
+    const containerRect = editorContainer?.getBoundingClientRect();
+    
+    if (!containerRect) return;
     
     if (isFullRowSelection && !isFullColumnSelection) {
       setDeleteType('row');
@@ -181,16 +191,11 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       if (middleRowElement) {
         const firstCell = middleRowElement.children[0] as HTMLElement;
         if (firstCell) {
-          const editorContainer = editor.view.dom.closest('.ProseMirror');
-          const containerRect = editorContainer?.getBoundingClientRect();
           const cellRect = firstCell.getBoundingClientRect();
-          
-          if (containerRect) {
-            setDeleteButtonPosition({
-              top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
-              left: cellRect.left - containerRect.left - 60
-            });
-          }
+          setDeleteButtonPosition({
+            top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
+            left: cellRect.left - containerRect.left - 60
+          });
         }
       }
     } else if (isFullColumnSelection && !isFullRowSelection) {
@@ -201,16 +206,11 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       if (firstRow) {
         const middleColElement = firstRow.children[middleCol] as HTMLElement;
         if (middleColElement) {
-          const editorContainer = editor.view.dom.closest('.ProseMirror');
-          const containerRect = editorContainer?.getBoundingClientRect();
           const cellRect = middleColElement.getBoundingClientRect();
-          
-          if (containerRect) {
-            setDeleteButtonPosition({
-              top: cellRect.top - containerRect.top - 60,
-              left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
-            });
-          }
+          setDeleteButtonPosition({
+            top: cellRect.top - containerRect.top - 60,
+            left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
+          });
         }
       }
     } else {
