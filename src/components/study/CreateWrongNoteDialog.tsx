@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Camera, Table } from "lucide-react";
 import OCRCamera from "@/components/OCRCamera";
 import { TableCreator } from "@/components/ui/table-creator";
+import { TableModeInterface } from "./TableModeInterface";
 
 interface StudyData {
   id: string;
@@ -209,36 +210,36 @@ export function CreateWrongNoteDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* 문제 내용 */}
-            <div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="problemText">문제 *</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowOCR(true)}
-                    className="flex items-center gap-2"
-                    disabled={isTableMode}
-                  >
-                    <Camera className="w-4 h-4" />
-                    카메라로 입력
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isTableMode ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setIsTableMode(!isTableMode)}
-                    className="flex items-center gap-2"
-                  >
-                    <Table className="w-4 h-4" />
-                    {isTableMode ? "텍스트 모드" : "표 생성 모드"}
-                  </Button>
+          {!isTableMode ? (
+            // 기존 텍스트 입력 모드
+            <div className="space-y-4">
+              {/* 문제 내용 */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="problemText">문제 *</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowOCR(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      카메라로 입력
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsTableMode(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Table className="w-4 h-4" />
+                      표 생성 모드
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              {!isTableMode ? (
                 <Textarea
                   id="problemText"
                   value={problemText}
@@ -246,35 +247,23 @@ export function CreateWrongNoteDialog({
                   placeholder="문제를 입력하거나 설명을 작성해주세요..."
                   className="mt-2 min-h-[120px] resize-y"
                 />
-              ) : (
-                <div className="mt-2 border rounded-lg p-4 min-h-[120px]">
-                  <TableCreator
-                    isOpen={true}
-                    onClose={() => {}}
-                    onTableCreate={() => {}}
-                    onTableDataChange={setProblemTableData}
-                    inline={true}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* 정답 */}
-            <div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="answer">정답 *</Label>
-                <Button
-                  type="button"
-                  variant={isTableMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setIsTableMode(!isTableMode)}
-                  className="flex items-center gap-2"
-                >
-                  <Table className="w-4 h-4" />
-                  {isTableMode ? "텍스트 모드" : "표 생성 모드"}
-                </Button>
               </div>
-              {!isTableMode ? (
+
+              {/* 정답 */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="answer">정답 *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsTableMode(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Table className="w-4 h-4" />
+                    표 생성 모드
+                  </Button>
+                </div>
                 <Textarea
                   id="answer"
                   value={answer}
@@ -282,29 +271,30 @@ export function CreateWrongNoteDialog({
                   placeholder="정답과 풀이 과정을 작성해주세요..."
                   className="mt-2 min-h-[120px] resize-y"
                 />
-              ) : (
-                <div className="mt-2 border rounded-lg p-4 min-h-[120px]">
-                  <TableCreator
-                    isOpen={true}
-                    onClose={() => {}}
-                    onTableCreate={() => {}}
-                    onTableDataChange={setAnswerTableData}
-                    inline={true}
-                  />
-                </div>
-              )}
-            </div>
+              </div>
 
-            {/* 버튼 */}
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={handleCancel}>
-                취소
-              </Button>
-              <Button onClick={handleSave}>
-                저장하기
-              </Button>
+              {/* 버튼 */}
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={handleCancel}>
+                  취소
+                </Button>
+                <Button onClick={handleSave}>
+                  저장하기
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            // 표 생성 전용 모드
+            <TableModeInterface
+              problemTableData={problemTableData}
+              answerTableData={answerTableData}
+              onProblemTableChange={setProblemTableData}
+              onAnswerTableChange={setAnswerTableData}
+              onBackToTextMode={() => setIsTableMode(false)}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

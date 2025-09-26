@@ -11,14 +11,16 @@ interface TableCreatorProps {
   onTableCreate: (tableHtml: string) => void;
   onTableDataChange?: (data: string[][]) => void;
   inline?: boolean;
+  initialData?: string[][];
 }
 
-export const TableCreator: React.FC<TableCreatorProps> = ({
-  isOpen,
-  onClose,
-  onTableCreate,
-  onTableDataChange,
-  inline = false
+export const TableCreator: React.FC<TableCreatorProps> = ({ 
+  isOpen, 
+  onClose, 
+  onTableCreate, 
+  onTableDataChange, 
+  inline = false,
+  initialData 
 }) => {
   const [rows, setRows] = useState(3);
   const [cols, setCols] = useState(3);
@@ -27,22 +29,30 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const tableRef = useRef<HTMLTableElement>(null);
 
-  // 표 데이터 초기화
+  // Initialize table data when dialog opens or initialData changes
   useEffect(() => {
     if (isOpen) {
-      const newData = Array(rows).fill(null).map(() => Array(cols).fill(''));
-      setTableData(newData);
+      if (initialData && initialData.length > 0) {
+        setTableData(initialData);
+        setRows(initialData.length);
+        setCols(initialData[0].length);
+      } else {
+        const newData = Array(rows).fill(null).map(() => Array(cols).fill(''));
+        setTableData(newData);
+      }
       setSelectedCells(null);
       
       // inline 모드에서 초기 데이터 설정
       if (inline && onTableDataChange) {
-        onTableDataChange(newData);
-      } else if (inline) {
-        const tableHtml = generateTableHtml(newData);
-        onTableCreate(tableHtml);
+        if (initialData && initialData.length > 0) {
+          onTableDataChange(initialData);
+        } else {
+          const newData = Array(rows).fill(null).map(() => Array(cols).fill(''));
+          onTableDataChange(newData);
+        }
       }
     }
-  }, [rows, cols, isOpen, inline]);
+  }, [rows, cols, isOpen, inline, initialData]);
 
   // 키보드 이벤트 핸들러
   useEffect(() => {
