@@ -23,13 +23,15 @@ interface RichTextEditorProps {
   onChange: (content: string) => void;
   placeholder?: string;
   className?: string;
+  onEditorReady?: (editor: any) => void;
 }
 
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   content,
   onChange,
   placeholder,
-  className
+  className,
+  onEditorReady
 }) => {
   const editor = useEditor({
     extensions: [
@@ -45,9 +47,12 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    onCreate: ({ editor }) => {
+      onEditorReady?.(editor);
+    },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none',
+        class: 'prose prose-sm max-w-none min-h-[100px] p-3 focus:outline-none [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted',
         style: 'white-space: pre-wrap;'
       },
     },
