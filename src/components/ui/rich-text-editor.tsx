@@ -84,32 +84,56 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           const { state } = editor;
           const { selection } = state;
           
-          // Check if we have multiple cells selected (CellSelection)
+          // Check if we have any kind of cell selection
           if (selection.constructor.name === 'CellSelection') {
             const cellSelection = selection as any;
             
-            // Simple approach: check if entire rows or columns are selected
             try {
-              // Try to get selection info
-              const rect = cellSelection.getRanges()[0];
-              const table = cellSelection.$anchorCell.node(-1);
+              // Get the table map to analyze the selection
+              const map = cellSelection.map;
+              const anchorCell = cellSelection.$anchorCell;
+              const headCell = cellSelection.$headCell;
               
-              // Check if we can delete rows/columns
-              if (cellSelection.isRowSelected && cellSelection.isRowSelected()) {
-                // Delete the current row
+              // Calculate selection boundaries
+              const rect = map.rectBetween(anchorCell.pos, headCell.pos);
+              const selectedRows = rect.bottom - rect.top;
+              const selectedCols = rect.right - rect.left;
+              const totalRows = map.height;
+              const totalCols = map.width;
+              
+              console.log('Selection info:', { selectedRows, selectedCols, totalRows, totalCols });
+              
+              // Determine what to delete based on selection pattern
+              if (selectedRows === totalRows && selectedCols < totalCols) {
+                // Full column(s) selected - delete column
+                console.log('Deleting column');
+                for (let i = 0; i < selectedCols; i++) {
+                  editor.chain().focus().deleteColumn().run();
+                }
+              } else if (selectedCols === totalCols && selectedRows < totalRows) {
+                // Full row(s) selected - delete row  
+                console.log('Deleting row');
+                for (let i = 0; i < selectedRows; i++) {
+                  editor.chain().focus().deleteRow().run();
+                }
+              } else if (selectedRows === 1 && selectedCols < totalCols) {
+                // Single row partially selected - delete the row
+                console.log('Deleting single row');
                 editor.chain().focus().deleteRow().run();
-                return true;
-              } else if (cellSelection.isColSelected && cellSelection.isColSelected()) {
-                // Delete the current column  
+              } else if (selectedCols === 1 && selectedRows < totalRows) {
+                // Single column partially selected - delete the column
+                console.log('Deleting single column');
                 editor.chain().focus().deleteColumn().run();
-                return true;
               } else {
-                // For partial selections, delete the row containing the selection
+                // Default: delete row
+                console.log('Default: deleting row');
                 editor.chain().focus().deleteRow().run();
-                return true;
               }
+              
+              return true;
             } catch (error) {
-              // Fallback: just delete current row
+              console.error('Error in table deletion:', error);
+              // Fallback: delete current row
               editor.chain().focus().deleteRow().run();
               return true;
             }
