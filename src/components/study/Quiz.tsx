@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle, XCircle, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { HtmlContent } from "@/components/ui/html-content";
 
 interface WrongNote {
   id: string;
@@ -272,7 +273,9 @@ export function Quiz({ notes, onComplete }: QuizProps) {
               {currentQuestion.originalNote.subject_name} &gt; {currentQuestion.originalNote.book_name}
             </Badge>
           </div>
-          <CardTitle className="text-lg">{currentQuestion.question}</CardTitle>
+          <div className="text-lg">
+            <HtmlContent content={currentQuestion.question} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <RadioGroup
@@ -316,7 +319,9 @@ export function Quiz({ notes, onComplete }: QuizProps) {
           {answered && currentQuestion.explanation && (
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
               <h4 className="text-sm font-medium text-blue-600 mb-2">설명</h4>
-              <p className="text-blue-700 dark:text-blue-300">{currentQuestion.explanation}</p>
+              <div className="text-blue-700 dark:text-blue-300">
+                <HtmlContent content={currentQuestion.explanation} />
+              </div>
             </div>
           )}
 

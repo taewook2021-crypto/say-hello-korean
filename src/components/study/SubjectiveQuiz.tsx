@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, RotateCcw, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { HtmlContent } from "@/components/ui/html-content";
 
 interface WrongNote {
   id: string;
@@ -202,7 +203,9 @@ export function SubjectiveQuiz({ notes, onComplete }: SubjectiveQuizProps) {
               {currentQuestion.subject_name} &gt; {currentQuestion.book_name}
             </Badge>
           </div>
-          <CardTitle className="text-lg whitespace-pre-wrap">{currentQuestion.question}</CardTitle>
+          <div className="text-lg">
+            <HtmlContent content={currentQuestion.question} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
@@ -228,9 +231,9 @@ export function SubjectiveQuiz({ notes, onComplete }: SubjectiveQuizProps) {
               {currentQuestion.explanation && (
                 <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
                   <h4 className="text-sm font-medium text-blue-600 mb-2">설명</h4>
-                  <p className="text-blue-700 dark:text-blue-300 whitespace-pre-wrap">
-                    {currentQuestion.explanation}
-                  </p>
+                  <div className="text-blue-700 dark:text-blue-300">
+                    <HtmlContent content={currentQuestion.explanation} />
+                  </div>
                 </div>
               )}
 

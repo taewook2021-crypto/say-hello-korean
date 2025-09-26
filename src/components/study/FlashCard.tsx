@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, RotateCcw, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { HtmlContent } from "@/components/ui/html-content";
 
 interface WrongNote {
   id: string;
@@ -158,7 +159,9 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
             <CardContent className="p-8 h-full flex flex-col justify-center">
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-medium text-primary mb-4">문제</h3>
-                <p className="text-xl leading-relaxed whitespace-pre-wrap">{currentNote.question}</p>
+                <div className="text-xl leading-relaxed">
+                  <HtmlContent content={currentNote.question} />
+                </div>
                 <p className="text-sm text-muted-foreground mt-8">
                   클릭하여 정답 확인
                 </p>
@@ -172,9 +175,9 @@ export function FlashCard({ notes, onComplete }: FlashCardProps) {
               <div className="space-y-6 flex-1">
                 <div className="text-center">
                   <h3 className="text-lg font-medium text-blue-600 mb-4">정답 / 해설</h3>
-                  <p className="text-xl leading-relaxed whitespace-pre-wrap">
-                    {currentNote.explanation || currentNote.source_text || "해설이 없습니다."}
-                  </p>
+                  <div className="text-xl leading-relaxed">
+                    <HtmlContent content={currentNote.explanation || currentNote.source_text || "해설이 없습니다."} />
+                  </div>
                 </div>
               </div>
 

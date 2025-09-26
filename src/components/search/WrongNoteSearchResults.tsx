@@ -10,6 +10,7 @@ import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { FlashCard } from "@/components/study/FlashCard";
 import { Quiz } from "@/components/study/Quiz";
 import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
+import { HtmlContent } from "@/components/ui/html-content";
 
 interface WrongNote {
   id: string;
@@ -281,9 +282,9 @@ export const WrongNoteSearchResults: React.FC<WrongNoteSearchResultsProps> = ({
 
                 {/* 문제 내용 */}
                 <div>
-                  <h4 className="font-medium text-sm mb-2 line-clamp-3">
-                    {note.question}
-                  </h4>
+                  <div className="font-medium text-sm mb-2">
+                    <HtmlContent content={note.question} className="line-clamp-3" />
+                  </div>
                   
                   {note.source_text && (
                     <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
@@ -299,9 +300,9 @@ export const WrongNoteSearchResults: React.FC<WrongNoteSearchResultsProps> = ({
                     <Separator />
                     <div>
                       <span className="text-xs font-medium text-muted-foreground">해설</span>
-                      <p className="text-sm mt-1 line-clamp-3">
-                        {note.explanation}
-                      </p>
+                      <div className="mt-1">
+                        <HtmlContent content={note.explanation} className="text-sm line-clamp-3" />
+                      </div>
                     </div>
                   </>
                 )}
