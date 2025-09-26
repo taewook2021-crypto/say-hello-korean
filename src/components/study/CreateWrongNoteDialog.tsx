@@ -70,6 +70,7 @@ export function CreateWrongNoteDialog({
   const [answer, setAnswer] = useState("");
   const [showOCR, setShowOCR] = useState(false);
   const [showTableCreator, setShowTableCreator] = useState(false);
+  const [isTableMode, setIsTableMode] = useState(false);
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
@@ -193,41 +194,76 @@ export function CreateWrongNoteDialog({
                     size="sm"
                     onClick={() => setShowOCR(true)}
                     className="flex items-center gap-2"
+                    disabled={isTableMode}
                   >
                     <Camera className="w-4 h-4" />
                     카메라로 입력
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant={isTableMode ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setShowTableCreator(true)}
+                    onClick={() => setIsTableMode(!isTableMode)}
                     className="flex items-center gap-2"
                   >
                     <Table className="w-4 h-4" />
-                    표 생성
+                    {isTableMode ? "텍스트 모드" : "표 생성 모드"}
                   </Button>
                 </div>
               </div>
-              <Textarea
-                id="problemText"
-                value={problemText}
-                onChange={(e) => setProblemText(e.target.value)}
-                placeholder="문제를 입력하거나 설명을 작성해주세요..."
-                className="mt-2 min-h-[120px] resize-y"
-              />
+              {!isTableMode ? (
+                <Textarea
+                  id="problemText"
+                  value={problemText}
+                  onChange={(e) => setProblemText(e.target.value)}
+                  placeholder="문제를 입력하거나 설명을 작성해주세요..."
+                  className="mt-2 min-h-[120px] resize-y"
+                />
+              ) : (
+                <div className="mt-2 border rounded-lg p-4 min-h-[120px]">
+                  <TableCreator
+                    isOpen={true}
+                    onClose={() => {}}
+                    onTableCreate={(tableHtml) => setProblemText(tableHtml)}
+                    inline={true}
+                  />
+                </div>
+              )}
             </div>
 
             {/* 정답 */}
             <div>
-              <Label htmlFor="answer">정답 *</Label>
-              <Textarea
-                id="answer"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                placeholder="정답과 풀이 과정을 작성해주세요..."
-                className="mt-2 min-h-[120px] resize-y"
-              />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="answer">정답 *</Label>
+                <Button
+                  type="button"
+                  variant={isTableMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setIsTableMode(!isTableMode)}
+                  className="flex items-center gap-2"
+                >
+                  <Table className="w-4 h-4" />
+                  {isTableMode ? "텍스트 모드" : "표 생성 모드"}
+                </Button>
+              </div>
+              {!isTableMode ? (
+                <Textarea
+                  id="answer"
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder="정답과 풀이 과정을 작성해주세요..."
+                  className="mt-2 min-h-[120px] resize-y"
+                />
+              ) : (
+                <div className="mt-2 border rounded-lg p-4 min-h-[120px]">
+                  <TableCreator
+                    isOpen={true}
+                    onClose={() => {}}
+                    onTableCreate={(tableHtml) => setAnswer(tableHtml)}
+                    inline={true}
+                  />
+                </div>
+              )}
             </div>
 
             {/* 버튼 */}

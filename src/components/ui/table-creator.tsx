@@ -9,12 +9,14 @@ interface TableCreatorProps {
   isOpen: boolean;
   onClose: () => void;
   onTableCreate: (tableHtml: string) => void;
+  inline?: boolean;
 }
 
 export const TableCreator: React.FC<TableCreatorProps> = ({
   isOpen,
   onClose,
-  onTableCreate
+  onTableCreate,
+  inline = false
 }) => {
   const [rows, setRows] = useState(3);
   const [cols, setCols] = useState(3);
@@ -174,96 +176,105 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
     onClose();
   };
 
+  const content = (
+    <div className="space-y-4">
+      {/* 컨트롤 버튼들 */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">행:</span>
+          <Button variant="outline" size="sm" onClick={deleteRow} disabled={rows <= 1}>
+            <Minus className="w-4 h-4" />
+          </Button>
+          <span className="text-sm w-8 text-center">{rows}</span>
+          <Button variant="outline" size="sm" onClick={addRow}>
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-sm">열:</span>
+          <Button variant="outline" size="sm" onClick={deleteColumn} disabled={cols <= 1}>
+            <Minus className="w-4 h-4" />
+          </Button>
+          <span className="text-sm w-8 text-center">{cols}</span>
+          <Button variant="outline" size="sm" onClick={addColumn}>
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {selectedCells && (
+          <Button variant="outline" size="sm" onClick={handleDeleteSelection}>
+            <X className="w-4 h-4 mr-1" />
+            선택 삭제
+          </Button>
+        )}
+      </div>
+
+      {/* 표 편집 영역 */}
+      <div className="border rounded-lg p-4 max-h-96 overflow-auto">
+        <table 
+          ref={tableRef}
+          className="w-full border-collapse"
+          onMouseUp={handleMouseUp}
+        >
+          <tbody>
+            {tableData.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, colIndex) => (
+                  <td
+                    key={`${rowIndex}-${colIndex}`}
+                    className={`border border-border p-1 ${
+                      isCellSelected(rowIndex, colIndex) 
+                        ? 'bg-blue-100 dark:bg-blue-900' 
+                        : 'hover:bg-muted'
+                    }`}
+                    onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
+                    onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
+                  >
+                    <Input
+                      value={cell}
+                      onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
+                      className="border-0 p-1 text-sm bg-transparent focus-visible:ring-0"
+                      placeholder=""
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="text-xs text-muted-foreground">
+        💡 팁: 드래그로 셀을 선택하고 백스페이스 키를 누르면 삭제됩니다.
+      </div>
+
+      {/* 버튼 */}
+      {!inline && (
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={handleCancel}>
+            취소
+          </Button>
+          <Button onClick={handleSave}>
+            <Check className="w-4 h-4 mr-1" />
+            표 삽입
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  if (inline) {
+    return content;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>표 만들기</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4">
-          {/* 컨트롤 버튼들 */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">행:</span>
-              <Button variant="outline" size="sm" onClick={deleteRow} disabled={rows <= 1}>
-                <Minus className="w-4 h-4" />
-              </Button>
-              <span className="text-sm w-8 text-center">{rows}</span>
-              <Button variant="outline" size="sm" onClick={addRow}>
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm">열:</span>
-              <Button variant="outline" size="sm" onClick={deleteColumn} disabled={cols <= 1}>
-                <Minus className="w-4 h-4" />
-              </Button>
-              <span className="text-sm w-8 text-center">{cols}</span>
-              <Button variant="outline" size="sm" onClick={addColumn}>
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {selectedCells && (
-              <Button variant="outline" size="sm" onClick={handleDeleteSelection}>
-                <X className="w-4 h-4 mr-1" />
-                선택 삭제
-              </Button>
-            )}
-          </div>
-
-          {/* 표 편집 영역 */}
-          <div className="border rounded-lg p-4 max-h-96 overflow-auto">
-            <table 
-              ref={tableRef}
-              className="w-full border-collapse"
-              onMouseUp={handleMouseUp}
-            >
-              <tbody>
-                {tableData.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {row.map((cell, colIndex) => (
-                      <td
-                        key={`${rowIndex}-${colIndex}`}
-                        className={`border border-border p-1 ${
-                          isCellSelected(rowIndex, colIndex) 
-                            ? 'bg-blue-100 dark:bg-blue-900' 
-                            : 'hover:bg-muted'
-                        }`}
-                        onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
-                        onMouseEnter={() => handleMouseEnter(rowIndex, colIndex)}
-                      >
-                        <Input
-                          value={cell}
-                          onChange={(e) => updateCell(rowIndex, colIndex, e.target.value)}
-                          className="border-0 p-1 text-sm bg-transparent focus-visible:ring-0"
-                          placeholder=""
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="text-xs text-muted-foreground">
-            💡 팁: 드래그로 셀을 선택하고 백스페이스 키를 누르면 삭제됩니다.
-          </div>
-
-          {/* 버튼 */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={handleCancel}>
-              취소
-            </Button>
-            <Button onClick={handleSave}>
-              <Check className="w-4 h-4 mr-1" />
-              표 삽입
-            </Button>
-          </div>
-        </div>
+        {content}
       </DialogContent>
     </Dialog>
   );
