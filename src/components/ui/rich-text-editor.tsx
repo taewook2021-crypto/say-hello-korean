@@ -93,16 +93,34 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             const row = cell.closest('tr');
             const table = cell.closest('table');
             
+            console.log('Found row:', row);
+            console.log('Found table:', table);
+            
             if (row && table) {
               const allRows = Array.from(table.querySelectorAll('tr'));
               const rowIndex = allRows.indexOf(row);
               const cellsInRow = Array.from(row.children);
               const cellIndex = cellsInRow.indexOf(cell);
               
+              console.log('All rows count:', allRows.length);
+              console.log('Cells in row count:', cellsInRow.length);
               console.log('Row index:', rowIndex, 'Cell index:', cellIndex);
               
-              if (rowIndex >= 0) rows.add(rowIndex);
-              if (cellIndex >= 0) cols.add(cellIndex);
+              if (rowIndex >= 0) {
+                rows.add(rowIndex);
+                console.log('Added row index:', rowIndex);
+              } else {
+                console.log('Failed to find row index');
+              }
+              
+              if (cellIndex >= 0) {
+                cols.add(cellIndex);
+                console.log('Added col index:', cellIndex);
+              } else {
+                console.log('Failed to find cell index');
+              }
+            } else {
+              console.log('Could not find row or table for cell');
             }
           });
           
