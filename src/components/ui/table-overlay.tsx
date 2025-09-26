@@ -127,22 +127,22 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
             <Button
               variant="outline"
               size="sm"
-              className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent"
+              className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent table-overlay-menu"
             >
               <MoreHorizontal className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-40">
-            <DropdownMenuItem onClick={handleAddColumnBefore}>
+          <DropdownMenuContent align="center" className="w-40 table-overlay-menu">
+            <DropdownMenuItem onClick={handleAddColumnBefore} className="table-overlay-menu">
               <Plus className="h-4 w-4 mr-2" />
               왼쪽에 열 추가
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleAddColumnAfter}>
+            <DropdownMenuItem onClick={handleAddColumnAfter} className="table-overlay-menu">
               <Plus className="h-4 w-4 mr-2" />
               오른쪽에 열 추가
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDeleteColumn} className="text-destructive">
+            <DropdownMenuItem onClick={handleDeleteColumn} className="text-destructive table-overlay-menu">
               <Minus className="h-4 w-4 mr-2" />
               열 삭제
             </DropdownMenuItem>
@@ -163,22 +163,22 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
             <Button
               variant="outline"
               size="sm"
-              className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent"
+              className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent table-overlay-menu"
             >
               <MoreHorizontal className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-40">
-            <DropdownMenuItem onClick={handleAddRowBefore}>
+          <DropdownMenuContent align="center" className="w-40 table-overlay-menu">
+            <DropdownMenuItem onClick={handleAddRowBefore} className="table-overlay-menu">
               <Plus className="h-4 w-4 mr-2" />
               위에 행 추가
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleAddRowAfter}>
+            <DropdownMenuItem onClick={handleAddRowAfter} className="table-overlay-menu">
               <Plus className="h-4 w-4 mr-2" />
               아래에 행 추가
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDeleteRow} className="text-destructive">
+            <DropdownMenuItem onClick={handleDeleteRow} className="text-destructive table-overlay-menu">
               <Minus className="h-4 w-4 mr-2" />
               행 삭제
             </DropdownMenuItem>
