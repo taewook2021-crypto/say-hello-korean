@@ -41,19 +41,39 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       const containerRect = editorContainer?.getBoundingClientRect();
       
       if (containerRect && cell) {
-        const cellRect = cell.getBoundingClientRect();
+        // 클릭된 셀의 행과 열 인덱스 찾기
+        const row = cell.closest('tr');
+        const table = cell.closest('table');
         
-        // 열 메뉴 위치 (클릭된 셀의 열 위쪽)
-        setColumnMenuPosition({
-          top: cellRect.top - containerRect.top - 30,
-          left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
-        });
-        
-        // 행 메뉴 위치 (클릭된 셀의 행 왼쪽)
-        setRowMenuPosition({
-          top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
-          left: cellRect.left - containerRect.left - 30
-        });
+        if (row && table) {
+          const cellIndex = Array.from(row.children).indexOf(cell);
+          const rowIndex = Array.from(table.querySelectorAll('tr')).indexOf(row);
+          
+          // 해당 열의 첫 번째 셀 (첫 번째 행)
+          const firstRowCells = table.querySelector('tr')?.children;
+          const firstCellInColumn = firstRowCells?.[cellIndex] as HTMLElement;
+          
+          // 해당 행의 첫 번째 셀 (첫 번째 열)
+          const firstCellInRow = row.children[0] as HTMLElement;
+          
+          if (firstCellInColumn) {
+            const firstCellColumnRect = firstCellInColumn.getBoundingClientRect();
+            // 열 메뉴 위치 (해당 열의 첫 번째 셀 위쪽)
+            setColumnMenuPosition({
+              top: firstCellColumnRect.top - containerRect.top - 30,
+              left: firstCellColumnRect.left - containerRect.left + (firstCellColumnRect.width / 2) - 12
+            });
+          }
+          
+          if (firstCellInRow) {
+            const firstCellRowRect = firstCellInRow.getBoundingClientRect();
+            // 행 메뉴 위치 (해당 행의 첫 번째 셀 왼쪽)
+            setRowMenuPosition({
+              top: firstCellRowRect.top - containerRect.top + (firstCellRowRect.height / 2) - 12,
+              left: firstCellRowRect.left - containerRect.left - 30
+            });
+          }
+        }
       }
     };
 
