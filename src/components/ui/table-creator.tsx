@@ -9,6 +9,7 @@ interface TableCreatorProps {
   isOpen: boolean;
   onClose: () => void;
   onTableCreate: (tableHtml: string) => void;
+  onTableDataChange?: (data: string[][]) => void;
   inline?: boolean;
 }
 
@@ -16,6 +17,7 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
   isOpen,
   onClose,
   onTableCreate,
+  onTableDataChange,
   inline = false
 }) => {
   const [rows, setRows] = useState(3);
@@ -32,8 +34,10 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
       setTableData(newData);
       setSelectedCells(null);
       
-      // inline 모드에서는 초기 빈 표도 생성
-      if (inline) {
+      // inline 모드에서 초기 데이터 설정
+      if (inline && onTableDataChange) {
+        onTableDataChange(newData);
+      } else if (inline) {
         const tableHtml = generateTableHtml(newData);
         onTableCreate(tableHtml);
       }
@@ -60,8 +64,11 @@ export const TableCreator: React.FC<TableCreatorProps> = ({
     newData[row][col] = value;
     setTableData(newData);
     
-    // inline 모드에서는 실시간으로 HTML 업데이트
-    if (inline) {
+    // inline 모드에서 onTableDataChange가 있으면 원시 데이터 전달
+    if (inline && onTableDataChange) {
+      onTableDataChange(newData);
+    } else if (inline) {
+      // 기존 방식 (HTML 생성)
       const tableHtml = generateTableHtml(newData);
       onTableCreate(tableHtml);
     }

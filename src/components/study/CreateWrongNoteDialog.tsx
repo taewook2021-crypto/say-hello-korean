@@ -71,8 +71,8 @@ export function CreateWrongNoteDialog({
   const [showOCR, setShowOCR] = useState(false);
   const [showTableCreator, setShowTableCreator] = useState(false);
   const [isTableMode, setIsTableMode] = useState(false);
-  const [problemTableHtml, setProblemTableHtml] = useState("");
-  const [answerTableHtml, setAnswerTableHtml] = useState("");
+  const [problemTableData, setProblemTableData] = useState<string[][]>([]);
+  const [answerTableData, setAnswerTableData] = useState<string[][]>([]);
 
   const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
   const chapterName = chapter?.name || "";
@@ -93,13 +93,34 @@ export function CreateWrongNoteDialog({
     return;
   };
 
+  const generateTableHtml = (data: string[][]) => {
+    if (data.length === 0) return '';
+    let html = '<table border="1" style="border-collapse: collapse; width: 100%;">\n';
+    data.forEach((row) => {
+      html += '  <tr>\n';
+      row.forEach((cell) => {
+        html += `    <td style="border: 1px solid #ddd; padding: 8px;">${cell || '&nbsp;'}</td>\n`;
+      });
+      html += '  </tr>\n';
+    });
+    html += '</table>';
+    return html;
+  };
+
   const handleSave = async () => {
-    if (!problemText.trim()) {
+    const finalProblemText = isTableMode 
+      ? generateTableHtml(problemTableData)
+      : problemText.trim();
+    const finalAnswer = isTableMode 
+      ? generateTableHtml(answerTableData) 
+      : answer.trim();
+
+    if (!finalProblemText) {
       toast.error("문제 내용을 입력해주세요.");
       return;
     }
 
-    if (!answer.trim()) {
+    if (!finalAnswer) {
       toast.error("정답을 입력해주세요.");
       return;
     }
@@ -112,8 +133,8 @@ export function CreateWrongNoteDialog({
       const { error: dbError } = await supabase
         .from('wrong_notes')
         .insert({
-          question: problemText.trim(),
-          explanation: answer.trim(),
+          question: finalProblemText,
+          explanation: finalAnswer,
           subject_name: studyData.subject,
           book_name: studyData.textbook,
           chapter_name: chapterName,
@@ -137,8 +158,8 @@ export function CreateWrongNoteDialog({
         problemNumber,
         status,
         content: {
-          problemText: problemText.trim(),
-          answer: answer.trim()
+          problemText: finalProblemText,
+          answer: finalAnswer
         },
         createdAt: new Date()
       };
@@ -153,6 +174,8 @@ export function CreateWrongNoteDialog({
       // 폼 초기화
       setProblemText("");
       setAnswer("");
+      setProblemTableData([]);
+      setAnswerTableData([]);
       
       onNoteCreated();
     } catch (error) {
@@ -165,6 +188,8 @@ export function CreateWrongNoteDialog({
     // 폼 초기화
     setProblemText("");
     setAnswer("");
+    setProblemTableData([]);
+    setAnswerTableData([]);
     setShowOCR(false);
     setShowTableCreator(false);
     onClose();
@@ -226,10 +251,8 @@ export function CreateWrongNoteDialog({
                   <TableCreator
                     isOpen={true}
                     onClose={() => {}}
-                    onTableCreate={(tableHtml) => {
-                      setProblemTableHtml(tableHtml);
-                      setProblemText(tableHtml);
-                    }}
+                    onTableCreate={() => {}}
+                    onTableDataChange={setProblemTableData}
                     inline={true}
                   />
                 </div>
@@ -264,10 +287,8 @@ export function CreateWrongNoteDialog({
                   <TableCreator
                     isOpen={true}
                     onClose={() => {}}
-                    onTableCreate={(tableHtml) => {
-                      setAnswerTableHtml(tableHtml);
-                      setAnswer(tableHtml);
-                    }}
+                    onTableCreate={() => {}}
+                    onTableDataChange={setAnswerTableData}
                     inline={true}
                   />
                 </div>
