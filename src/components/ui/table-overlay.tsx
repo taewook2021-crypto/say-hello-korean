@@ -14,6 +14,8 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   const [rowMenuPosition, setRowMenuPosition] = useState({ top: 0, left: 0 });
   const [isVisible, setIsVisible] = useState(false);
   const [clickedCell, setClickedCell] = useState<HTMLElement | null>(null);
+  const [columnMenuOpen, setColumnMenuOpen] = useState(false);
+  const [rowMenuOpen, setRowMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!tableElement) {
@@ -25,10 +27,12 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     const handleCellClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       
-      // Don't hide menus if clicking on dropdown menu elements
-      if (target.closest('[data-radix-popper-content-wrapper]') || 
+      // Don't hide menus if any dropdown is open or if clicking on dropdown elements
+      if (columnMenuOpen || rowMenuOpen || 
+          target.closest('[data-radix-popper-content-wrapper]') || 
           target.closest('.table-overlay-menu') ||
-          target.closest('[role="menuitem"]')) {
+          target.closest('[role="menuitem"]') ||
+          target.closest('[data-state="open"]')) {
         return;
       }
       
@@ -150,7 +154,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
           left: `${columnMenuPosition.left}px`
         }}
       >
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={setColumnMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
@@ -183,7 +187,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
           left: `${rowMenuPosition.left}px`
         }}
       >
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={setRowMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
