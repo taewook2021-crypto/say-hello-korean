@@ -161,7 +161,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       </div>
       
       {/* Editor */}
-      <div className="relative">
+      <div className="relative min-h-[100px]">
         <EditorContent 
           editor={editor} 
           className="min-h-[100px]"

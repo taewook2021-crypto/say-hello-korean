@@ -89,12 +89,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     const isFullRowSelection = minCol === 0 && maxCol === totalCols - 1;
     const isFullColumnSelection = minRow === 0 && maxRow === totalRows - 1;
     
-    const editorContainer = editor.view.dom.closest('.ProseMirror');
-    const containerRect = editorContainer?.getBoundingClientRect();
-    
-    if (!containerRect) return;
-    
-    console.log('Analyzing selection:', { isFullRowSelection, isFullColumnSelection, minRow, maxRow, minCol, maxCol });
+    const tableRect = tableElement.getBoundingClientRect();
     
     if (isFullRowSelection && !isFullColumnSelection) {
       setDeleteType('row');
@@ -105,8 +100,8 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         if (firstCell) {
           const cellRect = firstCell.getBoundingClientRect();
           setDeleteButtonPosition({
-            top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
-            left: cellRect.left - containerRect.left - 60
+            top: cellRect.top - tableRect.top + (cellRect.height / 2) - 12,
+            left: -60
           });
         }
       }
@@ -119,40 +114,31 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         if (middleColElement) {
           const cellRect = middleColElement.getBoundingClientRect();
           setDeleteButtonPosition({
-            top: cellRect.top - containerRect.top - 60,
-            left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
+            top: -60,
+            left: cellRect.left - tableRect.left + (cellRect.width / 2) - 12
           });
         }
       }
     } else {
       setDeleteType(null);
     }
-  }, [tableElement, editor]);
+  }, [tableElement]);
 
   const updateButtonPositions = useCallback(() => {
     if (!tableElement) return;
     
-    const editorContainer = editor.view.dom.closest('.ProseMirror');
-    const containerRect = editorContainer?.getBoundingClientRect();
+    const tableRect = tableElement.getBoundingClientRect();
     
-    if (containerRect) {
-      const firstCell = tableElement.querySelector('tr:first-child td:first-child, tr:first-child th:first-child') as HTMLElement;
-      
-      if (firstCell) {
-        const cellRect = firstCell.getBoundingClientRect();
-        
-        setColumnButtonPosition({
-          top: cellRect.top - containerRect.top - 30,
-          left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
-        });
-        
-        setRowButtonPosition({
-          top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
-          left: cellRect.left - containerRect.left - 30
-        });
-      }
-    }
-  }, [tableElement, editor]);
+    setColumnButtonPosition({
+      top: -35,
+      left: tableRect.width / 2 - 12
+    });
+    
+    setRowButtonPosition({
+      top: tableRect.height / 2 - 12,
+      left: -35
+    });
+  }, [tableElement]);
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
     if (!tableElement) return;
@@ -261,10 +247,10 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   if (!isVisible || !tableElement) return null;
 
   return (
-    <div ref={overlayRef}>
+    <div ref={overlayRef} className="relative">
       {/* 열 추가 버튼 */}
       <div
-        className="fixed z-50 table-button"
+        className="absolute z-50 table-button"
         style={{
           top: `${columnButtonPosition.top}px`,
           left: `${columnButtonPosition.left}px`
@@ -283,7 +269,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
 
       {/* 행 추가 버튼 */}
       <div
-        className="fixed z-50 table-button"
+        className="absolute z-50 table-button"
         style={{
           top: `${rowButtonPosition.top}px`,
           left: `${rowButtonPosition.left}px`
@@ -303,7 +289,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       {/* 삭제 버튼 */}
       {deleteType && (
         <div
-          className="fixed z-50 table-button"
+          className="absolute z-50 table-button"
           style={{
             top: `${deleteButtonPosition.top}px`,
             left: `${deleteButtonPosition.left}px`
