@@ -19,7 +19,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   const [deleteButtonPosition, setDeleteButtonPosition] = useState({ top: 0, left: 0 });
   const [deleteType, setDeleteType] = useState<'row' | 'column' | null>(null);
   
-  const isMouseDownRef = useRef(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const getCellPosition = useCallback((cell: HTMLElement) => {
     const row = cell.closest('tr');
@@ -34,7 +34,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   const clearSelection = useCallback(() => {
     selectedCells.forEach(cell => {
       cell.style.backgroundColor = '';
-      cell.style.border = '';
+      cell.style.outline = '';
     });
     setSelectedCells([]);
     setDeleteType(null);
@@ -59,9 +59,8 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         for (let c = minCol; c <= maxCol; c++) {
           const cell = row.children[c] as HTMLElement;
           if (cell) {
-            cell.style.backgroundColor = 'rgba(59, 130, 246, 0.4)';
-            cell.style.border = '2px solid rgb(59, 130, 246)';
-            cell.style.boxSizing = 'border-box';
+            cell.style.backgroundColor = 'rgba(59, 130, 246, 0.3)';
+            cell.style.outline = '2px solid rgb(59, 130, 246)';
             cells.push(cell);
           }
         }
@@ -70,6 +69,9 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     
     setSelectedCells(cells);
     console.log('Selection updated:', { minRow, maxRow, minCol, maxCol, cellsCount: cells.length });
+    
+    // 삭제 버튼 표시 여부 결정
+    analyzeSelection(start, end);
   }, [tableElement, clearSelection]);
 
   const analyzeSelection = useCallback((start: { row: number; col: number }, end: { row: number; col: number }) => {
@@ -152,45 +154,39 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     }
   }, [tableElement, editor]);
 
-  // 마우스 이벤트 핸들러
-  const handleMouseDown = useCallback((event: MouseEvent) => {
-    const target = event.target as HTMLElement;
+  const handleMouseDown = useCallback((e: MouseEvent) => {
+    if (!tableElement) return;
     
-    if (!tableElement || !tableElement.contains(target)) return;
-    if (target.closest('.table-button')) return; // 버튼 클릭은 제외
-    
+    const target = e.target as HTMLElement;
     const cell = target.closest('td, th') as HTMLElement;
-    if (cell) {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      const position = getCellPosition(cell);
-      if (position) {
-        console.log('Starting drag at:', position);
-        setIsDragging(true);
-        setDragStart(position);
-        setDragEnd(position);
-        isMouseDownRef.current = true;
-        clearSelection();
-        updateSelection(position, position);
-        
-        // 전체 document에 드래그 이벤트 추가
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-      }
+    
+    if (!cell || !tableElement.contains(cell)) return;
+    if (target.closest('.table-button')) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const position = getCellPosition(cell);
+    if (position) {
+      console.log('Mouse down on cell:', position);
+      setIsDragging(true);
+      setDragStart(position);
+      setDragEnd(position);
+      clearSelection();
+      updateSelection(position, position);
     }
   }, [tableElement, getCellPosition, clearSelection, updateSelection]);
 
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!isDragging || !dragStart || !isMouseDownRef.current) return;
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !dragStart) return;
     
-    const target = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement;
+    const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement;
     const cell = target?.closest('td, th') as HTMLElement;
     
     if (cell && tableElement?.contains(cell)) {
       const position = getCellPosition(cell);
       if (position && (position.row !== dragEnd?.row || position.col !== dragEnd?.col)) {
-        console.log('Dragging to:', position);
+        console.log('Mouse move to cell:', position);
         setDragEnd(position);
         updateSelection(dragStart, position);
       }
@@ -198,20 +194,12 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   }, [isDragging, dragStart, dragEnd, tableElement, getCellPosition, updateSelection]);
 
   const handleMouseUp = useCallback(() => {
-    if (isDragging && dragStart && dragEnd) {
-      console.log('Drag ended, analyzing selection');
-      analyzeSelection(dragStart, dragEnd);
-    }
+    console.log('Mouse up, stopping drag');
     setIsDragging(false);
-    isMouseDownRef.current = false;
-    
-    // 드래그 이벤트 정리
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-  }, [isDragging, dragStart, dragEnd, analyzeSelection]);
+  }, []);
 
-  const handleClickOutside = useCallback((event: Event) => {
-    const target = event.target as HTMLElement;
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    const target = e.target as HTMLElement;
     if (!tableElement?.contains(target) && !target.closest('.table-button')) {
       clearSelection();
     }
@@ -220,14 +208,18 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
   useEffect(() => {
     if (!tableElement) {
       setIsVisible(false);
+      clearSelection();
       return;
     }
 
+    console.log('TableOverlay mounted with table:', tableElement);
     updateButtonPositions();
     setIsVisible(true);
     
-    // 테이블에 직접 마우스다운 이벤트 리스너 등록
-    tableElement.addEventListener('mousedown', handleMouseDown);
+    // 전역 이벤트 리스너 등록
+    document.addEventListener('mousedown', handleMouseDown, true);
+    document.addEventListener('mousemove', handleMouseMove, true);
+    document.addEventListener('mouseup', handleMouseUp, true);
     document.addEventListener('click', handleClickOutside);
     
     const resizeObserver = new ResizeObserver(updateButtonPositions);
@@ -237,13 +229,17 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     window.addEventListener('resize', updateButtonPositions);
 
     return () => {
-      tableElement.removeEventListener('mousedown', handleMouseDown);
+      console.log('TableOverlay cleanup');
+      document.removeEventListener('mousedown', handleMouseDown, true);
+      document.removeEventListener('mousemove', handleMouseMove, true);
+      document.removeEventListener('mouseup', handleMouseUp, true);
       document.removeEventListener('click', handleClickOutside);
       resizeObserver.disconnect();
       window.removeEventListener('scroll', updateButtonPositions);
       window.removeEventListener('resize', updateButtonPositions);
+      clearSelection();
     };
-  }, [tableElement, handleMouseDown, handleClickOutside, updateButtonPositions]);
+  }, [tableElement, handleMouseDown, handleMouseMove, handleMouseUp, handleClickOutside, updateButtonPositions, clearSelection]);
 
   const handleAddColumn = () => {
     editor.chain().focus().addColumnAfter().run();
@@ -262,13 +258,13 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
     clearSelection();
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || !tableElement) return null;
 
   return (
-    <>
+    <div ref={overlayRef}>
       {/* 열 추가 버튼 */}
       <div
-        className="absolute z-50"
+        className="fixed z-50 table-button"
         style={{
           top: `${columnButtonPosition.top}px`,
           left: `${columnButtonPosition.left}px`
@@ -277,7 +273,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         <Button
           variant="outline"
           size="sm"
-          className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent table-button"
+          className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent"
           onClick={handleAddColumn}
           title="열 추가"
         >
@@ -287,7 +283,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
 
       {/* 행 추가 버튼 */}
       <div
-        className="absolute z-50"
+        className="fixed z-50 table-button"
         style={{
           top: `${rowButtonPosition.top}px`,
           left: `${rowButtonPosition.left}px`
@@ -296,7 +292,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
         <Button
           variant="outline"
           size="sm"
-          className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent table-button"
+          className="h-6 w-6 p-0 bg-background border border-border shadow-sm hover:bg-accent"
           onClick={handleAddRow}
           title="행 추가"
         >
@@ -307,7 +303,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       {/* 삭제 버튼 */}
       {deleteType && (
         <div
-          className="absolute z-50"
+          className="fixed z-50 table-button"
           style={{
             top: `${deleteButtonPosition.top}px`,
             left: `${deleteButtonPosition.left}px`
@@ -316,7 +312,7 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
           <Button
             variant="destructive"
             size="sm"
-            className="h-6 w-6 p-0 shadow-sm table-button"
+            className="h-6 w-6 p-0 shadow-sm"
             onClick={handleDelete}
             title={deleteType === 'row' ? '행 삭제' : '열 삭제'}
           >
@@ -324,6 +320,6 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
           </Button>
         </div>
       )}
-    </>
+    </div>
   );
 };
