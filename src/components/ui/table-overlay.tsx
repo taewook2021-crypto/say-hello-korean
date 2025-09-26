@@ -40,20 +40,51 @@ export const TableOverlay: React.FC<TableOverlayProps> = ({ editor, tableElement
       const editorContainer = editor.view.dom.closest('.ProseMirror');
       const containerRect = editorContainer?.getBoundingClientRect();
       
-      if (containerRect && cell) {
-        const cellRect = cell.getBoundingClientRect();
+      if (containerRect && cell && tableElement) {
+        const table = tableElement.querySelector('table');
+        if (!table) return;
+
+        // 클릭된 셀의 행과 열 인덱스 찾기
+        const rows = Array.from(table.querySelectorAll('tr'));
+        let rowIndex = -1;
+        let colIndex = -1;
+
+        for (let i = 0; i < rows.length; i++) {
+          const cells = Array.from(rows[i].querySelectorAll('td, th'));
+          const cellIndexInRow = cells.indexOf(cell);
+          if (cellIndexInRow !== -1) {
+            rowIndex = i;
+            colIndex = cellIndexInRow;
+            break;
+          }
+        }
+
+        if (rowIndex === -1 || colIndex === -1) return;
+
+        // 해당 열의 첫 번째 셀 (첫 번째 행의 해당 열)
+        const firstRowCells = Array.from(rows[0].querySelectorAll('td, th'));
+        const columnFirstCell = firstRowCells[colIndex];
         
-        // 열 메뉴 위치 (클릭된 셀의 열 위쪽)
-        setColumnMenuPosition({
-          top: cellRect.top - containerRect.top - 30,
-          left: cellRect.left - containerRect.left + (cellRect.width / 2) - 12
-        });
-        
-        // 행 메뉴 위치 (클릭된 셀의 행 왼쪽)
-        setRowMenuPosition({
-          top: cellRect.top - containerRect.top + (cellRect.height / 2) - 12,
-          left: cellRect.left - containerRect.left - 30
-        });
+        // 해당 행의 첫 번째 셀 (해당 행의 첫 번째 열)
+        const rowCells = Array.from(rows[rowIndex].querySelectorAll('td, th'));
+        const rowFirstCell = rowCells[0];
+
+        if (columnFirstCell && rowFirstCell) {
+          const columnRect = columnFirstCell.getBoundingClientRect();
+          const rowRect = rowFirstCell.getBoundingClientRect();
+          
+          // 열 메뉴 위치 (해당 열의 제일 위쪽)
+          setColumnMenuPosition({
+            top: columnRect.top - containerRect.top - 30,
+            left: columnRect.left - containerRect.left + (columnRect.width / 2) - 12
+          });
+          
+          // 행 메뉴 위치 (해당 행의 제일 왼쪽)
+          setRowMenuPosition({
+            top: rowRect.top - containerRect.top + (rowRect.height / 2) - 12,
+            left: rowRect.left - containerRect.left - 30
+          });
+        }
       }
     };
 
