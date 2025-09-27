@@ -1,20 +1,16 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import Landing from "./Landing";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        // User is authenticated, redirect to home
-        navigate('/home');
-      } else {
-        // User is not authenticated, redirect to auth
-        navigate('/auth');
-      }
+    if (!loading && user) {
+      // User is authenticated, redirect to home
+      navigate('/home');
     }
   }, [user, loading, navigate]);
 
@@ -30,7 +26,12 @@ const Index = () => {
     );
   }
 
-  return null; // This should never render as user will be redirected
+  // Show landing page for non-authenticated users
+  if (!user) {
+    return <Landing />;
+  }
+
+  return null; // This should never render as authenticated users will be redirected
 };
 
 export default Index;
