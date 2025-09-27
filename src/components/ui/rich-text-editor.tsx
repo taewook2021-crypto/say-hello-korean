@@ -7,7 +7,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableSizeSelector } from '@/components/ui/table-size-selector';
 import { Button } from '@/components/ui/button';
-import { Copy, Plus, Minus, Trash2, Rows, Columns } from 'lucide-react';
+import { Copy, Plus, Minus, Trash2, Rows, Columns, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -154,24 +154,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           size="sm"
           variant="outline"
           onClick={() => editor.chain().focus().addRowBefore().run()}
-          className="h-8 px-2"
+          className="h-8 px-2 bg-blue-50 hover:bg-blue-100 border-blue-200"
           title="위에 행 추가"
           disabled={!isInTable}
         >
-          <Rows className="h-4 w-4" />
-          <Plus className="h-3 w-3" />
+          <div className="flex flex-col items-center">
+            <ArrowUp className="h-2 w-2 text-blue-600" />
+            <Plus className="h-3 w-3" />
+          </div>
         </Button>
         
         <Button
           size="sm"
           variant="outline"
           onClick={() => editor.chain().focus().addRowAfter().run()}
-          className="h-8 px-2"
+          className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-200"
           title="아래에 행 추가"
           disabled={!isInTable}
         >
-          <Rows className="h-4 w-4" />
-          <Plus className="h-3 w-3" />
+          <div className="flex flex-col items-center">
+            <Plus className="h-3 w-3" />
+            <ArrowDown className="h-2 w-2 text-green-600" />
+          </div>
         </Button>
         
         <Button
@@ -193,24 +197,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           size="sm"
           variant="outline"
           onClick={() => editor.chain().focus().addColumnBefore().run()}
-          className="h-8 px-2"
+          className="h-8 px-2 bg-purple-50 hover:bg-purple-100 border-purple-200"
           title="왼쪽에 열 추가"
           disabled={!isInTable}
         >
-          <Columns className="h-4 w-4" />
-          <Plus className="h-3 w-3" />
+          <div className="flex items-center">
+            <ArrowLeft className="h-2 w-2 text-purple-600" />
+            <Plus className="h-3 w-3" />
+          </div>
         </Button>
         
         <Button
           size="sm"
           variant="outline"
           onClick={() => editor.chain().focus().addColumnAfter().run()}
-          className="h-8 px-2"
+          className="h-8 px-2 bg-orange-50 hover:bg-orange-100 border-orange-200"
           title="오른쪽에 열 추가"
           disabled={!isInTable}
         >
-          <Columns className="h-4 w-4" />
-          <Plus className="h-3 w-3" />
+          <div className="flex items-center">
+            <Plus className="h-3 w-3" />
+            <ArrowRight className="h-2 w-2 text-orange-600" />
+          </div>
         </Button>
         
         <Button
