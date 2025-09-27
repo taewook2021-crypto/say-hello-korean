@@ -119,9 +119,15 @@ const Landing = () => {
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/src/assets/remind-logo.png" alt="Re:Mind" className="h-8 w-8" />
-            <span className="text-xl font-bold">Re:Mind</span>
+          <div className="flex items-center">
+            <span className="text-xl font-bold">
+              Re:M
+              <span className="relative">
+                i
+                <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-green-500 rounded-full"></span>
+              </span>
+              nd
+            </span>
           </div>
           <Button onClick={handleGetStarted} size="sm">
             시작하기
