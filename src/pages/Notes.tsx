@@ -889,10 +889,10 @@ function Notes() {
                                 </Button>
                               </div>
                             </div>
-                            <Textarea
-                              value={editingFields[note.id]?.value || ''}
-                              onChange={(e) => updateEditValue(note.id, e.target.value)}
-                              className="text-base min-h-[100px] resize-y"
+                            <RichTextEditor
+                              content={editingFields[note.id]?.value || ''}
+                              onChange={(content) => updateEditValue(note.id, content)}
+                              className="min-h-[100px]"
                             />
                           </div>
                         ) : (
