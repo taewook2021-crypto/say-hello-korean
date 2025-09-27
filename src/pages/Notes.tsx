@@ -347,6 +347,8 @@ function Notes() {
         updateData.question = editData.value;
       } else if (editData.field === 'sourceText') {
         updateData.source_text = editData.value;
+      } else if (editData.field === 'explanation') {
+        updateData.explanation = editData.value;
       }
 
       const { error } = await (supabase as any)
@@ -951,56 +953,152 @@ function Notes() {
                     {showAnswers[note.id] && (
                       <div className="space-y-4 border-t pt-4">
                         <div className="grid grid-cols-1 gap-4">                         
-                          {note.explanation && (
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-green-600">해설</span>
-                                {(note as any).multiple_choice_options && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleMultipleChoiceVisibility(note.id)}
-                                    className="h-6 px-2"
-                                  >
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    <span className="text-xs">
-                                      {showMultipleChoices[note.id] ? '선지 숨기기' : '선지 보기'}
-                                    </span>
-                                  </Button>
-                                )}
-                              </div>
-                              <div className="text-sm bg-green/10 border-green/20 p-3 rounded-lg border">
-                                <HtmlContent content={note.explanation} />
-                              </div>
-                              
-                              {/* Multiple Choice Options */}
-                              {showMultipleChoices[note.id] && (note as any).multiple_choice_options && (
-                                <div className="bg-blue/10 border-blue/20 p-3 rounded-lg border">
-                                  <h5 className="text-sm font-medium text-blue-600 mb-3">객관식 선택지</h5>
-                                  <div className="space-y-2">
-                                    {(note as any).multiple_choice_options.map((option: any, index: number) => (
-                                      <div key={index} className={`flex items-center gap-2 p-2 rounded ${
-                                        option.is_correct 
-                                          ? 'bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800' 
-                                          : 'bg-muted/50'
-                                      }`}>
-                                        <span className="text-sm font-mono w-6 h-6 rounded-full bg-background border flex items-center justify-center">
-                                          {index + 1}
-                                        </span>
-                                        <span className="text-sm flex-1">{option.text}</span>
-                                        {option.is_correct && (
-                                          <CheckCircle className="h-4 w-4 text-green-600" />
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                           {editingFields[note.id]?.field === 'explanation' ? (
+                             <div>
+                               <div className="flex items-center justify-between mb-2">
+                                 <span className="text-sm font-medium text-green-600">해설</span>
+                                 <div className="flex gap-1">
+                                   <Button
+                                     size="sm"
+                                     variant="outline"
+                                     onClick={() => saveEdit(note.id)}
+                                   >
+                                     <Save className="h-3 w-3" />
+                                   </Button>
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={() => cancelEdit(note.id)}
+                                   >
+                                     <X className="h-3 w-3" />
+                                   </Button>
+                                 </div>
+                               </div>
+                               <RichTextEditor
+                                 content={editingFields[note.id]?.value || ''}
+                                 onChange={(content) => updateEditValue(note.id, content)}
+                                 className="min-h-[100px]"
+                                 onEditorReady={(editor) => {
+                                   // 표 복사 기능을 위한 커스텀 핸들러
+                                   const copyTableFromQuestion = () => {
+                                     // 문제 텍스트에서 표만 추출
+                                     const tempDiv = document.createElement('div');
+                                     tempDiv.innerHTML = note.question;
+                                     const tables = tempDiv.querySelectorAll('table');
+                                     
+                                     if (tables.length === 0) {
+                                       toast({
+                                         title: "복사할 표가 없습니다",
+                                         description: "문제란에 표가 없습니다.",
+                                         variant: "destructive",
+                                       });
+                                       return;
+                                     }
+                                     
+                                     // 표들을 HTML 문자열로 변환
+                                     let tablesHtml = '';
+                                     tables.forEach(table => {
+                                       tablesHtml += table.outerHTML + '\n\n';
+                                     });
+                                     
+                                     // 현재 해설 내용에 표 추가
+                                     const currentContent = editingFields[note.id]?.value || '';
+                                     const newContent = currentContent + '\n\n' + tablesHtml;
+                                     updateEditValue(note.id, newContent);
+                                     editor.commands.setContent(newContent);
+                                     
+                                     toast({
+                                       title: "표 복사 완료",
+                                       description: `${tables.length}개의 표를 해설란에 복사했습니다.`,
+                                     });
+                                   };
+                                   
+                                   // 에디터에 커스텀 이벤트 추가
+                                   (editor as any).copyTableFromQuestion = copyTableFromQuestion;
+                                 }}
+                               />
+                             </div>
+                           ) : note.explanation ? (
+                             <div className="space-y-2">
+                               <div className="flex items-center justify-between">
+                                 <span className="text-sm font-medium text-green-600">해설</span>
+                                 <div className="flex gap-1">
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={() => startEdit(note.id, 'explanation', note.explanation || '')}
+                                   >
+                                     <Edit2 className="h-3 w-3" />
+                                   </Button>
+                                   {(note as any).multiple_choice_options && (
+                                     <Button
+                                       variant="ghost"
+                                       size="sm"
+                                       onClick={() => toggleMultipleChoiceVisibility(note.id)}
+                                       className="h-6 px-2"
+                                     >
+                                       <CheckCircle className="h-3 w-3 mr-1" />
+                                       <span className="text-xs">
+                                         {showMultipleChoices[note.id] ? '선지 숨기기' : '선지 보기'}
+                                       </span>
+                                     </Button>
+                                   )}
+                                 </div>
+                               </div>
+                               <div 
+                                 className="text-sm bg-green/10 border-green/20 p-3 rounded-lg border cursor-pointer hover:bg-green/20"
+                                 onClick={() => startEdit(note.id, 'explanation', note.explanation || '')}
+                               >
+                                 <HtmlContent content={note.explanation} />
+                               </div>
+                             </div>
+                           ) : (
+                             <div className="space-y-2">
+                               <div className="flex items-center justify-between">
+                                 <span className="text-sm font-medium text-green-600">해설</span>
+                                 <Button
+                                   size="sm"
+                                   variant="ghost"
+                                   onClick={() => startEdit(note.id, 'explanation', '')}
+                                 >
+                                   <Edit2 className="h-3 w-3" />
+                                 </Button>
+                               </div>
+                               <div 
+                                 className="text-sm bg-green/10 border-green/20 p-3 rounded-lg border cursor-pointer hover:bg-green/20 text-muted-foreground"
+                                 onClick={() => startEdit(note.id, 'explanation', '')}
+                               >
+                                 해설을 추가하려면 클릭하세요
+                               </div>
+                             </div>
+                           )}
+                               
+                           {/* Multiple Choice Options */}
+                           {showMultipleChoices[note.id] && (note as any).multiple_choice_options && (
+                             <div className="bg-blue/10 border-blue/20 p-3 rounded-lg border">
+                               <h5 className="text-sm font-medium text-blue-600 mb-3">객관식 선택지</h5>
+                               <div className="space-y-2">
+                                 {(note as any).multiple_choice_options.map((option: any, index: number) => (
+                                   <div key={index} className={`flex items-center gap-2 p-2 rounded ${
+                                     option.is_correct 
+                                       ? 'bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800' 
+                                       : 'bg-muted/50'
+                                   }`}>
+                                     <span className="text-sm font-mono w-6 h-6 rounded-full bg-background border flex items-center justify-center">
+                                       {index + 1}
+                                     </span>
+                                     <span className="text-sm flex-1">{option.text}</span>
+                                     {option.is_correct && (
+                                       <CheckCircle className="h-4 w-4 text-green-600" />
+                                     )}
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     )}
                   </div>
                 </CardContent>
               </Card>

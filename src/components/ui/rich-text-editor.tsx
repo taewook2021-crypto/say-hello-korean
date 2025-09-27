@@ -59,6 +59,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, [content, editor]);
 
   const copyTable = () => {
+    // 커스텀 표 복사 함수가 있는 경우 실행
+    if ((editor as any).copyTableFromQuestion) {
+      (editor as any).copyTableFromQuestion();
+      return;
+    }
+    
+    // 기본 표 복사 기능 (클립보드로 복사)
     const { state } = editor;
     const { selection } = state;
     const { $from } = selection;
