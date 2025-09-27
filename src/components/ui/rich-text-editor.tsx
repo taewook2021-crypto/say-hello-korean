@@ -72,49 +72,69 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       return;
     }
     
-    // 기본 표 복사 기능 (클립보드로 복사)
-    const { state } = editor;
-    const { selection } = state;
-    const { $from } = selection;
-    
-    // Find the table node that contains the current selection
-    let tableNode = null;
-    let tablePos = null;
-    
-    state.doc.descendants((node, pos) => {
-      if (node.type.name === 'table') {
-        if (pos <= $from.pos && pos + node.nodeSize >= $from.pos) {
+    // 기본 표 복사 기능 - TipTap의 내장 기능 사용
+    try {
+      // TipTap의 선택된 테이블을 JSON으로 변환 후 다시 HTML로 변환
+      const { state } = editor;
+      const { selection } = state;
+      const { $from } = selection;
+      
+      // 현재 선택 위치에서 테이블 노드 찾기
+      let tableNode = null;
+      let depth = $from.depth;
+      
+      // 상위로 올라가면서 테이블 노드 찾기
+      while (depth >= 0) {
+        const node = $from.node(depth);
+        if (node.type.name === 'table') {
           tableNode = node;
-          tablePos = pos;
-          return false; // Stop searching
+          break;
         }
+        depth--;
       }
-      return true;
-    });
-    
-    if (tableNode) {
-      // Convert table node to HTML
-      const tempDiv = document.createElement('div');
-      const tableHTML = editor.schema.nodeFromJSON(tableNode.toJSON());
-      const fragment = editor.schema.topNodeType.createAndFill()?.content;
-      if (fragment) {
-        const serializer = editor.schema.topNodeType.spec.toDOM;
-        if (serializer) {
-          // Get the table HTML
-          const tableElement = document.querySelector('.ProseMirror table');
-          if (tableElement) {
-            const clonedTable = tableElement.cloneNode(true) as HTMLElement;
-            // Copy to clipboard
-            navigator.clipboard.writeText(clonedTable.outerHTML).then(() => {
+      
+      if (tableNode) {
+        // 테이블 노드를 HTML로 직렬화
+        const htmlSerializer = editor.schema.topNodeType.spec.toDOM;
+        const tempDiv = document.createElement('div');
+        
+        // TipTap editor의 getHTML 메소드로 전체 HTML 가져온 후 테이블 추출
+        const fullHTML = editor.getHTML();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(fullHTML, 'text/html');
+        const tables = doc.querySelectorAll('table');
+        
+        if (tables.length > 0) {
+          // 첫 번째 테이블을 클립보드에 복사 (향후 특정 테이블 선택 로직 개선 가능)
+          const tableHTML = tables[0].outerHTML;
+          
+          // 클립보드에 HTML과 텍스트 모두 복사
+          const clipboardData = [
+            new ClipboardItem({
+              'text/html': new Blob([tableHTML], { type: 'text/html' }),
+              'text/plain': new Blob([tables[0].textContent || ''], { type: 'text/plain' })
+            })
+          ];
+          
+          navigator.clipboard.write(clipboardData).then(() => {
+            toast.success('표가 클립보드에 복사되었습니다');
+          }).catch(() => {
+            // fallback: 텍스트로만 복사
+            navigator.clipboard.writeText(tableHTML).then(() => {
               toast.success('표가 클립보드에 복사되었습니다');
             }).catch(() => {
               toast.error('표 복사에 실패했습니다');
             });
-          }
+          });
+        } else {
+          toast.error('복사할 표를 찾을 수 없습니다');
         }
+      } else {
+        toast.error('표 내에서 복사를 실행해주세요');
       }
-    } else {
-      toast.error('복사할 표를 찾을 수 없습니다');
+    } catch (error) {
+      console.error('Table copy error:', error);
+      toast.error('표 복사 중 오류가 발생했습니다');
     }
   };
 
