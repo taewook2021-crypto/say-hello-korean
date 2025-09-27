@@ -162,11 +162,8 @@ const Landing = () => {
             </div>
           </div>
 
-          <Button onClick={handleGetStarted} size="lg" className="mr-4 mb-4">
+          <Button onClick={handleGetStarted} size="lg" className="mb-4">
             무료로 시작하기
-          </Button>
-          <Button variant="outline" size="lg" className="mb-4">
-            기능 둘러보기
           </Button>
         </div>
       </section>
@@ -232,12 +229,9 @@ const Landing = () => {
             <p className="text-lg text-muted-foreground mb-8">
               무료로 시작하고, 체계적인 학습으로 CPA 합격에 한 걸음 더 가까워지세요
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <Button onClick={handleGetStarted} size="lg">
                 무료 회원가입
-              </Button>
-              <Button variant="outline" size="lg">
-                데모 보기
               </Button>
             </div>
             <p className="text-sm text-muted-foreground mt-4">
