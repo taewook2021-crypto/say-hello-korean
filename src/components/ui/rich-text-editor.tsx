@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Table } from '@tiptap/extension-table';
@@ -26,6 +26,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   className,
   onEditorReady
 }) => {
+  const [isInTable, setIsInTable] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -39,9 +41,14 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
+      setIsInTable(editor.can().addRowBefore());
     },
     onCreate: ({ editor }) => {
       onEditorReady?.(editor);
+      setIsInTable(editor.can().addRowBefore());
+    },
+    onSelectionUpdate: ({ editor }) => {
+      setIsInTable(editor.can().addRowBefore());
     },
     editorProps: {
       attributes: {
@@ -115,7 +122,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     return null;
   }
 
-  const isInTable = editor.can().addRowBefore();
+  
 
   return (
     <div className={cn("border border-input rounded-md", className)}>
