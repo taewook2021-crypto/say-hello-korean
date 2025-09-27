@@ -88,26 +88,20 @@ export function AppSidebar() {
   const isActive = (path: string) => currentPath === path;
 
   return (
-    <>
-      {/* Mobile: Floating trigger button */}
-      {isMobile && !open && (
-        <SidebarTrigger className="fixed top-4 left-4 z-50 bg-background border border-border shadow-lg" />
-      )}
-      
-      <Sidebar className={`border-r border-border ${isMobile ? 'w-80' : 'w-64'}`} collapsible="offcanvas">
-        {/* 헤더 */}
-        <SidebarHeader className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-primary" />
-              <h2 className="font-bold text-lg text-foreground">Re:Mind</h2>
-            </div>
-            {isMobile && (
-              <SidebarTrigger className="p-2" />
-            )}
+    <Sidebar className={`border-r border-border ${isMobile ? 'w-80' : 'w-64'}`} collapsible="offcanvas">
+      {/* 헤더 */}
+      <SidebarHeader className="p-4 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-primary" />
+            <h2 className="font-bold text-lg text-foreground">Re:Mind</h2>
           </div>
-          <p className="text-sm text-muted-foreground">학습 관리 시스템</p>
-        </SidebarHeader>
+          {isMobile && (
+            <SidebarTrigger className="p-2" />
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">학습 관리 시스템</p>
+      </SidebarHeader>
 
       <SidebarContent className={`${isMobile ? 'p-3' : 'p-4'}`}>
         {/* 메인 메뉴 */}
@@ -252,6 +246,5 @@ export function AppSidebar() {
         )}
       </SidebarFooter>
     </Sidebar>
-    </>
   );
 }

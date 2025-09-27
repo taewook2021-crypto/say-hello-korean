@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, BookOpen, Target, ArrowLeft, FileText, Download } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
@@ -49,6 +50,7 @@ export function TodayReviews({ onStudyModeChange }: TodayReviewsProps = {}) {
   const [showStudyModeSelector, setShowStudyModeSelector] = useState(false);
   const [reviewNotes, setReviewNotes] = useState<WrongNote[]>([]);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadReviews();
@@ -356,16 +358,17 @@ export function TodayReviews({ onStudyModeChange }: TodayReviewsProps = {}) {
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5 text-orange-500" />
               오늘 복습할 문제
-              <Badge variant="destructive">{todayReviews.length}</Badge>
+              {!isMobile && <Badge variant="secondary">{todayReviews.length}</Badge>}
             </CardTitle>
             {todayReviews.length > 0 && (
               <Button 
                 variant="outline" 
-                size="sm"
+                size={isMobile ? "icon" : "sm"}
                 onClick={startQuickReview}
+                className={isMobile ? "shrink-0" : ""}
               >
-                <BookOpen className="h-4 w-4 mr-2" />
-                빠르게 복습하기
+                <BookOpen className={`h-4 w-4 ${!isMobile ? 'mr-2' : ''}`} />
+                {!isMobile && '빠르게 복습하기'}
               </Button>
             )}
           </div>

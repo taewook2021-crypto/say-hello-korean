@@ -12,6 +12,8 @@ import { TodayReviews } from "@/components/TodayReviews";
 import { useToast } from "@/hooks/use-toast";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { useSearch } from "@/contexts/SearchContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +39,7 @@ const Home = () => {
   const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames, updateSubject, updateBook } = useUnifiedData();
   const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
   const { user, profile, loading: authLoading, signOut } = useAuth();
+  const isMobile = useIsMobile();
 
 
   // Redirect to auth if not authenticated
@@ -135,11 +138,14 @@ const Home = () => {
       {/* Hero Section */}
       <div className="mb-8 md:mb-12">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-4xl font-bold text-foreground mb-2">내 학습 공간</h1>
-            <p className="text-sm md:text-lg text-muted-foreground">
-              체계적인 학습으로 성취를 만들어보세요
-            </p>
+          <div className="flex items-center gap-3">
+            {isMobile && <SidebarTrigger className="shrink-0" />}
+            <div>
+              <h1 className="text-2xl md:text-4xl font-bold text-foreground mb-2">내 학습 공간</h1>
+              <p className="text-sm md:text-lg text-muted-foreground">
+                체계적인 학습으로 성취를 만들어보세요
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
