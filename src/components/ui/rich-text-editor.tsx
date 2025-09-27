@@ -7,7 +7,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableSizeSelector } from '@/components/ui/table-size-selector';
 import { Button } from '@/components/ui/button';
-import { Copy } from 'lucide-react';
+import { Copy, Plus, Minus, Trash2, Rows, Columns } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -115,26 +115,119 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     return null;
   }
 
+  const isInTable = editor.can().addRowBefore();
+
   return (
     <div className={cn("border border-input rounded-md", className)}>
       {/* Toolbar */}
       <div className="border-b border-input p-2 flex flex-wrap gap-1">
         
-        {/* Table buttons */}
+        {/* Table creation */}
         <TableSizeSelector 
           onTableCreate={(rows, cols) => 
             editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
           } 
         />
         
+        {/* Table copy */}
         <Button
           size="sm"
           variant="outline"
           onClick={copyTable}
           className="h-8 px-2"
+          disabled={!isInTable}
         >
           <Copy className="h-4 w-4" />
         </Button>
+
+        {/* Row management */}
+        {isInTable && (
+          <>
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+              className="h-8 px-2"
+              title="위에 행 추가"
+            >
+              <Rows className="h-4 w-4" />
+              <Plus className="h-3 w-3" />
+            </Button>
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+              className="h-8 px-2"
+              title="아래에 행 추가"
+            >
+              <Rows className="h-4 w-4" />
+              <Plus className="h-3 w-3" />
+            </Button>
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              className="h-8 px-2"
+              title="행 삭제"
+            >
+              <Rows className="h-4 w-4" />
+              <Minus className="h-3 w-3" />
+            </Button>
+
+            {/* Column management */}
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+              className="h-8 px-2"
+              title="왼쪽에 열 추가"
+            >
+              <Columns className="h-4 w-4" />
+              <Plus className="h-3 w-3" />
+            </Button>
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+              className="h-8 px-2"
+              title="오른쪽에 열 추가"
+            >
+              <Columns className="h-4 w-4" />
+              <Plus className="h-3 w-3" />
+            </Button>
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+              className="h-8 px-2"
+              title="열 삭제"
+            >
+              <Columns className="h-4 w-4" />
+              <Minus className="h-3 w-3" />
+            </Button>
+
+            {/* Table deletion */}
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => editor.chain().focus().deleteTable().run()}
+              className="h-8 px-2"
+              title="표 삭제"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </>
+        )}
       </div>
       
       {/* Editor */}
