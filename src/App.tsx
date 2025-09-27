@@ -44,7 +44,7 @@ const App = () => (
               {/* Protected routes - With sidebar */}
               <Route path="/home" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
@@ -56,7 +56,7 @@ const App = () => (
               } />
               <Route path="/study-tracker" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
@@ -68,7 +68,7 @@ const App = () => (
               } />
               <Route path="/search" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
@@ -80,7 +80,7 @@ const App = () => (
               } />
               <Route path="/backup" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
@@ -92,7 +92,7 @@ const App = () => (
               } />
               <Route path="/subject/:subjectName" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
@@ -104,7 +104,7 @@ const App = () => (
               } />
               <Route path="/subject/:subjectName/wrong-notes" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
@@ -116,7 +116,7 @@ const App = () => (
               } />
               <Route path="/subject/:subjectName/book/:bookName" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
@@ -128,7 +128,7 @@ const App = () => (
               } />
               <Route path="/notes/:subjectName/:bookName/:chapterName" element={
                 <ProtectedRoute>
-                  <SidebarProvider defaultOpen={true}>
+                  <SidebarProvider defaultOpen={false}>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">

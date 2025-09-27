@@ -11,7 +11,10 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Home,
   BookOpen,
@@ -41,6 +44,8 @@ export function AppSidebar() {
   const [isAddSubjectDialogOpen, setIsAddSubjectDialogOpen] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState("");
   const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const { open, setOpen } = useSidebar();
 
   const subjects = getSubjectNames();
 
@@ -83,17 +88,28 @@ export function AppSidebar() {
   const isActive = (path: string) => currentPath === path;
 
   return (
-    <Sidebar className="w-64 border-r border-border">
-      {/* 헤더 */}
-      <SidebarHeader className="p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-6 h-6 text-primary" />
-          <h2 className="font-bold text-lg text-foreground">Re:Mind</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">학습 관리 시스템</p>
-      </SidebarHeader>
+    <>
+      {/* Mobile: Floating trigger button */}
+      {isMobile && !open && (
+        <SidebarTrigger className="fixed top-4 left-4 z-50 bg-background border border-border shadow-lg" />
+      )}
+      
+      <Sidebar className={`border-r border-border ${isMobile ? 'w-80' : 'w-64'}`} collapsible="offcanvas">
+        {/* 헤더 */}
+        <SidebarHeader className="p-4 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-6 h-6 text-primary" />
+              <h2 className="font-bold text-lg text-foreground">Re:Mind</h2>
+            </div>
+            {isMobile && (
+              <SidebarTrigger className="p-2" />
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">학습 관리 시스템</p>
+        </SidebarHeader>
 
-      <SidebarContent className="p-4">
+      <SidebarContent className={`${isMobile ? 'p-3' : 'p-4'}`}>
         {/* 메인 메뉴 */}
         <SidebarGroup>
           <SidebarGroupLabel>메인 메뉴</SidebarGroupLabel>
@@ -101,9 +117,9 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} className="flex items-center gap-2">
-                      <item.icon className="w-4 h-4" />
+                <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <NavLink to={item.url} className={`flex items-center gap-2 ${isMobile ? 'py-3 text-base' : ''}`}>
+                      <item.icon className={`${isMobile ? 'w-5 h-5' : 'w-4 h-4'}`} />
                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
@@ -192,7 +208,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* 푸터 */}
-      <SidebarFooter className="p-4 border-t border-border">
+      <SidebarFooter className={`${isMobile ? 'p-3' : 'p-4'} border-t border-border`}>
         {user && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/30">
@@ -236,5 +252,6 @@ export function AppSidebar() {
         )}
       </SidebarFooter>
     </Sidebar>
+    </>
   );
 }

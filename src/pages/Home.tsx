@@ -131,13 +131,13 @@ const Home = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
+    <div className="w-full mx-auto p-4 md:p-8 max-w-none md:max-w-4xl">
       {/* Hero Section */}
-      <div className="mb-12">
-        <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 md:mb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-8 gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">내 학습 공간</h1>
-            <p className="text-lg text-muted-foreground">
+            <h1 className="text-2xl md:text-4xl font-bold text-foreground mb-2">내 학습 공간</h1>
+            <p className="text-sm md:text-lg text-muted-foreground">
               체계적인 학습으로 성취를 만들어보세요
             </p>
           </div>
