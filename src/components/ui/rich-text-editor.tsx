@@ -141,93 +141,96 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </Button>
 
         {/* Row management */}
-        {isInTable && (
-          <>
-            <div className="w-px h-6 bg-border mx-1" />
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-              className="h-8 px-2"
-              title="위에 행 추가"
-            >
-              <Rows className="h-4 w-4" />
-              <Plus className="h-3 w-3" />
-            </Button>
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-              className="h-8 px-2"
-              title="아래에 행 추가"
-            >
-              <Rows className="h-4 w-4" />
-              <Plus className="h-3 w-3" />
-            </Button>
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => editor.chain().focus().deleteRow().run()}
-              className="h-8 px-2"
-              title="행 삭제"
-            >
-              <Rows className="h-4 w-4" />
-              <Minus className="h-3 w-3" />
-            </Button>
+        <div className="w-px h-6 bg-border mx-1" />
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => editor.chain().focus().addRowBefore().run()}
+          className="h-8 px-2"
+          title="위에 행 추가"
+          disabled={!isInTable}
+        >
+          <Rows className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
+        </Button>
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => editor.chain().focus().addRowAfter().run()}
+          className="h-8 px-2"
+          title="아래에 행 추가"
+          disabled={!isInTable}
+        >
+          <Rows className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
+        </Button>
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => editor.chain().focus().deleteRow().run()}
+          className="h-8 px-2"
+          title="행 삭제"
+          disabled={!isInTable}
+        >
+          <Rows className="h-4 w-4" />
+          <Minus className="h-3 w-3" />
+        </Button>
 
-            {/* Column management */}
-            <div className="w-px h-6 bg-border mx-1" />
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-              className="h-8 px-2"
-              title="왼쪽에 열 추가"
-            >
-              <Columns className="h-4 w-4" />
-              <Plus className="h-3 w-3" />
-            </Button>
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-              className="h-8 px-2"
-              title="오른쪽에 열 추가"
-            >
-              <Columns className="h-4 w-4" />
-              <Plus className="h-3 w-3" />
-            </Button>
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => editor.chain().focus().deleteColumn().run()}
-              className="h-8 px-2"
-              title="열 삭제"
-            >
-              <Columns className="h-4 w-4" />
-              <Minus className="h-3 w-3" />
-            </Button>
+        {/* Column management */}
+        <div className="w-px h-6 bg-border mx-1" />
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => editor.chain().focus().addColumnBefore().run()}
+          className="h-8 px-2"
+          title="왼쪽에 열 추가"
+          disabled={!isInTable}
+        >
+          <Columns className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
+        </Button>
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => editor.chain().focus().addColumnAfter().run()}
+          className="h-8 px-2"
+          title="오른쪽에 열 추가"
+          disabled={!isInTable}
+        >
+          <Columns className="h-4 w-4" />
+          <Plus className="h-3 w-3" />
+        </Button>
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => editor.chain().focus().deleteColumn().run()}
+          className="h-8 px-2"
+          title="열 삭제"
+          disabled={!isInTable}
+        >
+          <Columns className="h-4 w-4" />
+          <Minus className="h-3 w-3" />
+        </Button>
 
-            {/* Table deletion */}
-            <div className="w-px h-6 bg-border mx-1" />
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => editor.chain().focus().deleteTable().run()}
-              className="h-8 px-2"
-              title="표 삭제"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </>
-        )}
+        {/* Table deletion */}
+        <div className="w-px h-6 bg-border mx-1" />
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => editor.chain().focus().deleteTable().run()}
+          className="h-8 px-2"
+          title="표 삭제"
+          disabled={!isInTable}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
       
       {/* Editor */}
