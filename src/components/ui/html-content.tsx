@@ -13,12 +13,14 @@ export const HtmlContent: React.FC<HtmlContentProps> = ({ content, className }) 
       'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote'
     ],
-    ALLOWED_ATTR: ['style', 'class', 'colspan', 'rowspan']
+    ALLOWED_ATTR: ['style', 'class', 'colspan', 'rowspan'],
+    ADD_ATTR: ['border'],
+    FORBID_CONTENTS: []
   });
 
   return (
     <div 
-      className={`prose prose-sm max-w-none ${className || ''}`}
+      className={`prose prose-sm max-w-none ${className || ''} [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted`}
       dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       style={{
         // Table styling
