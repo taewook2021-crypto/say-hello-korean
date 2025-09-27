@@ -20,7 +20,7 @@ export const HtmlContent: React.FC<HtmlContentProps> = ({ content, className }) 
 
   return (
     <div 
-      className={`prose prose-sm max-w-none ${className || ''} [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted`}
+      className={`prose prose-sm max-w-none ${className || ''} [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_td]:border [&_td]:border-border [&_td]:p-2 [&_th]:border [&_th]:border-border [&_th]:p-2 [&_th]:bg-muted [&_table]:mx-auto`}
       dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       style={{
         // Table styling
