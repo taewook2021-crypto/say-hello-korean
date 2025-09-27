@@ -6,6 +6,9 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableSizeSelector } from '@/components/ui/table-size-selector';
+import { Button } from '@/components/ui/button';
+import { Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
@@ -55,6 +58,52 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [content, editor]);
 
+  const copyTable = () => {
+    const { state } = editor;
+    const { selection } = state;
+    const { $from } = selection;
+    
+    // Find the table node that contains the current selection
+    let tableNode = null;
+    let tablePos = null;
+    
+    state.doc.descendants((node, pos) => {
+      if (node.type.name === 'table') {
+        if (pos <= $from.pos && pos + node.nodeSize >= $from.pos) {
+          tableNode = node;
+          tablePos = pos;
+          return false; // Stop searching
+        }
+      }
+      return true;
+    });
+    
+    if (tableNode) {
+      // Convert table node to HTML
+      const tempDiv = document.createElement('div');
+      const tableHTML = editor.schema.nodeFromJSON(tableNode.toJSON());
+      const fragment = editor.schema.topNodeType.createAndFill()?.content;
+      if (fragment) {
+        const serializer = editor.schema.topNodeType.spec.toDOM;
+        if (serializer) {
+          // Get the table HTML
+          const tableElement = document.querySelector('.ProseMirror table');
+          if (tableElement) {
+            const clonedTable = tableElement.cloneNode(true) as HTMLElement;
+            // Copy to clipboard
+            navigator.clipboard.writeText(clonedTable.outerHTML).then(() => {
+              toast.success('표가 클립보드에 복사되었습니다');
+            }).catch(() => {
+              toast.error('표 복사에 실패했습니다');
+            });
+          }
+        }
+      }
+    } else {
+      toast.error('복사할 표를 찾을 수 없습니다');
+    }
+  };
+
   if (!editor) {
     return null;
   }
@@ -70,6 +119,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run()
           } 
         />
+        
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={copyTable}
+          className="h-8 px-2"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
       </div>
       
       {/* Editor */}
