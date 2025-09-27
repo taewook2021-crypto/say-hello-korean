@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2, Copy } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2, Copy, Move } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
@@ -22,6 +22,7 @@ import { SubjectiveQuiz } from "@/components/study/SubjectiveQuiz";
 import { StudyModeSelector } from "@/components/study/StudyModeSelector";
 import { ProgressTracker } from "@/components/study/ProgressTracker";
 import { TemplateDocumentGenerator } from "@/components/study/TemplateDocumentGenerator";
+import { MoveWrongNoteDialog } from "@/components/study/MoveWrongNoteDialog";
 import OCRCamera from "@/components/OCRCamera";
 
 
@@ -66,6 +67,8 @@ function Notes() {
   const [currentStudyNotes, setCurrentStudyNotes] = useState<any[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
   const [showOCR, setShowOCR] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [selectedNoteForMove, setSelectedNoteForMove] = useState<string>('');
   
   const [gptLoading, setGptLoading] = useState(false);
 
@@ -485,6 +488,15 @@ function Notes() {
       ...prev,
       [noteId]: !prev[noteId]
     }));
+  };
+
+  const handleMoveNote = (noteId: string) => {
+    setSelectedNoteForMove(noteId);
+    setShowMoveDialog(true);
+  };
+
+  const handleMoveSuccess = () => {
+    loadNotes(); // Refresh notes after successful move
   };
 
   const getResolvedCount = () => {
@@ -935,6 +947,10 @@ function Notes() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handleMoveNote(note.id)}>
+                              <Move className="h-4 w-4 mr-2" />
+                              다른 단원으로 이동
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleResolveToggle(note.id)}>
                               {note.isResolved ? <XCircle className="h-4 w-4 mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                               {note.isResolved ? "미해결로 표시" : "해결됨으로 표시"}
@@ -1113,6 +1129,17 @@ function Notes() {
           onClose={() => setShowOCR(false)}
           onTextExtracted={handleOCRResult}
         />
+
+      {/* Move Wrong Note Dialog */}
+      <MoveWrongNoteDialog
+        open={showMoveDialog}
+        onOpenChange={setShowMoveDialog}
+        noteId={selectedNoteForMove}
+        currentSubject={decodedSubject}
+        currentBook={decodedBook}
+        currentChapter={decodedChapter}
+        onMoveSuccess={handleMoveSuccess}
+      />
 
     </div>
   );
