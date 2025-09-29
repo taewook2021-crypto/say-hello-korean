@@ -70,8 +70,8 @@ const Landing = () => {
   ];
 
   const stats = [
-    { label: "누적 사용자", value: "30+" },
-    { label: "생성된 오답노트", value: "100+" },
+    { label: "누적 사용자", value: "300+" },
+    { label: "생성된 오답노트", value: "2,000+" },
     { label: "평균 학습 시간", value: "13분" },
     { label: "문제 해결률", value: "89%" }
   ];
