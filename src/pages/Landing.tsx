@@ -137,7 +137,7 @@ const Landing = () => {
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 text-center">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <Badge variant="secondary" className="mb-4">
             CPA 수험생을 위한 스마트 학습도구
           </Badge>
@@ -176,7 +176,7 @@ const Landing = () => {
 
       {/* Stats Section */}
       <section className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {stats.map((stat, index) => (
             <Card key={index} className="text-center">
               <CardContent className="p-6">
@@ -203,7 +203,7 @@ const Landing = () => {
           </p>
         </div>
         
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {features.map((feature, index) => (
             <Card key={index} className="text-center hover:shadow-lg transition-shadow">
               <CardHeader>
@@ -227,7 +227,7 @@ const Landing = () => {
 
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-16">
-        <Card className="max-w-4xl mx-auto text-center bg-gradient-to-r from-primary/5 to-secondary/5">
+        <Card className="max-w-5xl mx-auto text-center bg-gradient-to-r from-primary/5 to-secondary/5">
           <CardContent className="p-12">
             <h2 className="text-3xl font-bold mb-4">
               지금 시작하여 학습 효율을 높이세요
