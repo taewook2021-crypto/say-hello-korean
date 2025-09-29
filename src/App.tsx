@@ -36,111 +36,121 @@ const App = () => (
           <BrowserRouter>
             <Toaster />
             <Sonner />
-            <Routes>
-              {/* Public routes - Full screen without sidebar */}
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={<Index />} />
-              
-              {/* Protected routes - With sidebar */}
-              <Route path="/home" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+            <SidebarProvider defaultOpen={true}>
+              <Routes>
+                {/* Public routes - Full screen without sidebar */}
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={<Index />} />
+                
+                {/* Protected routes - With persistent sidebar */}
+                <Route path="/home" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <Home />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <Home />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              <Route path="/study-tracker" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+                  </ProtectedRoute>
+                } />
+                <Route path="/study-tracker" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <StudyTracker />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <StudyTracker />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              <Route path="/search" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+                  </ProtectedRoute>
+                } />
+                <Route path="/search" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <WrongNoteSearch />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <WrongNoteSearch />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              <Route path="/backup" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+                  </ProtectedRoute>
+                } />
+                <Route path="/backup" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <Backup />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <Backup />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              <Route path="/subject/:subjectName" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+                  </ProtectedRoute>
+                } />
+                <Route path="/subject/:subjectName" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <Subject />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <Subject />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              <Route path="/subject/:subjectName/wrong-notes" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+                  </ProtectedRoute>
+                } />
+                <Route path="/subject/:subjectName/wrong-notes" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <WrongNoteSubject />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <WrongNoteSubject />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              <Route path="/subject/:subjectName/book/:bookName" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+                  </ProtectedRoute>
+                } />
+                <Route path="/subject/:subjectName/book/:bookName" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <Book />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <Book />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              <Route path="/notes/:subjectName/:bookName/:chapterName" element={
-                <ProtectedRoute>
-                  <SidebarProvider defaultOpen={false}>
+                  </ProtectedRoute>
+                } />
+                <Route path="/notes/:subjectName/:bookName/:chapterName" element={
+                  <ProtectedRoute>
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <Notes />
+                        <div className="p-4">
+                          <SidebarTrigger className="mb-4" />
+                          <Notes />
+                        </div>
                       </main>
                     </div>
-                  </SidebarProvider>
-                </ProtectedRoute>
-              } />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                  </ProtectedRoute>
+                } />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </SidebarProvider>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
