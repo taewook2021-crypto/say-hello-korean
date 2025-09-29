@@ -79,7 +79,7 @@ export function AppSidebar() {
   };
 
   const mainItems = [
-    { title: "홈", url: "/", icon: Home },
+    { title: "홈", url: "/home", icon: Home },
     { title: "회독표", url: "/study-tracker", icon: BookOpen },
     { title: "오답노트 검색", url: "/search", icon: Search },
     { title: "백업 관리", url: "/backup", icon: Shield },
