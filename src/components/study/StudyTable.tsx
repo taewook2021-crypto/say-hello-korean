@@ -62,10 +62,11 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [chapterProblemCounts, setChapterProblemCounts] = useState<{[chapterOrder: number]: string}>({});
   const [isDeleteChapterDialogOpen, setIsDeleteChapterDialogOpen] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<Chapter | null>(null);
+  const [reviewCounts, setReviewCounts] = useState<{ [key: string]: number }>({});
   
-  // 실시간 오답노트 동기화
+  // 실시간 오답노트 및 복습 횟수 동기화
   useEffect(() => {
-    const channel = supabase
+    const wrongNotesChannel = supabase
       .channel('wrong-notes-changes')
       .on(
         'postgres_changes',
@@ -77,15 +78,33 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
         async (payload) => {
           console.log('Wrong note change detected:', payload);
           await syncWrongNoteStatus();
+          await syncReviewCounts();
+        }
+      )
+      .subscribe();
+
+    const studySessionsChannel = supabase
+      .channel('study-sessions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'study_sessions'
+        },
+        async () => {
+          await syncReviewCounts();
         }
       )
       .subscribe();
 
     // 컴포넌트 마운트 시 초기 동기화
     syncWrongNoteStatus();
+    syncReviewCounts();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(wrongNotesChannel);
+      supabase.removeChannel(studySessionsChannel);
     };
   }, [studyData.subject, studyData.textbook]);
 
@@ -139,6 +158,46 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
       }
     } catch (error) {
       console.error('오답노트 동기화 중 오류:', error);
+    }
+  };
+
+  // 복습 횟수 동기화 함수
+  const syncReviewCounts = async () => {
+    try {
+      const { data: reviewData, error } = await supabase
+        .from('study_sessions')
+        .select(`
+          wrong_note_id,
+          wrong_notes!inner(
+            subject_name,
+            book_name,
+            chapter_name,
+            source_text
+          )
+        `)
+        .eq('wrong_notes.subject_name', studyData.subject)
+        .eq('wrong_notes.book_name', studyData.textbook);
+
+      if (error) {
+        console.error('복습 횟수 동기화 오류:', error);
+        return;
+      }
+
+      const countsMap: { [key: string]: number } = {};
+      reviewData?.forEach((session: any) => {
+        const note = session.wrong_notes;
+        // source_text에서 문제 번호 추출 (예: "단원명 3번" -> 3)
+        const match = note.source_text.match(/(\d+)번/);
+        if (match) {
+          const problemNumber = parseInt(match[1]);
+          const key = `${note.chapter_name}-${problemNumber}`;
+          countsMap[key] = (countsMap[key] || 0) + 1;
+        }
+      });
+
+      setReviewCounts(countsMap);
+    } catch (error) {
+      console.error('복습 횟수 동기화 중 오류:', error);
     }
   };
 
@@ -894,15 +953,35 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                         })}
                         <TableCell className="text-center">
                           {problem.hasNote ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-xs"
-                              onClick={() => handleViewWrongNote(chapter.order, problem.number)}
-                            >
-                              <FileText className="w-3 h-3 mr-1" />
-                              보기
-                            </Button>
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => handleViewWrongNote(chapter.order, problem.number)}
+                              >
+                                <FileText className="w-3 h-3 mr-1" />
+                                보기
+                              </Button>
+                              {(() => {
+                                const key = `${chapter.name}-${problem.number}`;
+                                const count = reviewCounts[key] || 0;
+                                if (count > 0) {
+                                  return (
+                                    <span 
+                                      className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                        count <= 2 ? 'bg-orange-100 text-orange-700' :
+                                        'bg-green-100 text-green-700'
+                                      }`}
+                                      title={`플래시카드 복습 ${count}회 완료`}
+                                    >
+                                      🔄 {count}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground">-</span>
                           )}
