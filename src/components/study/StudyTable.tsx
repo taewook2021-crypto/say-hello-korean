@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { EditableText } from "@/components/EditableText";
+import { HtmlContent } from "@/components/ui/html-content";
 
 interface StudyData {
   id: string;
@@ -1042,18 +1043,20 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
               <div>
                 <Label className="text-sm font-medium">문제</Label>
                 <div className="mt-1 p-3 bg-muted rounded-md">
-                  <p className="whitespace-pre-wrap">
-                    {selectedWrongNote.question || selectedWrongNote.content?.problemText}
-                  </p>
+                  <HtmlContent 
+                    content={selectedWrongNote.question || selectedWrongNote.content?.problemText || ''} 
+                    className="text-sm"
+                  />
                 </div>
               </div>
 
               <div>
                 <Label className="text-sm font-medium">정답 / 해설</Label>
                 <div className="mt-1 p-3 bg-muted rounded-md">
-                  <p className="whitespace-pre-wrap">
-                    {selectedWrongNote.explanation || selectedWrongNote.content?.answer}
-                  </p>
+                  <HtmlContent 
+                    content={selectedWrongNote.explanation || selectedWrongNote.content?.answer || ''} 
+                    className="text-sm"
+                  />
                 </div>
               </div>
 
