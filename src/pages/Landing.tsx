@@ -21,6 +21,7 @@ const Landing = () => {
       userAgent.includes('facebook') ||
       userAgent.includes('line') ||
       userAgent.includes('wechat') ||
+      userAgent.includes('everytime') ||
       (userAgent.includes('mobile') && !userAgent.includes('chrome') && !userAgent.includes('safari'));
     
     setIsInAppBrowser(isInApp);
