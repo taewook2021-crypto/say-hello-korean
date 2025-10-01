@@ -302,7 +302,10 @@ export function Quiz({ notes, onComplete }: QuizProps) {
                   }`}
                 >
                   <RadioGroupItem value={option} id={`option-${index}`} />
-                  <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
+                  <Label 
+                    htmlFor={`option-${index}`} 
+                    className={`flex-1 cursor-pointer ${showResult && isCorrect ? 'font-bold' : ''}`}
+                  >
                     {option}
                   </Label>
                   {showResult && isCorrect && (
