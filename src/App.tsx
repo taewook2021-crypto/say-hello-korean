@@ -20,6 +20,8 @@ import Backup from "./pages/Backup";
 
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -40,6 +42,8 @@ const App = () => (
               <Routes>
                 {/* Public routes - Full screen without sidebar */}
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="/" element={<Index />} />
                 
                 {/* Protected routes - With persistent sidebar */}
