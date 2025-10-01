@@ -12,7 +12,7 @@ export default function Privacy() {
       <div className="max-w-4xl mx-auto">
         <Button 
           variant="ghost" 
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/auth')}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
