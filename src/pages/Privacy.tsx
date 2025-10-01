@@ -22,7 +22,7 @@ export default function Privacy() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl font-bold">개인정보 처리방침</CardTitle>
-            <p className="text-sm text-muted-foreground">최종 업데이트: 2025년 1월 1일</p>
+            <p className="text-sm text-muted-foreground">최종 업데이트: 2025년 10월 1일</p>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px] pr-4">
@@ -206,7 +206,7 @@ export default function Privacy() {
 
                 <section className="pt-4 border-t">
                   <p className="text-muted-foreground text-xs">
-                    본 개인정보 처리방침은 2025년 1월 1일부터 시행됩니다.
+                    본 개인정보 처리방침은 2025년 10월 1일부터 시행됩니다.
                   </p>
                 </section>
               </div>

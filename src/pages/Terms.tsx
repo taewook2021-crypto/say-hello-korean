@@ -22,7 +22,7 @@ export default function Terms() {
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl font-bold">서비스 이용약관</CardTitle>
-            <p className="text-sm text-muted-foreground">최종 업데이트: 2025년 1월 1일</p>
+            <p className="text-sm text-muted-foreground">최종 업데이트: 2025년 10월 1일</p>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px] pr-4">
@@ -143,7 +143,7 @@ export default function Terms() {
 
                 <section className="pt-4 border-t">
                   <p className="text-muted-foreground text-xs">
-                    본 약관은 2025년 1월 1일부터 시행됩니다.
+                    본 약관은 2025년 10월 1일부터 시행됩니다.
                   </p>
                 </section>
               </div>
