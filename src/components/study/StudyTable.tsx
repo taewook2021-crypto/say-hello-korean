@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUnifiedData } from "@/contexts/UnifiedDataContext";
 import { EditableText } from "@/components/EditableText";
 import { HtmlContent } from "@/components/ui/html-content";
+import { useStudyRounds } from "@/hooks/useStudyRounds";
 
 interface StudyData {
   id: string;
@@ -43,6 +44,10 @@ interface StudyTableProps {
 export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set([1])); // 첫 번째 단원은 기본 확장
   const { addChapter, deleteChapter, updateChapter, updateBook } = useUnifiedData();
+  const { getStudyRound, updateStudyRound, deleteChapterRounds, isLoading: isLoadingRounds, isMigrating } = useStudyRounds(
+    studyData.subject,
+    studyData.textbook
+  );
   const [isWrongNoteDialogOpen, setIsWrongNoteDialogOpen] = useState(false);
   const [isWrongNoteConfirmOpen, setIsWrongNoteConfirmOpen] = useState(false);
   const [isWrongNoteViewOpen, setIsWrongNoteViewOpen] = useState(false);
@@ -212,28 +217,12 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
     setExpandedChapters(newExpanded);
   };
 
-  const updateProblemStatus = (chapterOrder: number, problemNumber: number, roundNumber: number, status: '⭕' | '🔺' | '❌' | null) => {
-    const updatedChapters = studyData.chapters.map(chapter => {
-      if (chapter.order === chapterOrder) {
-        return {
-          ...chapter,
-          problems: chapter.problems.map(problem => 
-            problem.number === problemNumber ? { 
-              ...problem, 
-              rounds: { ...(problem.rounds || {}), [roundNumber]: status }
-            } : problem
-          )
-        };
-      }
-      return chapter;
-    });
+  const updateProblemStatus = async (chapterOrder: number, problemNumber: number, roundNumber: number, status: '⭕' | '🔺' | '❌' | null) => {
+    const chapter = studyData.chapters.find(ch => ch.order === chapterOrder);
+    if (!chapter) return;
 
-    const updatedStudyData = {
-      ...studyData,
-      chapters: updatedChapters
-    };
-
-    onUpdateStudyData(updatedStudyData);
+    // DB에 회독 기록 저장
+    await updateStudyRound(chapter.name, problemNumber, roundNumber, status);
 
     // 🔺나 ❌ 선택시 오답노트 생성 여부 확인 다이얼로그 표시
     if (status === '🔺' || status === '❌') {
@@ -464,7 +453,10 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
         console.error('Error deleting chapter:', chapterError);
       }
 
-      // 3. 회독표에서 단원 삭제
+      // 3. DB에서 회독 기록 삭제
+      await deleteChapterRounds(chapterToDelete.name);
+
+      // 4. 회독표에서 단원 삭제
       const filteredChapters = studyData.chapters.filter(ch => ch.order !== chapterToDelete.order);
       
       // 삭제 후 order 재정렬
@@ -569,6 +561,16 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
           <strong>사용법:</strong> 한 번 클릭 = ⭕ (완료), 길게 누르기 = 🔺 (부분완료), 더블 클릭 = ❌ (틀림)
         </AlertDescription>
       </Alert>
+
+      {/* 마이그레이션 안내 메시지 */}
+      {isMigrating && (
+        <Alert className="mb-4">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            로컬 데이터를 데이터베이스로 마이그레이션 중입니다... 잠시만 기다려주세요.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* 상단 버튼들 */}
       <div className="flex justify-between items-center">
@@ -793,18 +795,13 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                   
                   // 모든 회독이 완료된 문제 수 계산
                   chapter.problems.forEach(problem => {
-                    // rounds가 undefined일 경우 빈 객체로 초기화
-                    if (!problem.rounds) {
-                      problem.rounds = {};
-                    }
-                    
                     let allCompleted = true;
                     let hasAny = false;
                     let hasPartial = false;
                     let hasWrong = false;
                     
                     for (let round = 1; round <= maxRounds; round++) {
-                      const status = problem.rounds[round];
+                      const status = getStudyRound(chapter.name, problem.number, round);
                       if (status) {
                         hasAny = true;
                         if (status === '🔺') hasPartial = true;
@@ -861,7 +858,7 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
                         </TableCell>
                         {Array.from({ length: studyData.maxRounds || 3 }, (_, roundIndex) => {
                           const roundNumber = roundIndex + 1;
-                          const status = problem.rounds?.[roundNumber] || null;
+                          const status = getStudyRound(chapter.name, problem.number, roundNumber) || null;
                           
                           const handleStatusClick = (e: React.MouseEvent) => {
                             e.preventDefault();

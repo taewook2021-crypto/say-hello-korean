@@ -197,6 +197,7 @@ export type Database = {
           created_at: string
           id: string
           study_progress_data: Json
+          study_rounds_data: Json | null
           subjects_data: Json
           user_id: string
           wrong_notes_data: Json
@@ -210,6 +211,7 @@ export type Database = {
           created_at?: string
           id?: string
           study_progress_data?: Json
+          study_rounds_data?: Json | null
           subjects_data?: Json
           user_id: string
           wrong_notes_data?: Json
@@ -223,6 +225,7 @@ export type Database = {
           created_at?: string
           id?: string
           study_progress_data?: Json
+          study_rounds_data?: Json | null
           subjects_data?: Json
           user_id?: string
           wrong_notes_data?: Json
@@ -741,6 +744,93 @@ export type Database = {
           status?: string | null
           subject_name?: string
           target_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_rounds: {
+        Row: {
+          book_name: string
+          chapter_name: string
+          created_at: string | null
+          id: string
+          problem_number: number
+          round_number: number
+          status: string | null
+          subject_name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          book_name: string
+          chapter_name: string
+          created_at?: string | null
+          id?: string
+          problem_number: number
+          round_number: number
+          status?: string | null
+          subject_name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          book_name?: string
+          chapter_name?: string
+          created_at?: string | null
+          id?: string
+          problem_number?: number
+          round_number?: number
+          status?: string | null
+          subject_name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_rounds_backup: {
+        Row: {
+          backup_timestamp: string | null
+          book_name: string
+          chapter_name: string
+          created_at: string
+          id: string
+          operation_type: string
+          original_round_id: string
+          problem_number: number
+          round_number: number
+          status: string | null
+          subject_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          backup_timestamp?: string | null
+          book_name: string
+          chapter_name: string
+          created_at: string
+          id?: string
+          operation_type: string
+          original_round_id: string
+          problem_number: number
+          round_number: number
+          status?: string | null
+          subject_name: string
+          updated_at: string
+          user_id: string
+        }
+        Update: {
+          backup_timestamp?: string | null
+          book_name?: string
+          chapter_name?: string
+          created_at?: string
+          id?: string
+          operation_type?: string
+          original_round_id?: string
+          problem_number?: number
+          round_number?: number
+          status?: string | null
+          subject_name?: string
           updated_at?: string
           user_id?: string
         }
