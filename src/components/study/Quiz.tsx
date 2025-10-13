@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { CheckCircle, XCircle, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +24,10 @@ interface WrongNote {
     text: string;
     is_correct: boolean;
   }>;
+  quiz_config?: {
+    answer_type: 'single' | 'multiple';
+    instruction?: string;
+  };
 }
 
 interface QuizProps {
@@ -34,7 +39,9 @@ interface QuizQuestion {
   id: string;
   question: string;
   options: string[];
-  correctAnswer: string;
+  correctAnswers: string[];
+  answerType: 'single' | 'multiple';
+  instruction?: string;
   explanation: string | null;
   originalNote: WrongNote;
 }
@@ -42,7 +49,7 @@ interface QuizQuestion {
 export function Quiz({ notes, onComplete }: QuizProps) {
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string>("");
+  const [selectedAnswers, setSelectedAnswers] = useState<string[]>([]);
   const [answered, setAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [quizCompleted, setQuizCompleted] = useState(false);
@@ -58,18 +65,26 @@ export function Quiz({ notes, onComplete }: QuizProps) {
     const questions: QuizQuestion[] = notes.map(note => {
       // Check if note has user-defined multiple choice options
       if (note.multiple_choice_options && Array.isArray(note.multiple_choice_options)) {
-        const correctOption = note.multiple_choice_options.find(opt => opt.is_correct);
-        const correctAnswer = correctOption?.text || note.source_text;
+        // Get all correct answers
+        const correctAnswers = note.multiple_choice_options
+          .filter(opt => opt.is_correct)
+          .map(opt => opt.text);
         
         // Use user-defined options
         const options = note.multiple_choice_options.map(opt => opt.text);
         const shuffledOptions = options.sort(() => Math.random() - 0.5);
         
+        // Determine answer type from quiz_config or infer from correct answers count
+        const answerType = note.quiz_config?.answer_type || 
+          (correctAnswers.length > 1 ? 'multiple' : 'single');
+        
         return {
           id: note.id,
           question: note.question,
           options: shuffledOptions,
-          correctAnswer,
+          correctAnswers,
+          answerType,
+          instruction: note.quiz_config?.instruction,
           explanation: note.explanation,
           originalNote: note
         };
@@ -106,7 +121,8 @@ export function Quiz({ notes, onComplete }: QuizProps) {
         id: note.id,
         question: note.question,
         options: shuffledOptions,
-        correctAnswer: note.source_text,
+        correctAnswers: [note.source_text],
+        answerType: 'single' as const,
         explanation: note.explanation,
         originalNote: note
       };
@@ -116,10 +132,31 @@ export function Quiz({ notes, onComplete }: QuizProps) {
   };
 
   const handleAnswerSubmit = async () => {
-    if (!selectedAnswer) return;
+    if (selectedAnswers.length === 0) return;
     
     setAnswered(true);
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    
+    // Validate answer based on type
+    let isCorrect = false;
+    if (currentQuestion.answerType === 'single') {
+      isCorrect = selectedAnswers[0] === currentQuestion.correctAnswers[0];
+    } else {
+      // Multiple choice: must match exactly
+      const selectedSet = new Set(selectedAnswers);
+      const correctSet = new Set(currentQuestion.correctAnswers);
+      
+      if (selectedSet.size !== correctSet.size) {
+        isCorrect = false;
+      } else {
+        isCorrect = true;
+        for (const answer of selectedSet) {
+          if (!correctSet.has(answer)) {
+            isCorrect = false;
+            break;
+          }
+        }
+      }
+    }
     
     if (isCorrect) {
       setScore(score + 1);
@@ -159,7 +196,7 @@ export function Quiz({ notes, onComplete }: QuizProps) {
   const nextQuestion = () => {
     if (currentQuestionIndex < quizQuestions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer("");
+      setSelectedAnswers([]);
       setAnswered(false);
       setStartTime(new Date());
     } else {
@@ -184,12 +221,20 @@ export function Quiz({ notes, onComplete }: QuizProps) {
 
   const restartQuiz = () => {
     setCurrentQuestionIndex(0);
-    setSelectedAnswer("");
+    setSelectedAnswers([]);
     setAnswered(false);
     setScore(0);
     setQuizCompleted(false);
     setStartTime(new Date());
     generateQuizQuestions();
+  };
+
+  const handleCheckboxChange = (option: string, checked: boolean) => {
+    if (checked) {
+      setSelectedAnswers([...selectedAnswers, option]);
+    } else {
+      setSelectedAnswers(selectedAnswers.filter(a => a !== option));
+    }
   };
 
   if (quizQuestions.length === 0) {
@@ -272,52 +317,101 @@ export function Quiz({ notes, onComplete }: QuizProps) {
             <Badge variant="outline">
               {currentQuestion.originalNote.subject_name} &gt; {currentQuestion.originalNote.book_name}
             </Badge>
+            {currentQuestion.answerType === 'multiple' && (
+              <Badge variant="secondary">
+                {currentQuestion.instruction || `정답 ${currentQuestion.correctAnswers.length}개`}
+              </Badge>
+            )}
           </div>
           <div className="text-lg">
             <HtmlContent content={currentQuestion.question} />
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <RadioGroup
-            value={selectedAnswer}
-            onValueChange={setSelectedAnswer}
-            disabled={answered}
-          >
-            {currentQuestion.options.map((option, index) => {
-              const isCorrect = option === currentQuestion.correctAnswer;
-              const isSelected = option === selectedAnswer;
-              const showResult = answered;
-              
-              return (
-                <div
-                  key={index}
-                  className={`flex items-center space-x-2 p-3 rounded-lg border transition-colors ${
-                    showResult
-                      ? isCorrect
-                        ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800"
-                        : isSelected
-                        ? "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800"
-                        : ""
-                      : "hover:bg-muted"
-                  }`}
-                >
-                  <RadioGroupItem value={option} id={`option-${index}`} />
-                  <Label 
-                    htmlFor={`option-${index}`} 
-                    className={`flex-1 cursor-pointer ${showResult && isCorrect ? 'font-bold' : ''}`}
+          {currentQuestion.answerType === 'single' ? (
+            <RadioGroup
+              value={selectedAnswers[0] || ""}
+              onValueChange={(value) => setSelectedAnswers([value])}
+              disabled={answered}
+            >
+              {currentQuestion.options.map((option, index) => {
+                const isCorrect = currentQuestion.correctAnswers.includes(option);
+                const isSelected = selectedAnswers.includes(option);
+                const showResult = answered;
+                
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-center space-x-2 p-3 rounded-lg border transition-colors ${
+                      showResult
+                        ? isCorrect
+                          ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800"
+                          : isSelected
+                          ? "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800"
+                          : ""
+                        : "hover:bg-muted"
+                    }`}
                   >
-                    {option}
-                  </Label>
-                  {showResult && isCorrect && (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  )}
-                  {showResult && isSelected && !isCorrect && (
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  )}
-                </div>
-              );
-            })}
-          </RadioGroup>
+                    <RadioGroupItem value={option} id={`option-${index}`} />
+                    <Label 
+                      htmlFor={`option-${index}`} 
+                      className={`flex-1 cursor-pointer ${showResult && isCorrect ? 'font-bold' : ''}`}
+                    >
+                      {option}
+                    </Label>
+                    {showResult && isCorrect && (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    )}
+                    {showResult && isSelected && !isCorrect && (
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    )}
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          ) : (
+            <div className="space-y-2">
+              {currentQuestion.options.map((option, index) => {
+                const isCorrect = currentQuestion.correctAnswers.includes(option);
+                const isSelected = selectedAnswers.includes(option);
+                const showResult = answered;
+                
+                return (
+                  <div
+                    key={index}
+                    className={`flex items-center space-x-2 p-3 rounded-lg border transition-colors ${
+                      showResult
+                        ? isCorrect
+                          ? "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800"
+                          : isSelected
+                          ? "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800"
+                          : ""
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    <Checkbox 
+                      id={`option-${index}`}
+                      checked={isSelected}
+                      onCheckedChange={(checked) => handleCheckboxChange(option, checked as boolean)}
+                      disabled={answered}
+                    />
+                    <Label 
+                      htmlFor={`option-${index}`} 
+                      className={`flex-1 cursor-pointer ${showResult && isCorrect ? 'font-bold' : ''}`}
+                    >
+                      {option}
+                    </Label>
+                    {showResult && isCorrect && (
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    )}
+                    {showResult && isSelected && !isCorrect && (
+                      <XCircle className="h-5 w-5 text-red-600" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {answered && currentQuestion.explanation && (
             <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
@@ -331,7 +425,7 @@ export function Quiz({ notes, onComplete }: QuizProps) {
           <div className="flex justify-between">
             <div></div>
             {!answered ? (
-              <Button onClick={handleAnswerSubmit} disabled={!selectedAnswer}>
+              <Button onClick={handleAnswerSubmit} disabled={selectedAnswers.length === 0}>
                 답안 제출
               </Button>
             ) : (

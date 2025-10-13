@@ -60,6 +60,8 @@ function Notes() {
     { text: '', is_correct: false },
     { text: '', is_correct: false }
   ]);
+  const [answerType, setAnswerType] = useState<'single' | 'multiple'>('single');
+  const [quizInstruction, setQuizInstruction] = useState('');
   const [showAnswers, setShowAnswers] = useState<{ [key: string]: boolean }>({});
   const [showMultipleChoices, setShowMultipleChoices] = useState<{ [key: string]: boolean }>({});
   const [editingFields, setEditingFields] = useState<{ [key: string]: { field: string; value: string } }>({});
@@ -161,19 +163,28 @@ function Notes() {
       const correctAnswers = multipleChoiceOptions.filter(opt => opt.is_correct);
       const filledOptions = multipleChoiceOptions.filter(opt => opt.text.trim());
       
-      if (correctAnswers.length !== 1) {
+      if (correctAnswers.length === 0) {
         toast({
           title: "선택지 오류",
-          description: "정답을 정확히 1개 선택해주세요.",
+          description: "정답을 최소 1개 이상 선택해주세요.",
           variant: "destructive",
         });
         return;
       }
       
-      if (filledOptions.length < 4) {
+      if (answerType === 'single' && correctAnswers.length > 1) {
         toast({
           title: "선택지 오류",
-          description: "모든 선택지를 입력해주세요.",
+          description: "단일 선택 모드에서는 정답을 1개만 선택해야 합니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (filledOptions.length < 2) {
+        toast({
+          title: "선택지 오류",
+          description: "선택지를 최소 2개 이상 입력해주세요.",
           variant: "destructive",
         });
         return;
@@ -215,7 +226,11 @@ function Notes() {
 
       // Add multiple choice options if provided
       if (showMultipleChoice) {
-        insertData.multiple_choice_options = multipleChoiceOptions;
+        insertData.multiple_choice_options = multipleChoiceOptions.filter(opt => opt.text.trim());
+        insertData.quiz_config = {
+          answer_type: answerType,
+          instruction: quizInstruction || undefined
+        };
       }
 
       const { data, error } = await supabase
@@ -264,6 +279,8 @@ function Notes() {
         { text: '', is_correct: false },
         { text: '', is_correct: false }
       ]);
+      setAnswerType('single');
+      setQuizInstruction('');
       setShowAddForm(false);
 
       toast({
@@ -753,37 +770,128 @@ function Notes() {
 
               {/* Multiple Choice Options */}
               {showMultipleChoice && (
-                <div className="space-y-3 p-4 border rounded-lg bg-muted/20">
-                  <Label className="text-sm font-medium">객관식 선택지 (정답 1개, 오답 3개)</Label>
-                  {multipleChoiceOptions.map((option, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <input
-                        type="radio"
-                        name="correct-answer"
-                        checked={option.is_correct}
-                        onChange={() => {
-                          const newOptions = [...multipleChoiceOptions];
-                          newOptions.forEach(opt => opt.is_correct = false);
-                          newOptions[index].is_correct = true;
-                          setMultipleChoiceOptions(newOptions);
-                        }}
-                        className="h-4 w-4"
-                      />
-                      <Input
-                        placeholder={`선택지 ${index + 1}`}
-                        value={option.text}
-                        onChange={(e) => {
-                          const newOptions = [...multipleChoiceOptions];
-                          newOptions[index].text = e.target.value;
-                          setMultipleChoiceOptions(newOptions);
-                        }}
-                        className="flex-1"
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        {option.is_correct ? '정답' : '오답'}
-                      </span>
+                <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">정답 유형</Label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="answer-type"
+                          checked={answerType === 'single'}
+                          onChange={() => {
+                            setAnswerType('single');
+                            // Reset to single correct answer
+                            const newOptions = multipleChoiceOptions.map((opt, idx) => ({
+                              ...opt,
+                              is_correct: idx === 0 ? true : false
+                            }));
+                            setMultipleChoiceOptions(newOptions);
+                          }}
+                          className="h-4 w-4"
+                        />
+                        <span className="text-sm">단일 선택</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="answer-type"
+                          checked={answerType === 'multiple'}
+                          onChange={() => setAnswerType('multiple')}
+                          className="h-4 w-4"
+                        />
+                        <span className="text-sm">복수 선택</span>
+                      </label>
                     </div>
-                  ))}
+                  </div>
+
+                  {answerType === 'multiple' && (
+                    <div>
+                      <Label htmlFor="quiz-instruction" className="text-sm">안내 문구 (선택사항)</Label>
+                      <Input
+                        id="quiz-instruction"
+                        placeholder="예: 정답 2개를 선택하세요"
+                        value={quizInstruction}
+                        onChange={(e) => setQuizInstruction(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">선택지</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setMultipleChoiceOptions([...multipleChoiceOptions, { text: '', is_correct: false }]);
+                          }}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          선지 추가
+                        </Button>
+                        {multipleChoiceOptions.length > 2 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setMultipleChoiceOptions(multipleChoiceOptions.slice(0, -1));
+                            }}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            선지 제거
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {multipleChoiceOptions.map((option, index) => (
+                      <div key={index} className="flex items-center gap-3">
+                        {answerType === 'single' ? (
+                          <input
+                            type="radio"
+                            name="correct-answer"
+                            checked={option.is_correct}
+                            onChange={() => {
+                              const newOptions = [...multipleChoiceOptions];
+                              newOptions.forEach(opt => opt.is_correct = false);
+                              newOptions[index].is_correct = true;
+                              setMultipleChoiceOptions(newOptions);
+                            }}
+                            className="h-4 w-4"
+                          />
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={option.is_correct}
+                            onChange={(e) => {
+                              const newOptions = [...multipleChoiceOptions];
+                              newOptions[index].is_correct = e.target.checked;
+                              setMultipleChoiceOptions(newOptions);
+                            }}
+                            className="h-4 w-4"
+                          />
+                        )}
+                        <Input
+                          placeholder={`선택지 ${index + 1}`}
+                          value={option.text}
+                          onChange={(e) => {
+                            const newOptions = [...multipleChoiceOptions];
+                            newOptions[index].text = e.target.value;
+                            setMultipleChoiceOptions(newOptions);
+                          }}
+                          className="flex-1"
+                        />
+                        <Badge variant={option.is_correct ? "default" : "outline"} className="text-xs w-12 justify-center">
+                          {option.is_correct ? '정답' : '오답'}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
