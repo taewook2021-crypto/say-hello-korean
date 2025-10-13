@@ -73,6 +73,10 @@ function Notes() {
   const [selectedNoteForMove, setSelectedNoteForMove] = useState<string>('');
   
   const [gptLoading, setGptLoading] = useState(false);
+  const [editingMultipleChoice, setEditingMultipleChoice] = useState<string | null>(null);
+  const [editMultipleChoiceOptions, setEditMultipleChoiceOptions] = useState<Array<{ text: string; is_correct: boolean }>>([]);
+  const [editAnswerType, setEditAnswerType] = useState<'single' | 'multiple'>('single');
+  const [editQuizInstruction, setEditQuizInstruction] = useState('');
 
   const decodedSubject = decodeURIComponent(subjectName || '');
   const decodedBook = decodeURIComponent(bookName || '');
@@ -514,6 +518,101 @@ function Notes() {
 
   const handleMoveSuccess = () => {
     loadNotes(); // Refresh notes after successful move
+  };
+
+  const startEditMultipleChoice = (noteId: string, options: any[], quizConfig?: any) => {
+    setEditingMultipleChoice(noteId);
+    setEditMultipleChoiceOptions(options || [
+      { text: '', is_correct: true },
+      { text: '', is_correct: false },
+      { text: '', is_correct: false },
+      { text: '', is_correct: false }
+    ]);
+    setEditAnswerType(quizConfig?.answer_type || 'single');
+    setEditQuizInstruction(quizConfig?.instruction || '');
+  };
+
+  const cancelEditMultipleChoice = () => {
+    setEditingMultipleChoice(null);
+    setEditMultipleChoiceOptions([]);
+    setEditAnswerType('single');
+    setEditQuizInstruction('');
+  };
+
+  const saveMultipleChoiceEdit = async (noteId: string) => {
+    // Validation
+    const correctAnswers = editMultipleChoiceOptions.filter(opt => opt.is_correct);
+    const filledOptions = editMultipleChoiceOptions.filter(opt => opt.text.trim());
+    
+    if (correctAnswers.length === 0) {
+      toast({
+        title: "선택지 오류",
+        description: "정답을 최소 1개 이상 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (editAnswerType === 'single' && correctAnswers.length > 1) {
+      toast({
+        title: "선택지 오류",
+        description: "단일 선택 모드에서는 정답을 1개만 선택해야 합니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (filledOptions.length < 2) {
+      toast({
+        title: "선택지 오류",
+        description: "선택지를 최소 2개 이상 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updateData: any = {
+        multiple_choice_options: filledOptions,
+        quiz_config: {
+          answer_type: editAnswerType,
+          instruction: editQuizInstruction || undefined
+        },
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('wrong_notes')
+        .update(updateData)
+        .eq('id', noteId);
+
+      if (error) throw error;
+
+      // Update local state
+      setNotes(notes.map(note => 
+        note.id === noteId 
+          ? {
+              ...note,
+              multiple_choice_options: filledOptions,
+              quiz_config: updateData.quiz_config
+            } as any
+          : note
+      ));
+
+      cancelEditMultipleChoice();
+
+      toast({
+        title: "객관식 선지 수정 완료",
+        description: "객관식 선지가 수정되었습니다.",
+      });
+    } catch (error) {
+      console.error('Error updating multiple choice:', error);
+      toast({
+        title: "오류",
+        description: "객관식 선지 수정에 실패했습니다.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getResolvedCount = () => {
@@ -1199,26 +1298,182 @@ function Notes() {
                                
                            {/* Multiple Choice Options */}
                            {showMultipleChoices[note.id] && (note as any).multiple_choice_options && (
-                             <div className="bg-blue/10 border-blue/20 p-3 rounded-lg border">
-                               <h5 className="text-sm font-medium text-blue-600 mb-3">객관식 선택지</h5>
-                               <div className="space-y-2">
-                                 {(note as any).multiple_choice_options.map((option: any, index: number) => (
-                                   <div key={index} className={`flex items-center gap-2 p-2 rounded ${
-                                     option.is_correct 
-                                       ? 'bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800' 
-                                       : 'bg-muted/50'
-                                   }`}>
-                                     <span className="text-sm font-mono w-6 h-6 rounded-full bg-background border flex items-center justify-center">
-                                       {index + 1}
-                                     </span>
-                                     <span className="text-sm flex-1">{option.text}</span>
-                                     {option.is_correct && (
-                                       <CheckCircle className="h-4 w-4 text-green-600" />
-                                     )}
+                             editingMultipleChoice === note.id ? (
+                               <div className="bg-blue/10 border-blue/20 p-4 rounded-lg border space-y-4">
+                                 <div className="flex items-center justify-between">
+                                   <h5 className="text-sm font-medium text-blue-600">객관식 선택지 수정</h5>
+                                   <div className="flex gap-2">
+                                     <Button
+                                       size="sm"
+                                       variant="outline"
+                                       onClick={() => saveMultipleChoiceEdit(note.id)}
+                                     >
+                                       <Save className="h-3 w-3 mr-1" />
+                                       저장
+                                     </Button>
+                                     <Button
+                                       size="sm"
+                                       variant="ghost"
+                                       onClick={cancelEditMultipleChoice}
+                                     >
+                                       <X className="h-3 w-3 mr-1" />
+                                       취소
+                                     </Button>
                                    </div>
-                                 ))}
+                                 </div>
+
+                                 <div className="space-y-3">
+                                   <Label className="text-sm font-medium">정답 유형</Label>
+                                   <div className="flex gap-4">
+                                     <label className="flex items-center gap-2 cursor-pointer">
+                                       <input
+                                         type="radio"
+                                         name={`edit-answer-type-${note.id}`}
+                                         checked={editAnswerType === 'single'}
+                                         onChange={() => {
+                                           setEditAnswerType('single');
+                                           const newOptions = editMultipleChoiceOptions.map((opt, idx) => ({
+                                             ...opt,
+                                             is_correct: idx === 0 ? true : false
+                                           }));
+                                           setEditMultipleChoiceOptions(newOptions);
+                                         }}
+                                         className="h-4 w-4"
+                                       />
+                                       <span className="text-sm">단일 선택</span>
+                                     </label>
+                                     <label className="flex items-center gap-2 cursor-pointer">
+                                       <input
+                                         type="radio"
+                                         name={`edit-answer-type-${note.id}`}
+                                         checked={editAnswerType === 'multiple'}
+                                         onChange={() => setEditAnswerType('multiple')}
+                                         className="h-4 w-4"
+                                       />
+                                       <span className="text-sm">복수 선택</span>
+                                     </label>
+                                   </div>
+                                 </div>
+
+                                 {editAnswerType === 'multiple' && (
+                                   <div>
+                                     <Label htmlFor={`edit-quiz-instruction-${note.id}`} className="text-sm">안내 문구 (선택사항)</Label>
+                                     <Input
+                                       id={`edit-quiz-instruction-${note.id}`}
+                                       placeholder="예: 정답 2개를 선택하세요"
+                                       value={editQuizInstruction}
+                                       onChange={(e) => setEditQuizInstruction(e.target.value)}
+                                       className="mt-1"
+                                     />
+                                   </div>
+                                 )}
+
+                                 <div className="space-y-2">
+                                   <div className="flex items-center justify-between">
+                                     <Label className="text-sm font-medium">선택지</Label>
+                                     <div className="flex gap-2">
+                                       <Button
+                                         type="button"
+                                         variant="outline"
+                                         size="sm"
+                                         onClick={() => {
+                                           setEditMultipleChoiceOptions([...editMultipleChoiceOptions, { text: '', is_correct: false }]);
+                                         }}
+                                       >
+                                         <Plus className="h-3 w-3 mr-1" />
+                                         선지 추가
+                                       </Button>
+                                       {editMultipleChoiceOptions.length > 2 && (
+                                         <Button
+                                           type="button"
+                                           variant="outline"
+                                           size="sm"
+                                           onClick={() => {
+                                             setEditMultipleChoiceOptions(editMultipleChoiceOptions.slice(0, -1));
+                                           }}
+                                         >
+                                           <X className="h-3 w-3 mr-1" />
+                                           선지 제거
+                                         </Button>
+                                       )}
+                                     </div>
+                                   </div>
+                                   
+                                   {editMultipleChoiceOptions.map((option, index) => (
+                                     <div key={index} className="flex items-center gap-3">
+                                       {editAnswerType === 'single' ? (
+                                         <input
+                                           type="radio"
+                                           name={`edit-correct-answer-${note.id}`}
+                                           checked={option.is_correct}
+                                           onChange={() => {
+                                             const newOptions = [...editMultipleChoiceOptions];
+                                             newOptions.forEach(opt => opt.is_correct = false);
+                                             newOptions[index].is_correct = true;
+                                             setEditMultipleChoiceOptions(newOptions);
+                                           }}
+                                           className="h-4 w-4"
+                                         />
+                                       ) : (
+                                         <input
+                                           type="checkbox"
+                                           checked={option.is_correct}
+                                           onChange={(e) => {
+                                             const newOptions = [...editMultipleChoiceOptions];
+                                             newOptions[index].is_correct = e.target.checked;
+                                             setEditMultipleChoiceOptions(newOptions);
+                                           }}
+                                           className="h-4 w-4"
+                                         />
+                                       )}
+                                       <Input
+                                         placeholder={`선택지 ${index + 1}`}
+                                         value={option.text}
+                                         onChange={(e) => {
+                                           const newOptions = [...editMultipleChoiceOptions];
+                                           newOptions[index].text = e.target.value;
+                                           setEditMultipleChoiceOptions(newOptions);
+                                         }}
+                                         className="flex-1"
+                                       />
+                                       <Badge variant={option.is_correct ? "default" : "outline"} className="text-xs w-12 justify-center">
+                                         {option.is_correct ? '정답' : '오답'}
+                                       </Badge>
+                                     </div>
+                                   ))}
+                                 </div>
                                </div>
-                             </div>
+                             ) : (
+                               <div className="bg-blue/10 border-blue/20 p-3 rounded-lg border">
+                                 <div className="flex items-center justify-between mb-3">
+                                   <h5 className="text-sm font-medium text-blue-600">객관식 선택지</h5>
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={() => startEditMultipleChoice(note.id, (note as any).multiple_choice_options, (note as any).quiz_config)}
+                                   >
+                                     <Edit2 className="h-3 w-3" />
+                                   </Button>
+                                 </div>
+                                 <div className="space-y-2">
+                                   {(note as any).multiple_choice_options.map((option: any, index: number) => (
+                                     <div key={index} className={`flex items-center gap-2 p-2 rounded ${
+                                       option.is_correct 
+                                         ? 'bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800' 
+                                         : 'bg-muted/50'
+                                     }`}>
+                                       <span className="text-sm font-mono w-6 h-6 rounded-full bg-background border flex items-center justify-center">
+                                         {index + 1}
+                                       </span>
+                                       <span className="text-sm flex-1">{option.text}</span>
+                                       {option.is_correct && (
+                                         <CheckCircle className="h-4 w-4 text-green-600" />
+                                       )}
+                                     </div>
+                                   ))}
+                                 </div>
+                               </div>
+                             )
                            )}
                          </div>
                        </div>
