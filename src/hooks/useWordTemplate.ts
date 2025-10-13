@@ -111,7 +111,7 @@ export const useWordTemplate = (): UseWordTemplateReturn => {
       const finalFileName = fileName || defaultFileName;
       
       // 파일 다운로드
-      const blob = new Blob([report], { 
+      const blob = new Blob([report.buffer as ArrayBuffer], { 
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
       });
       
