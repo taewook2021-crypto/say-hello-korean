@@ -20,15 +20,54 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMigrating, setIsMigrating] = useState(false);
 
-  // localStorage key 생성 함수
-  const getLocalStorageKey = () => `${subjectName}-${bookName}`;
+  // localStorage에서 회독표 데이터 읽기
+  const loadFromLocalStorage = () => {
+    try {
+      const localDataString = localStorage.getItem('aro-study-data');
+      if (!localDataString) return new Map<string, StudyRound>();
+      
+      const localData = JSON.parse(localDataString);
+      const subject = localData.find((s: any) => s.name === subjectName);
+      const book = subject?.books?.find((b: any) => b.name === bookName);
+      
+      if (!book?.studyData?.chapters) return new Map<string, StudyRound>();
+      
+      const roundsMap = new Map<string, StudyRound>();
+      book.studyData.chapters.forEach((chapter: any) => {
+        chapter.problems?.forEach((problem: any) => {
+          Object.entries(problem.rounds || {}).forEach(([roundNumber, status]) => {
+            if (status) {
+              const key = `${chapter.name}-${problem.number}-${roundNumber}`;
+              roundsMap.set(key, {
+                id: key, // 임시 ID
+                user_id: user?.id || '',
+                subject_name: subjectName,
+                book_name: bookName,
+                chapter_name: chapter.name,
+                problem_number: problem.number,
+                round_number: parseInt(roundNumber),
+                status: status as '⭕' | '🔺' | '❌' | ''
+              });
+            }
+          });
+        });
+      });
+      
+      return roundsMap;
+    } catch (error) {
+      console.error('❌ Error loading from localStorage:', error);
+      return new Map<string, StudyRound>();
+    }
+  };
 
-  // DB에서 회독표 데이터 로드
+  // DB에서 회독표 데이터 로드 (폴백 포함)
   const loadStudyRounds = async () => {
     if (!user) return;
 
     try {
       setIsLoading(true);
+      
+      // 1. DB에서 데이터 로드 시도
       const { data, error } = await supabase
         .from('study_rounds')
         .select('*')
@@ -38,6 +77,22 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
 
       if (error) throw error;
 
+      // 2. DB에 데이터가 없으면 localStorage 확인
+      if (!data || data.length === 0) {
+        console.log('📦 No DB data, checking localStorage...');
+        const localRounds = loadFromLocalStorage();
+        
+        if (localRounds.size > 0) {
+          console.log(`📦 Loaded ${localRounds.size} rounds from localStorage`);
+          setStudyRounds(localRounds);
+          
+          // 백그라운드에서 마이그레이션 시작
+          setTimeout(() => migrateFromLocalStorage(), 100);
+          return;
+        }
+      }
+
+      // 3. DB 데이터를 Map으로 변환
       const roundsMap = new Map<string, StudyRound>();
       data?.forEach((round: any) => {
         const key = `${round.chapter_name}-${round.problem_number}-${round.round_number}`;
@@ -48,9 +103,15 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
       console.log(`✅ Loaded ${data?.length || 0} study rounds from database`);
     } catch (error) {
       console.error('❌ Error loading study rounds:', error);
+      
+      // 에러 발생 시 localStorage로 폴백
+      console.log('📦 Falling back to localStorage due to error');
+      const localRounds = loadFromLocalStorage();
+      setStudyRounds(localRounds);
+      
       toast({
         title: "로딩 오류",
-        description: "회독표 데이터를 불러오는 중 오류가 발생했습니다.",
+        description: "데이터베이스 연결에 문제가 있어 로컬 데이터를 표시합니다.",
         variant: "destructive",
       });
     } finally {
@@ -92,16 +153,17 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
       // DB에 이미 데이터가 있는지 확인
       const { data: existingData } = await supabase
         .from('study_rounds')
-        .select('id')
+        .select('chapter_name, problem_number, round_number')
         .eq('user_id', user.id)
         .eq('subject_name', subjectName)
-        .eq('book_name', bookName)
-        .limit(1);
+        .eq('book_name', bookName);
 
-      if (existingData && existingData.length > 0) {
-        console.log('✅ Database already has data, skipping migration');
-        return;
-      }
+      // 이미 DB에 있는 항목의 키 집합 생성
+      const existingKeys = new Set(
+        existingData?.map(item => 
+          `${item.chapter_name}-${item.problem_number}-${item.round_number}`
+        ) || []
+      );
 
       // 회독표 데이터를 DB에 저장할 형식으로 변환
       const roundsToInsert: Omit<StudyRound, 'id'>[] = [];
@@ -111,15 +173,19 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
           const rounds = problem.rounds || {};
           Object.entries(rounds).forEach(([roundNumber, status]) => {
             if (status) {
-              roundsToInsert.push({
-                user_id: user.id,
-                subject_name: subjectName,
-                book_name: bookName,
-                chapter_name: chapter.name,
-                problem_number: problem.number,
-                round_number: parseInt(roundNumber),
-                status: status as '⭕' | '🔺' | '❌' | '',
-              });
+              const key = `${chapter.name}-${problem.number}-${roundNumber}`;
+              // DB에 없는 항목만 추가
+              if (!existingKeys.has(key)) {
+                roundsToInsert.push({
+                  user_id: user.id,
+                  subject_name: subjectName,
+                  book_name: bookName,
+                  chapter_name: chapter.name,
+                  problem_number: problem.number,
+                  round_number: parseInt(roundNumber),
+                  status: status as '⭕' | '🔺' | '❌' | '',
+                });
+              }
             }
           });
         });
@@ -257,11 +323,15 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
   // 초기 로드 및 마이그레이션
   useEffect(() => {
     if (user && subjectName && bookName) {
-      const initialize = async () => {
-        await loadStudyRounds();
-        await migrateFromLocalStorage();
-      };
-      initialize();
+      // 즉시 localStorage 데이터 표시
+      const localRounds = loadFromLocalStorage();
+      if (localRounds.size > 0) {
+        setStudyRounds(localRounds);
+        setIsLoading(false);
+      }
+      
+      // 그 다음 DB 데이터 로드 (마이그레이션 포함)
+      loadStudyRounds();
     }
   }, [user, subjectName, bookName]);
 
