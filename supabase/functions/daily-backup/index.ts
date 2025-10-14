@@ -11,6 +11,7 @@ interface UserData {
   chapters: any[];
   wrong_notes: any[];
   study_progress: any[];
+  study_rounds: any[];
 }
 
 Deno.serve(async (req) => {
@@ -69,22 +70,24 @@ Deno.serve(async (req) => {
         }
 
         // Fetch all user data in parallel
-        const [subjectsRes, booksRes, chaptersRes, wrongNotesRes, studyProgressRes] = await Promise.all([
+        const [subjectsRes, booksRes, chaptersRes, wrongNotesRes, studyProgressRes, studyRoundsRes] = await Promise.all([
           supabase.from('subjects').select('*').eq('user_id', userId),
           supabase.from('books').select('*').eq('user_id', userId),
           supabase.from('chapters').select('*').eq('user_id', userId),
           supabase.from('wrong_notes').select('*').eq('user_id', userId),
-          supabase.from('study_progress').select('*').eq('user_id', userId)
+          supabase.from('study_progress').select('*').eq('user_id', userId),
+          supabase.from('study_rounds').select('*').eq('user_id', userId)
         ]);
 
         // Check for errors
-        if (subjectsRes.error || booksRes.error || chaptersRes.error || wrongNotesRes.error || studyProgressRes.error) {
+        if (subjectsRes.error || booksRes.error || chaptersRes.error || wrongNotesRes.error || studyProgressRes.error || studyRoundsRes.error) {
           console.error(`Error fetching data for user ${userId}:`, {
             subjects: subjectsRes.error,
             books: booksRes.error,
             chapters: chaptersRes.error,
             wrongNotes: wrongNotesRes.error,
-            studyProgress: studyProgressRes.error
+            studyProgress: studyProgressRes.error,
+            studyRounds: studyRoundsRes.error
           });
           errorCount++;
           continue;
@@ -95,7 +98,8 @@ Deno.serve(async (req) => {
           books: booksRes.data || [],
           chapters: chaptersRes.data || [],
           wrong_notes: wrongNotesRes.data || [],
-          study_progress: studyProgressRes.data || []
+          study_progress: studyProgressRes.data || [],
+          study_rounds: studyRoundsRes.data || []
         };
 
         // Calculate backup size
@@ -112,6 +116,7 @@ Deno.serve(async (req) => {
             chapters_data: userData.chapters,
             wrong_notes_data: userData.wrong_notes,
             study_progress_data: userData.study_progress,
+            study_rounds_data: userData.study_rounds,
             backup_size_kb: backupSizeKb,
             backup_status: 'completed'
           });
@@ -120,7 +125,8 @@ Deno.serve(async (req) => {
           console.error(`Error creating comprehensive backup for user ${userId}:`, backupError);
           errorCount++;
         } else {
-          console.log(`Comprehensive backup created successfully for user ${userId} (${backupSizeKb}KB)`);
+          const studyRoundsCount = userData.study_rounds.length;
+          console.log(`Comprehensive backup created successfully for user ${userId} (${backupSizeKb}KB, ${studyRoundsCount} study rounds)`);
           successCount++;
         }
 
