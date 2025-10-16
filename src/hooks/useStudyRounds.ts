@@ -231,9 +231,9 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
   ) => {
     if (!user) return;
 
-    try {
-      const key = `${chapterName}-${problemNumber}-${roundNumber}`;
+    const key = `${chapterName}-${problemNumber}-${roundNumber}`;
 
+    try {
       if (status === null) {
         // 상태 삭제
         const existingRound = studyRounds.get(key);
@@ -248,31 +248,59 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
           const newMap = new Map(studyRounds);
           newMap.delete(key);
           setStudyRounds(newMap);
+          console.log(`✅ Deleted study round: ${key}`);
         }
       } else {
-        // 상태 추가/업데이트
-        const roundData = {
-          user_id: user.id,
-          subject_name: subjectName,
-          book_name: bookName,
-          chapter_name: chapterName,
-          problem_number: problemNumber,
-          round_number: roundNumber,
-          status,
-        };
-
-        const { data, error } = await supabase
+        // 기존 레코드 찾기
+        const { data: existing } = await supabase
           .from('study_rounds')
-          .upsert(roundData, {
-            onConflict: 'user_id,subject_name,book_name,chapter_name,problem_number,round_number',
-          })
-          .select()
-          .single();
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('subject_name', subjectName)
+          .eq('book_name', bookName)
+          .eq('chapter_name', chapterName)
+          .eq('problem_number', problemNumber)
+          .eq('round_number', roundNumber)
+          .maybeSingle();
 
-        if (error) throw error;
+        let savedData;
+        
+        if (existing) {
+          // 업데이트
+          const { data, error } = await supabase
+            .from('study_rounds')
+            .update({ status })
+            .eq('id', existing.id)
+            .select()
+            .single();
 
+          if (error) throw error;
+          savedData = data;
+          console.log(`✅ Updated study round: ${key} → ${status}`);
+        } else {
+          // 삽입
+          const { data, error } = await supabase
+            .from('study_rounds')
+            .insert({
+              user_id: user.id,
+              subject_name: subjectName,
+              book_name: bookName,
+              chapter_name: chapterName,
+              problem_number: problemNumber,
+              round_number: roundNumber,
+              status,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          savedData = data;
+          console.log(`✅ Inserted study round: ${key} → ${status}`);
+        }
+
+        // 로컬 상태 업데이트
         const newMap = new Map(studyRounds);
-        newMap.set(key, data as StudyRound);
+        newMap.set(key, savedData as StudyRound);
         setStudyRounds(newMap);
       }
     } catch (error) {
