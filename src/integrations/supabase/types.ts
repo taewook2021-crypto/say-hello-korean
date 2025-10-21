@@ -1090,6 +1090,7 @@ export type Database = {
           is_resolved: boolean
           multiple_choice_options: Json | null
           question: string
+          quiz_config: Json | null
           round_number: number | null
           source_text: string
           subject_name: string
@@ -1105,6 +1106,7 @@ export type Database = {
           is_resolved?: boolean
           multiple_choice_options?: Json | null
           question: string
+          quiz_config?: Json | null
           round_number?: number | null
           source_text: string
           subject_name: string
@@ -1120,6 +1122,7 @@ export type Database = {
           is_resolved?: boolean
           multiple_choice_options?: Json | null
           question?: string
+          quiz_config?: Json | null
           round_number?: number | null
           source_text?: string
           subject_name?: string
