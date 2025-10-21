@@ -12,6 +12,8 @@ interface WrongNote {
   chapter_name: string;
   is_resolved: boolean;
   created_at: string;
+  problem_number?: number;
+  round_number?: number;
 }
 
 interface SearchFilters {

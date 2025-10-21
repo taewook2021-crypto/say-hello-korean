@@ -22,6 +22,8 @@ interface WrongNote {
   chapter_name: string;
   is_resolved: boolean;
   created_at: string;
+  problem_number?: number;
+  round_number?: number;
 }
 
 interface WrongNoteSearchResultsProps {
@@ -267,6 +269,18 @@ export const WrongNoteSearchResults: React.FC<WrongNoteSearchResultsProps> = ({
                         <span>{note.book_name}</span>
                         <span>•</span>
                         <span>{note.chapter_name}</span>
+                        {note.problem_number && (
+                          <>
+                            <span>•</span>
+                            <span className="font-medium text-primary">#{note.problem_number}</span>
+                          </>
+                        )}
+                        {note.round_number && (
+                          <>
+                            <span>•</span>
+                            <span className="text-xs">{note.round_number}회독</span>
+                          </>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-2">

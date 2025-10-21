@@ -1089,6 +1089,7 @@ export type Database = {
           id: string
           is_resolved: boolean
           multiple_choice_options: Json | null
+          problem_number: number | null
           question: string
           quiz_config: Json | null
           round_number: number | null
@@ -1105,6 +1106,7 @@ export type Database = {
           id?: string
           is_resolved?: boolean
           multiple_choice_options?: Json | null
+          problem_number?: number | null
           question: string
           quiz_config?: Json | null
           round_number?: number | null
@@ -1121,6 +1123,7 @@ export type Database = {
           id?: string
           is_resolved?: boolean
           multiple_choice_options?: Json | null
+          problem_number?: number | null
           question?: string
           quiz_config?: Json | null
           round_number?: number | null
@@ -1142,6 +1145,7 @@ export type Database = {
           is_resolved: boolean
           operation_type: string
           original_note_id: string
+          problem_number: number | null
           question: string
           round_number: number | null
           source_text: string
@@ -1159,6 +1163,7 @@ export type Database = {
           is_resolved?: boolean
           operation_type: string
           original_note_id: string
+          problem_number?: number | null
           question: string
           round_number?: number | null
           source_text: string
@@ -1176,6 +1181,7 @@ export type Database = {
           is_resolved?: boolean
           operation_type?: string
           original_note_id?: string
+          problem_number?: number | null
           question?: string
           round_number?: number | null
           source_text?: string

@@ -126,7 +126,8 @@ export function CreateWrongNoteDialog({
           book_name: studyData.textbook,
           chapter_name: chapterName,
           source_text: `${chapterName} ${problemNumber}번`,
-          round_number: round, // 회독 번호 추가
+          round_number: round,
+          problem_number: problemNumber, // 문제 번호 추가
           user_id: user?.id
         });
 
