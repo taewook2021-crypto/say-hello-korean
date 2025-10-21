@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2, Copy, Move } from "lucide-react";
+import { Plus, BookOpen, CheckCircle, XCircle, Eye, EyeOff, ArrowLeft, Edit2, Save, X, Settings, Brain, Target, TrendingUp, Calendar, Camera, ChevronDown, Sparkles, Loader2, Copy, Move, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useParams } from "react-router-dom";
@@ -33,6 +33,8 @@ interface WrongNote {
   explanation?: string;
   createdAt: Date;
   isResolved: boolean;
+  problem_number?: number;
+  round_number?: number;
 }
 
 interface NewNote {
@@ -138,7 +140,9 @@ function Notes() {
         explanation: note.explanation || '',
         createdAt: new Date(note.created_at),
         isResolved: note.is_resolved,
-        multiple_choice_options: note.multiple_choice_options || null
+        multiple_choice_options: note.multiple_choice_options || null,
+        problem_number: note.problem_number,
+        round_number: note.round_number
       } as any)));
     } catch (error) {
       console.error('Error loading notes:', error);
@@ -1084,6 +1088,17 @@ function Notes() {
                           <Badge variant={note.isResolved ? "secondary" : "default"}>
                             {note.isResolved ? "해결됨" : "미해결"}
                           </Badge>
+                          {note.problem_number && (
+                            <Badge variant="outline" className="gap-1">
+                              <FileText className="h-3 w-3" />
+                              #{note.problem_number}
+                            </Badge>
+                          )}
+                          {note.round_number && (
+                            <Badge variant="outline">
+                              {note.round_number}회독
+                            </Badge>
+                          )}
                           <span className="text-sm text-muted-foreground">
                             {note.createdAt.toLocaleDateString()}
                           </span>
