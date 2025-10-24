@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X, Trash2, Info } from "lucide-react";
+import { FileText, ChevronDown, ChevronRight, Plus, BookOpen, Settings, X, Trash2, Info, Loader2 } from "lucide-react";
 import { CreateWrongNoteDialog } from "./CreateWrongNoteDialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -561,6 +561,16 @@ export function StudyTable({ studyData, onUpdateStudyData }: StudyTableProps) {
           <strong>사용법:</strong> 한 번 클릭 = ⭕ (완료), 길게 누르기 = 🔺 (부분완료), 더블 클릭 = ❌ (틀림)
         </AlertDescription>
       </Alert>
+
+      {/* Phase 3.1: 회독 정보 로딩 상태 표시 */}
+      {isLoadingRounds && (
+        <Alert className="mb-4">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>
+            회독 정보 로딩 중...
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* 마이그레이션 안내 메시지 */}
       {isMigrating && (

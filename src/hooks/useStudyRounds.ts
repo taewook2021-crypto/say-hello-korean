@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { toast } from '@/hooks/use-toast';
 
 interface StudyRound {
@@ -16,6 +17,7 @@ interface StudyRound {
 
 export const useStudyRounds = (subjectName: string, bookName: string) => {
   const { user } = useAuth();
+  const { preloadedRounds } = useUnifiedData(); // Phase 1.2
   const [studyRounds, setStudyRounds] = useState<Map<string, StudyRound>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [isMigrating, setIsMigrating] = useState(false);
@@ -66,6 +68,23 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
 
     try {
       setIsLoading(true);
+      
+      // Phase 1.2: Context에서 프리로드된 데이터 먼저 확인
+      const preloaded = preloadedRounds.filter(
+        r => r.subject_name === subjectName && r.book_name === bookName
+      );
+      
+      if (preloaded.length > 0) {
+        console.log(`✅ Using preloaded rounds (${preloaded.length})`);
+        const roundsMap = new Map<string, StudyRound>();
+        preloaded.forEach((round: any) => {
+          const key = `${round.chapter_name}-${round.problem_number}-${round.round_number}`;
+          roundsMap.set(key, round);
+        });
+        setStudyRounds(roundsMap);
+        setIsLoading(false);
+        return;
+      }
       
       // 1. DB에서 데이터 로드 시도
       const { data, error } = await supabase
