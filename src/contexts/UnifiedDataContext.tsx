@@ -102,8 +102,45 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       })
       .subscribe();
 
+    // Phase 1.3: study_rounds 테이블 Realtime 구독 (데이터 일관성 보장)
+    const roundsChannel = supabase
+      .channel('study_rounds_changes')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'study_rounds',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('✅ Realtime INSERT:', payload.new);
+        setPreloadedRounds(prev => [...prev, payload.new]);
+      })
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'study_rounds',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('✅ Realtime UPDATE:', payload.new);
+        setPreloadedRounds(prev => 
+          prev.map(round => round.id === payload.new.id ? payload.new : round)
+        );
+      })
+      .on('postgres_changes', { 
+        event: 'DELETE', 
+        schema: 'public', 
+        table: 'study_rounds',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('✅ Realtime DELETE:', payload.old);
+        setPreloadedRounds(prev => 
+          prev.filter(round => round.id !== payload.old.id)
+        );
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(roundsChannel);
     };
   }, [user]);
 
