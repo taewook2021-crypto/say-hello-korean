@@ -42,6 +42,7 @@ interface UnifiedDataContextType {
   subjectBooks: { [key: string]: string[] };
   loading: boolean;
   preloadedRounds: any[]; // Phase 1.1: 프리로드된 회독 정보
+  isLoadingPreloadedRounds: boolean; // Phase 2.3: 프리로드 완료 여부
   refreshSubjects: () => Promise<void>;
   refreshBooksForSubject: (subjectName: string) => Promise<void>;
   addSubject: (name: string) => Promise<void>;
@@ -69,6 +70,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
   const [subjectBooks, setSubjectBooks] = useState<{ [key: string]: string[] }>({});
   const [loading, setLoading] = useState(true);
   const [preloadedRounds, setPreloadedRounds] = useState<any[]>([]); // Phase 1.1
+  const [isLoadingPreloadedRounds, setIsLoadingPreloadedRounds] = useState(true); // Phase 2.3
   const { toast } = useToast();
 
   // Load data when user is authenticated
@@ -272,7 +274,8 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
       // Save unified data back to localStorage
       localStorage.setItem('aro-study-data', JSON.stringify(allSubjects));
       
-      // Phase 1.1: 모든 회독 정보 프리로드
+      // Phase 1.1 & 2.3: 모든 회독 정보 프리로드
+      setIsLoadingPreloadedRounds(true);
       try {
         const { data: allRounds, error: roundsError } = await supabase
           .from('study_rounds')
@@ -287,6 +290,8 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('❌ Error preloading study rounds:', error);
+      } finally {
+        setIsLoadingPreloadedRounds(false);
       }
       
       // Try to migrate any remaining local data to Supabase
@@ -1329,6 +1334,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
     subjectBooks,
     loading,
     preloadedRounds,
+    isLoadingPreloadedRounds,
     refreshSubjects: loadSubjects,
     refreshBooksForSubject: (subjectName: string) => {
       loadSubjects();

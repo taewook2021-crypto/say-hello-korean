@@ -17,7 +17,7 @@ interface StudyRound {
 
 export const useStudyRounds = (subjectName: string, bookName: string) => {
   const { user } = useAuth();
-  const { preloadedRounds } = useUnifiedData(); // Phase 1.2
+  const { preloadedRounds, isLoadingPreloadedRounds } = useUnifiedData(); // Phase 1.2 & 2.3
   const [studyRounds, setStudyRounds] = useState<Map<string, StudyRound>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [isMigrating, setIsMigrating] = useState(false);
@@ -69,10 +69,24 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
     try {
       setIsLoading(true);
       
-      // Phase 1.2: Context에서 프리로드된 데이터 먼저 확인
+      // Phase 2.1: 디버깅 로그
+      console.log('🔍 [loadStudyRounds] START:', {
+        subjectName,
+        bookName,
+        preloadedCount: preloadedRounds.length,
+        user: user.email
+      });
+      
+      // Phase 1.2 & 2.2: Context에서 프리로드된 데이터 먼저 확인 (Trim 매칭)
       const preloaded = preloadedRounds.filter(
-        r => r.subject_name === subjectName && r.book_name === bookName
+        r => r.subject_name?.trim() === subjectName?.trim() && 
+             r.book_name?.trim() === bookName?.trim()
       );
+      
+      console.log('🔍 [loadStudyRounds] Filtered:', {
+        filteredCount: preloaded.length,
+        sample: preloaded.slice(0, 3)
+      });
       
       if (preloaded.length > 0) {
         console.log(`✅ Using preloaded rounds (${preloaded.length})`);
@@ -463,20 +477,20 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
     }
   };
 
-  // 초기 로드 및 마이그레이션
+  // 초기 로드 및 마이그레이션 (Phase 2.3: 프리로드 완료 대기)
   useEffect(() => {
-    if (user && subjectName && bookName) {
-      // 즉시 localStorage 데이터 표시
-      const localRounds = loadFromLocalStorage();
-      if (localRounds.size > 0) {
-        setStudyRounds(localRounds);
-        setIsLoading(false);
-      }
-      
-      // 그 다음 DB 데이터 로드 (마이그레이션 포함)
-      loadStudyRounds();
+    if (!user || !subjectName || !bookName) return;
+    
+    // Phase 2.3: 프리로드 완료 대기
+    if (isLoadingPreloadedRounds) {
+      console.log('⏳ [useStudyRounds] Waiting for preloaded rounds...');
+      return;
     }
-  }, [user, subjectName, bookName]);
+    
+    // Phase 2.3: LocalStorage 우선순위 제거 - DB가 Single Source of Truth
+    console.log('✅ [useStudyRounds] Preload complete, loading DB data...');
+    loadStudyRounds();
+  }, [user, subjectName, bookName, isLoadingPreloadedRounds]);
 
   // 실시간 구독
   useEffect(() => {
