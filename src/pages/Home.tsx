@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit, Upload } from "lucide-react";
+import { BookOpen, Plus, Calendar, Search, ChevronRight, MoreVertical, Trash2, Edit, Upload, RefreshCw, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TodayReviews } from "@/components/TodayReviews";
 import { useToast } from "@/hooks/use-toast";
@@ -36,10 +36,30 @@ const Home = () => {
   const [isStudyMode, setIsStudyMode] = useState(false);
   
   const { toast } = useToast();
-  const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames, updateSubject, updateBook } = useUnifiedData();
+  const { subjects, loading, addSubject, deleteSubject, deleteBook, addBook, getBooksBySubject, getSubjectNames, updateSubject, updateBook, refreshSubjects } = useUnifiedData();
   const { isSearchActive, searchQuery, searchType, searchResults, clearSearch } = useSearch();
   const { user, profile, loading: authLoading, signOut } = useAuth();
   const isMobile = useIsMobile();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshSubjects();
+      toast({
+        title: "데이터 새로고침 완료",
+        description: "모든 데이터가 최신 상태로 업데이트되었습니다.",
+      });
+    } catch (error) {
+      toast({
+        title: "오류",
+        description: "데이터 새로고침에 실패했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
 
   // Redirect to auth if not authenticated
@@ -52,9 +72,12 @@ const Home = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">로딩 중...</p>
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <div>
+            <p className="text-foreground font-medium">데이터 로딩 중...</p>
+            <p className="text-sm text-muted-foreground">과목 → 교재 → 단원</p>
+          </div>
         </div>
       </div>
     );
@@ -148,6 +171,16 @@ const Home = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              onClick={handleRefreshData}
+              disabled={isRefreshing}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? '새로고침 중...' : '데이터 새로고침'}
+            </Button>
             <ThemeToggle />
           </div>
         </div>
@@ -250,8 +283,15 @@ const Home = () => {
           </div>
           
           {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, index) => (
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-3 p-6 border rounded-lg bg-muted/30">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <div className="text-center">
+                  <p className="font-medium text-foreground">데이터 로딩 중...</p>
+                  <p className="text-sm text-muted-foreground">과목 → 교재 → 단원</p>
+                </div>
+              </div>
+              {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="flex items-center gap-4 p-4 border rounded-lg animate-pulse">
                   <div className="w-8 h-8 bg-muted rounded"></div>
                   <div className="flex-1 space-y-2">

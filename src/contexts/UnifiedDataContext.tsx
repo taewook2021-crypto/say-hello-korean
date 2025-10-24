@@ -145,12 +145,29 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
 
           if (books && books.length > 0) {
             for (const book of books) {
+              // CRITICAL FIX: Load chapters directly from DB
+              const { data: chapters, error: chaptersError } = await supabase
+                .from('chapters')
+                .select('name')
+                .eq('subject_name', subject.name)
+                .eq('book_name', book.name)
+                .eq('user_id', user.id)
+                .order('name');
+
+              if (chaptersError) {
+                console.error('Error loading chapters:', chaptersError);
+              }
+
               const studyData: StudyData = {
                 id: `${subject.name}-${book.name}`,
                 subject: subject.name,
                 textbook: book.name,
                 maxRounds: 3,
-                chapters: [],
+                chapters: chapters?.map((ch, idx) => ({
+                  order: idx + 1,
+                  name: ch.name,
+                  problems: []
+                })) || [],
                 createdAt: new Date()
               };
 
@@ -174,7 +191,7 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Load local study data (aro-study-data) to merge chapter and progress info
+      // Load local study data (aro-study-data) to merge problem/progress info only
       const aroData = localStorage.getItem('aro-study-data');
       if (aroData) {
         const aroStudyData = JSON.parse(aroData);
@@ -187,16 +204,23 @@ export function UnifiedDataProvider({ children }: { children: ReactNode }) {
               // Update expansion state
               dbSubject.isExpanded = localSubject.isExpanded;
               
-              // Merge book study data
+              // Merge book study data (problems only, NOT chapters)
               for (const localBook of localSubject.books || []) {
                 const dbBook = dbSubject.books.find(b => b.name === localBook.name);
                 if (dbBook && localBook.studyData) {
-                  // Merge the complete study data including chapters and progress
-                  dbBook.studyData = {
-                    ...localBook.studyData,
-                    createdAt: new Date(localBook.studyData.createdAt)
-                  };
                   dbBook.isExpanded = localBook.isExpanded;
+                  
+                  // Merge problems from localStorage into DB chapters
+                  if (localBook.studyData.chapters) {
+                    for (const localChapter of localBook.studyData.chapters) {
+                      const dbChapter = dbBook.studyData.chapters.find(
+                        ch => ch.name === localChapter.name
+                      );
+                      if (dbChapter && localChapter.problems) {
+                        dbChapter.problems = localChapter.problems;
+                      }
+                    }
+                  }
                 }
               }
             }
