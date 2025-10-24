@@ -150,7 +150,90 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
       const studyData = book.studyData;
       const chapters = studyData.chapters || [];
 
-      // DB에 이미 데이터가 있는지 확인
+      // 1. Subject 확인 및 생성
+      try {
+        const { data: existingSubject } = await supabase
+          .from('subjects')
+          .select('id')
+          .eq('name', subjectName)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!existingSubject) {
+          const { error: subjectError } = await supabase
+            .from('subjects')
+            .insert({ name: subjectName, user_id: user.id });
+          
+          if (subjectError && subjectError.code !== '23505') {
+            console.error('Subject insert error:', subjectError);
+          }
+        }
+      } catch (error) {
+        console.warn('Subject check/insert error (continuing):', error);
+      }
+
+      // 2. Book 확인 및 생성
+      try {
+        const { data: existingBook } = await supabase
+          .from('books')
+          .select('id')
+          .eq('name', bookName)
+          .eq('subject_name', subjectName)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!existingBook) {
+          const { error: bookError } = await supabase
+            .from('books')
+            .insert({ 
+              name: bookName, 
+              subject_name: subjectName, 
+              user_id: user.id 
+            });
+          
+          if (bookError && bookError.code !== '23505') {
+            console.error('Book insert error:', bookError);
+          }
+        }
+      } catch (error) {
+        console.warn('Book check/insert error (continuing):', error);
+      }
+
+      // 3. Chapters 확인 및 생성
+      const chapterNames = chapters.map((c: any) => String(c.name));
+      const uniqueChapters = [...new Set(chapterNames)] as string[];
+      
+      for (const chapterName of uniqueChapters) {
+        try {
+          const { data: existingChapter } = await supabase
+            .from('chapters')
+            .select('id')
+            .eq('name', String(chapterName))
+            .eq('book_name', bookName)
+            .eq('subject_name', subjectName)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (!existingChapter) {
+            const { error: chapterError } = await supabase
+              .from('chapters')
+              .insert([{ 
+                name: chapterName, 
+                book_name: bookName, 
+                subject_name: subjectName, 
+                user_id: user.id 
+              }]);
+            
+            if (chapterError && chapterError.code !== '23505') {
+              console.error('Chapter insert error:', chapterError);
+            }
+          }
+        } catch (error) {
+          console.warn(`Chapter check/insert error for ${chapterName} (continuing):`, error);
+        }
+      }
+
+      // 4. DB에 이미 있는 study_rounds 확인
       const { data: existingData } = await supabase
         .from('study_rounds')
         .select('chapter_name, problem_number, round_number')
@@ -165,7 +248,7 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
         ) || []
       );
 
-      // 회독표 데이터를 DB에 저장할 형식으로 변환
+      // 5. 회독표 데이터를 DB에 저장할 형식으로 변환
       const roundsToInsert: Omit<StudyRound, 'id'>[] = [];
       
       chapters.forEach((chapter: any) => {
@@ -193,22 +276,35 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
 
       if (roundsToInsert.length > 0) {
         console.log(`🔄 Migrating ${roundsToInsert.length} study rounds to database...`);
-        const { error } = await supabase
-          .from('study_rounds')
-          .insert(roundsToInsert);
+        
+        try {
+          const { error } = await supabase
+            .from('study_rounds')
+            .insert(roundsToInsert);
 
-        if (error) throw error;
+          if (error) {
+            // Duplicate key 에러는 무시하고 계속 진행
+            if (error.code === '23505') {
+              console.warn('Some study rounds already exist (continuing)');
+            } else {
+              throw error;
+            }
+          }
 
-        console.log('✅ Migration completed successfully!');
-        toast({
-          title: "데이터 마이그레이션 완료",
-          description: `${roundsToInsert.length}개의 회독 기록이 안전하게 저장되었습니다.`,
-        });
+          console.log('✅ Migration completed successfully!');
+          toast({
+            title: "데이터 마이그레이션 완료",
+            description: `${roundsToInsert.length}개의 회독 기록이 안전하게 저장되었습니다.`,
+          });
 
-        // 마이그레이션 후 DB에서 데이터 다시 로드
-        await loadStudyRounds();
+          // 마이그레이션 후 DB에서 데이터 다시 로드
+          await loadStudyRounds();
+        } catch (error) {
+          console.error('Study rounds insert error:', error);
+          throw error;
+        }
       } else {
-        console.log('✅ No data to migrate');
+        console.log('✅ No new data to migrate');
       }
     } catch (error) {
       console.error('❌ Migration error:', error);
