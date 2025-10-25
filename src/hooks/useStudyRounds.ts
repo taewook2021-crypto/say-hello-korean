@@ -88,52 +88,34 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
         sample: preloaded.slice(0, 3)
       });
       
+      // Phase 3.3: LocalStorage 데이터와 DB 데이터 병합
+      const localRounds = loadFromLocalStorage();
+      const roundsMap = new Map<string, StudyRound>();
+      
+      // 1. LocalStorage 데이터 먼저 추가
+      localRounds.forEach((round, key) => {
+        roundsMap.set(key, round);
+      });
+      
+      // 2. DB 데이터로 덮어쓰기 (DB가 최신 상태)
       if (preloaded.length > 0) {
-        console.log(`✅ Using preloaded rounds (${preloaded.length})`);
-        const roundsMap = new Map<string, StudyRound>();
+        console.log(`✅ Merging: ${localRounds.size} local + ${preloaded.length} DB rounds`);
         preloaded.forEach((round: any) => {
           const key = `${round.chapter_name}-${round.problem_number}-${round.round_number}`;
           roundsMap.set(key, round);
         });
-        setStudyRounds(roundsMap);
-        setIsLoading(false);
-        return;
+      } else {
+        console.log(`📦 Using ${localRounds.size} local rounds only (no DB data)`);
       }
       
-      // 1. DB에서 데이터 로드 시도
-      const { data, error } = await supabase
-        .from('study_rounds')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('subject_name', subjectName)
-        .eq('book_name', bookName);
-
-      if (error) throw error;
-
-      // 2. DB에 데이터가 없으면 localStorage 확인
-      if (!data || data.length === 0) {
-        console.log('📦 No DB data, checking localStorage...');
-        const localRounds = loadFromLocalStorage();
-        
-        if (localRounds.size > 0) {
-          console.log(`📦 Loaded ${localRounds.size} rounds from localStorage`);
-          setStudyRounds(localRounds);
-          
-          // 백그라운드에서 마이그레이션 시작
-          setTimeout(() => migrateFromLocalStorage(), 100);
-          return;
-        }
-      }
-
-      // 3. DB 데이터를 Map으로 변환
-      const roundsMap = new Map<string, StudyRound>();
-      data?.forEach((round: any) => {
-        const key = `${round.chapter_name}-${round.problem_number}-${round.round_number}`;
-        roundsMap.set(key, round);
-      });
-
       setStudyRounds(roundsMap);
-      console.log(`✅ Loaded ${data?.length || 0} study rounds from database`);
+      setIsLoading(false);
+      
+      // Phase 3.4: 백그라운드 마이그레이션 (LocalStorage → DB)
+      if (localRounds.size > 0 && preloaded.length === 0) {
+        console.log('🔄 Starting background migration from LocalStorage to DB...');
+        setTimeout(() => migrateFromLocalStorage(), 100);
+      }
     } catch (error) {
       console.error('❌ Error loading study rounds:', error);
       
@@ -477,19 +459,26 @@ export const useStudyRounds = (subjectName: string, bookName: string) => {
     }
   };
 
-  // 초기 로드 및 마이그레이션 (Phase 2.3: 프리로드 완료 대기)
+  // 초기 로드 및 마이그레이션 (Phase 3.0: LocalStorage + DB 병합 표시)
   useEffect(() => {
     if (!user || !subjectName || !bookName) return;
     
-    // Phase 2.3: 프리로드 완료 대기
+    // Phase 3.1: LocalStorage 데이터 즉시 표시
+    const localRounds = loadFromLocalStorage();
+    if (localRounds.size > 0) {
+      console.log(`📦 [useStudyRounds] Loaded ${localRounds.size} rounds from LocalStorage`);
+      setStudyRounds(localRounds);
+      setIsLoading(false);
+    }
+    
+    // Phase 3.2: 프리로드 완료 대기 후 DB 데이터 병합
     if (isLoadingPreloadedRounds) {
       console.log('⏳ [useStudyRounds] Waiting for preloaded rounds...');
       return;
     }
     
-    // Phase 2.3: LocalStorage 우선순위 제거 - DB가 Single Source of Truth
-    console.log('✅ [useStudyRounds] Preload complete, loading DB data...');
-    loadStudyRounds();
+    console.log('✅ [useStudyRounds] Preload complete, merging with DB data...');
+    loadStudyRounds(); // DB 데이터를 로드하고 LocalStorage와 병합
   }, [user, subjectName, bookName, isLoadingPreloadedRounds]);
 
   // 실시간 구독
