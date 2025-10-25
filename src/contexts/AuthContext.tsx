@@ -57,6 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error('Error fetching profile:', error);
             }
           }, 0);
+
+          // Phase 3: 로그인 시 LocalStorage 마이그레이션 안내
+          if (event === 'SIGNED_IN') {
+            checkLocalStorageData(session.user.id);
+          }
         } else {
           console.log('❌ User not authenticated');
           setProfile(null);
@@ -98,6 +103,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // LocalStorage 데이터 확인 및 안내
+  const checkLocalStorageData = (userId: string) => {
+    const migrationCompleted = localStorage.getItem('migration_completed');
+    
+    // 이미 마이그레이션 완료했으면 스킵
+    if (migrationCompleted === 'true') return;
+
+    // LocalStorage에 study_rounds 데이터가 있는지 확인
+    const prefix = `study_rounds_${userId}_`;
+    let hasLocalData = false;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(prefix)) {
+        hasLocalData = true;
+        break;
+      }
+    }
+
+    if (hasLocalData) {
+      // 3초 후에 Toast 표시 (로그인 완료 후)
+      setTimeout(() => {
+        const { toast } = require('sonner');
+        toast.info(
+          '브라우저에 저장된 학습 기록이 있습니다.',
+          {
+            description: '백업 페이지에서 데이터를 백업하세요.',
+            action: {
+              label: '백업하기',
+              onClick: () => {
+                window.location.href = '/backup';
+              }
+            },
+            duration: 10000
+          }
+        );
+      }, 3000);
+    }
+  };
 
   const signInWithGoogle = async () => {
     console.log('🔗 Current origin:', window.location.origin);
